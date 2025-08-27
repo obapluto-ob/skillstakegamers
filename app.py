@@ -1052,6 +1052,43 @@ def send_message(match_id):
     conn.close()
     return redirect(url_for('match_chat', match_id=match_id))
 
+@app.route('/check_match_timeouts')
+def check_match_timeouts():
+    """Auto-timeout matches after 2 hours of inactivity"""
+    conn = sqlite3.connect('gamebet.db')
+    c = conn.cursor()
+    
+    # Find active matches older than 2 hours
+    c.execute('''SELECT id, player1_id, player2_id, bet_amount 
+                 FROM matches 
+                 WHERE status = 'active' 
+                 AND datetime(created_at, '+2 hours') < datetime('now')''')
+    
+    timed_out_matches = c.fetchall()
+    
+    for match in timed_out_matches:
+        match_id, player1_id, player2_id, bet_amount = match
+        
+        # Refund both players
+        c.execute('UPDATE users SET balance = balance + ? WHERE id IN (?, ?)', 
+                 (bet_amount, player1_id, player2_id))
+        
+        # Mark match as timed out
+        c.execute('UPDATE matches SET status = "timed_out" WHERE id = ?', (match_id,))
+        
+        # Log transactions
+        c.execute('''INSERT INTO transactions (user_id, type, amount, description) 
+                     VALUES (?, ?, ?, ?)''',
+                 (player1_id, 'timeout_refund', bet_amount, f'Match {match_id} timed out - refund'))
+        c.execute('''INSERT INTO transactions (user_id, type, amount, description) 
+                     VALUES (?, ?, ?, ?)''',
+                 (player2_id, 'timeout_refund', bet_amount, f'Match {match_id} timed out - refund'))
+    
+    conn.commit()
+    conn.close()
+    
+    return f'Processed {len(timed_out_matches)} timed out matches'
+
 @app.route('/match_result/<int:match_id>')
 def match_result(match_id):
     if 'user_id' not in session:
@@ -1059,15 +1096,34 @@ def match_result(match_id):
     
     conn = sqlite3.connect('gamebet.db')
     c = conn.cursor()
-    c.execute('SELECT * FROM matches WHERE id = ? AND (player1_id = ? OR player2_id = ?)',
+    
+    # Check if match has timed out
+    c.execute('''SELECT *, datetime(created_at, '+2 hours') < datetime('now') as is_expired 
+                 FROM matches WHERE id = ? AND (player1_id = ? OR player2_id = ?)''',
              (match_id, session['user_id'], session['user_id']))
     match = c.fetchone()
-    conn.close()
     
     if not match:
         flash('Match not found!', 'error')
+        conn.close()
         return redirect(url_for('matches'))
     
+    # Auto-timeout if expired
+    if match[-1] and match[7] == 'active':  # is_expired and status is active
+        bet_amount = match[4]
+        player1_id, player2_id = match[2], match[3]
+        
+        # Refund both players
+        c.execute('UPDATE users SET balance = balance + ? WHERE id IN (?, ?)', 
+                 (bet_amount, player1_id, player2_id))
+        c.execute('UPDATE matches SET status = "timed_out" WHERE id = ?', (match_id,))
+        
+        conn.commit()
+        flash('Match timed out after 2 hours. Both players refunded.', 'error')
+        conn.close()
+        return redirect(url_for('matches'))
+    
+    conn.close()
     return render_template('match_result.html', match=match)
 
 @app.route('/submit_result/<int:match_id>', methods=['POST'])
