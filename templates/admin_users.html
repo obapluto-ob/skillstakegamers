@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card">
+    <h1>👥 User Management</h1>
+    <p>Monitor all registered users and their activity</p>
+</div>
+
+<div class="card">
+    <div style="overflow-x: auto;">
+        <table style="width: 100%; border-collapse: collapse;">
+            <thead>
+                <tr style="background: rgba(255,255,255,0.1);">
+                    <th style="padding: 1rem; text-align: left;">Username</th>
+                    <th style="padding: 1rem; text-align: left;">Email</th>
+                    <th style="padding: 1rem; text-align: left;">Balance</th>
+                    <th style="padding: 1rem; text-align: left;">Wins/Losses</th>
+                    <th style="padding: 1rem; text-align: left;">Total Earnings</th>
+                    <th style="padding: 1rem; text-align: left;">Joined</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for user in users %}
+                <tr style="border-bottom: 1px solid rgba(255,255,255,0.1);">
+                    <td style="padding: 1rem;"><strong>{{ user[1] }}</strong></td>
+                    <td style="padding: 1rem;">{{ user[2] }}</td>
+                    <td style="padding: 1rem; color: #28a745;">KSh {{ "%.0f"|format(user[4]) }}</td>
+                    <td style="padding: 1rem;">{{ user[5] }}W / {{ user[6] }}L</td>
+                    <td style="padding: 1rem; color: #17a2b8;">KSh {{ "%.0f"|format(user[7]) }}</td>
+                    <td style="padding: 1rem;">{{ user[8] }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

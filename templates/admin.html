@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card">
+    <h1>Admin Dashboard</h1>
+    <p>Monitor platform activity and manage disputes</p>
+    <button class="btn btn-danger" onclick="clearTestData()">Clear All Test Data</button>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-number">{{ stats.total_users }}</div>
+        <div class="stat-label">Total Users</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number">{{ stats.active_matches }}</div>
+        <div class="stat-label">Active Matches</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number">KSh {{ "%.0f"|format(stats.total_deposits) }}</div>
+        <div class="stat-label">Total Deposits</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number">KSh {{ "%.0f"|format(stats.platform_earnings) }}</div>
+        <div class="stat-label">Platform Earnings</div>
+    </div>
+</div>
+
+<div class="card">
+    <h3>Recent Transactions</h3>
+    <div style="overflow-x: auto;">
+        <table style="width: 100%; border-collapse: collapse;">
+            <thead>
+                <tr style="background: rgba(255,255,255,0.1);">
+                    <th style="padding: 1rem; text-align: left;">User</th>
+                    <th style="padding: 1rem; text-align: left;">Type</th>
+                    <th style="padding: 1rem; text-align: left;">Amount</th>
+                    <th style="padding: 1rem; text-align: left;">Date</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for transaction in recent_transactions %}
+                <tr style="border-bottom: 1px solid rgba(255,255,255,0.1);">
+                    <td style="padding: 1rem;">{{ transaction[6] }}</td>
+                    <td style="padding: 1rem;">{{ transaction[2].title() }}</td>
+                    <td style="padding: 1rem; color: {% if transaction[3] > 0 %}#28a745{% else %}#dc3545{% endif %};">
+                        KSh {{ "%.0f"|format(transaction[3]) }}
+                    </td>
+                    <td style="padding: 1rem;">{{ transaction[5] }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="card">
+    <h3>Pending Deposits (M-Pesa Paybill 400200)</h3>
+    {% if pending_deposits %}
+        {% for deposit in pending_deposits %}
+        <div class="match-card">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <strong>{{ deposit[7] }}</strong> (Account: {{ deposit[7] }})<br>
+                    <small>{{ deposit[8] }}</small>
+                </div>
+                <div>
+                    <strong>KSh {{ "%.0f"|format(deposit[3]) }}</strong><br>
+                    <small>{{ deposit[5] }}</small>
+                </div>
+                <div>
+                    <button class="btn btn-success" onclick="approveDeposit({{ deposit[0] }})">Approve</button>
+                    <button class="btn btn-danger" onclick="rejectDeposit({{ deposit[0] }})">Reject</button>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <p>No pending deposits</p>
+    {% endif %}
+</div>
+
+<div class="card">
+    <h3>Pending Withdrawals</h3>
+    {% if pending_withdrawals %}
+        {% for withdrawal in pending_withdrawals %}
+        <div class="match-card">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <strong>{{ withdrawal[7] }}</strong><br>
+                    <small>{{ withdrawal[8] }}</small>
+                </div>
+                <div>
+                    <strong>KSh {{ "%.0f"|format(withdrawal[3]|abs) }}</strong><br>
+                    <small>{{ withdrawal[5] }}</small>
+                </div>
+                <div>
+                    <button class="btn btn-success" onclick="approveWithdrawal({{ withdrawal[0] }})">Approve</button>
+                    <button class="btn btn-danger" onclick="rejectWithdrawal({{ withdrawal[0] }})">Reject</button>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <p>No pending withdrawals</p>
+    {% endif %}
+</div>
+
+<script>
+function approveDeposit(transactionId) {
+    if (confirm('Confirm M-Pesa payment was received?')) {
+        fetch('/admin/approve_deposit/' + transactionId, { method: 'POST' })
+        .then(() => location.reload());
+    }
+}
+
+function rejectDeposit(transactionId) {
+    if (confirm('Reject this deposit? Payment not received?')) {
+        fetch('/admin/reject_deposit/' + transactionId, { method: 'POST' })
+        .then(() => location.reload());
+    }
+}
+
+function approveWithdrawal(transactionId) {
+    if (confirm('Approve withdrawal? Send M-Pesa now.')) {
+        fetch('/admin/approve_withdrawal/' + transactionId, { method: 'POST' })
+        .then(() => location.reload());
+    }
+}
+
+function rejectWithdrawal(transactionId) {
+    if (confirm('Reject withdrawal? Funds will be refunded.')) {
+        fetch('/admin/reject_withdrawal/' + transactionId, { method: 'POST' })
+        .then(() => location.reload());
+    }
+}
+
+function clearTestData() {
+    if (confirm('Clear ALL test data? This cannot be undone!')) {
+        fetch('/admin/clear_test_data', { method: 'POST' })
+        .then(() => location.reload());
+    }
+}
+</script>
+{% endblock %}

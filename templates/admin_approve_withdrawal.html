@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card">
+    <h2>Approve Withdrawal Request</h2>
+    
+    <div class="withdrawal-details">
+        <h3>Withdrawal Details</h3>
+        <p><strong>User:</strong> {{ withdrawal[6] }}</p>
+        <p><strong>Amount:</strong> KSh {{ "%.0f"|format(withdrawal[2]) }}</p>
+        <p><strong>M-Pesa Number:</strong> {{ withdrawal[3] }}</p>
+        <p><strong>Requested:</strong> {{ withdrawal[5] }}</p>
+    </div>
+    
+    <form method="POST" enctype="multipart/form-data">
+        <div class="form-group">
+            <label>Upload Payment Proof (M-Pesa Screenshot)</label>
+            <input type="file" name="payment_proof" class="form-control" accept="image/*" required>
+            <small style="color: #ccc;">Upload screenshot of M-Pesa payment confirmation</small>
+        </div>
+        
+        <div style="display: flex; gap: 1rem;">
+            <button type="submit" class="btn btn-success">Approve & Upload Proof</button>
+            <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary">Cancel</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

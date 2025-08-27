@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card">
+    <h1>Match History</h1>
+    <p>Your complete gaming history with opponent details</p>
+</div>
+
+<div class="card">
+    {% if matches %}
+        {% for match in matches %}
+        <div class="match-card">
+            <div class="match-header">
+                <div><strong>{{ match[1].upper() }}</strong> - {{ match[8] or 'Standard' }}</div>
+                <span class="status-badge status-{{ match[7] }}">{{ match[7] }}</span>
+            </div>
+            
+            <div style="margin: 1rem 0;">
+                {% if match[2] == session.user_id %}
+                    <strong>You</strong> VS <strong>{{ match[12] or 'No opponent' }}</strong>
+                    {% if match[13] %}
+                        <br><small class="contact-info">Contact: {{ match[13] }}</small>
+                    {% endif %}
+                {% else %}
+                    <strong>{{ match[11] }}</strong> VS <strong>You</strong>
+                    {% if match[11] %}
+                        <br><small class="contact-info">Contact: {{ match[11] }}</small>
+                    {% endif %}
+                {% endif %}
+            </div>
+            
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <strong>Bet: KSh {{ "%.0f"|format(match[4] or 0) }}</strong>
+                    <span style="margin-left: 1rem;">Total Pot: KSh {{ "%.0f"|format(match[5] or 0) }}</span>
+                </div>
+                
+                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                    {% if match[7] == 'completed' %}
+                        {% if match[6] == session.user_id %}
+                            <div class="match-outcome win">
+                                <div class="outcome-label">VICTORY</div>
+                                <div class="outcome-amount">+KSh {{ "%.0f"|format((match[4] or 0) * 1.84) }}</div>
+                            </div>
+                        {% else %}
+                            <div class="match-outcome loss">
+                                <div class="outcome-label">DEFEAT</div>
+                                <div class="outcome-amount">-KSh {{ "%.0f"|format(match[4] or 0) }}</div>
+                            </div>
+                        {% endif %}
+                    {% elif match[7] == 'refunded' %}
+                        <div class="match-outcome refund">
+                            <div class="outcome-label">REFUNDED</div>
+                            <div class="outcome-amount">+KSh {{ "%.0f"|format(match[4] or 0) }}</div>
+                        </div>
+                    {% elif match[7] == 'disputed' %}
+                        <div class="match-outcome disputed">
+                            <div class="outcome-label">UNDER REVIEW</div>
+                        </div>
+                    {% endif %}
+                    
+                    {% if match[7] == 'active' %}
+                        <a href="{{ url_for('match_chat', match_id=match[0]) }}" class="btn btn-secondary">Chat</a>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.1);">
+                <small style="color: #ccc;">{{ match[9] or 'No date' }}</small>
+                {% if match[7] == 'completed' %}
+                    <span style="float: right; color: #ccc; font-size: 0.8rem;">
+                        Platform fee: KSh {{ "%.0f"|format((match[4] or 0) * 0.32) }} (16%)
+                    </span>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <p>No match history yet. <a href="{{ url_for('games') }}">Start playing!</a></p>
+    {% endif %}
+</div>
+
+<!-- Transaction History -->
+<div class="card">
+    <h2>💰 Money History</h2>
+    {% if transactions or withdrawals %}
+        <div style="overflow-x: auto;">
+            <table style="width: 100%; border-collapse: collapse;">
+                <thead>
+                    <tr style="background: rgba(255,255,255,0.1);">
+                        <th style="padding: 0.5rem; text-align: left;">Type</th>
+                        <th style="padding: 0.5rem; text-align: left;">Amount</th>
+                        <th style="padding: 0.5rem; text-align: left;">Status</th>
+                        <th style="padding: 0.5rem; text-align: left;">Date</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for transaction in transactions %}
+                    <tr style="border-bottom: 1px solid rgba(255,255,255,0.1);">
+                        <td style="padding: 0.5rem;">{{ transaction[2].replace('_', ' ').title() }}</td>
+                        <td style="padding: 0.5rem; color: {% if transaction[3] > 0 %}#28a745{% else %}#dc3545{% endif %};">
+                            {% if transaction[3] > 0 %}+{% endif %}KSh {{ "%.0f"|format(transaction[3]) }}
+                        </td>
+                        <td style="padding: 0.5rem;">{{ transaction[2].replace('_', ' ').title() }}</td>
+                        <td style="padding: 0.5rem; font-size: 0.8rem;">{{ transaction[5] }}</td>
+                    </tr>
+                    {% endfor %}
+                    {% for withdrawal in withdrawals %}
+                    <tr style="border-bottom: 1px solid rgba(255,255,255,0.1);">
+                        <td style="padding: 0.5rem;">Withdrawal</td>
+                        <td style="padding: 0.5rem; color: #dc3545;">-KSh {{ "%.0f"|format(withdrawal[2]) }}</td>
+                        <td style="padding: 0.5rem;">{{ withdrawal[4].title() }}</td>
+                        <td style="padding: 0.5rem; font-size: 0.8rem;">{{ withdrawal[6] }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <p>No transaction history yet.</p>
+    {% endif %}
+</div>
+{% endblock %}

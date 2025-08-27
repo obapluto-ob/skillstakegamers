@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card">
+    <h1>Submit Tournament Result</h1>
+    <p>Upload your screenshot proof for admin review</p>
+</div>
+
+<div class="card">
+    <form method="POST" enctype="multipart/form-data">
+        <div class="form-group">
+            <label>How did you perform?</label>
+            <select name="result" class="form-control" required>
+                <option value="">Select your result...</option>
+                <option value="won">I Won / Got Top Placement</option>
+                <option value="lost">I Lost / Got Eliminated</option>
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label>Screenshot Proof</label>
+            <input type="file" name="screenshot" class="form-control" accept="image/*" required>
+            <small style="color: #ccc;">Upload clear screenshot showing your final result</small>
+        </div>
+        
+        <div style="background: rgba(255,193,7,0.1); padding: 1rem; border-radius: 8px; margin: 1rem 0;">
+            <h4>Screenshot Requirements:</h4>
+            <ul>
+                <li>Must show final game result clearly</li>
+                <li>Game mode must be visible</li>
+                <li>Your username/placement must be visible</li>
+                <li>No editing or cropping allowed</li>
+            </ul>
+        </div>
+        
+        <button type="submit" class="btn btn-success">Submit Result</button>
+        <a href="{{ url_for('tournaments') }}" class="btn btn-secondary">Cancel</a>
+    </form>
+</div>
+{% endblock %}

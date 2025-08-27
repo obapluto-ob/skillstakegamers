@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>{% block title %}SkillState{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; z-index: auto; }
+        body { 
+            font-family: 'Segoe UI', sans-serif; 
+            background: linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.4)), url('https://images.unsplash.com/photo-1542751371-adc38448a05e?w=1920&h=1080&fit=crop&crop=center');
+            background-size: cover;
+            background-attachment: fixed;
+            min-height: 100vh;
+            color: white;
+            font-size: 16px;
+            line-height: 1.4;
+            position: relative;
+            z-index: 0;
+        }
+        @media (max-width: 768px) {
+            body { font-size: 14px; }
+            .navbar { padding: 0.5rem 1rem; flex-direction: column; }
+            .nav-links { flex-wrap: wrap; gap: 0.3rem; margin-top: 0.5rem; justify-content: center; }
+            .nav-links a { padding: 0.4rem 0.8rem; font-size: 0.9rem; }
+            .dropdown-content { position: fixed; top: 60px; right: 10px; left: auto; min-width: 200px; z-index: 9999; }
+            .dropdown-btn { font-size: 0.9rem; padding: 0.4rem 0.8rem; }
+            .container { padding: 10px; }
+            .card { padding: 1rem; margin: 0.5rem 0; }
+            .btn { padding: 0.6rem 1rem; font-size: 13px; min-height: 36px; }
+            .form-control { padding: 1rem; font-size: 16px; min-height: 44px; }
+            .games-grid { grid-template-columns: 1fr; gap: 1rem; }
+            .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 0.5rem; }
+            .match-card { padding: 1rem; }
+            .balance { margin: 0.3rem 0; font-size: 0.9rem; }
+        }
+        .navbar { 
+            background: rgba(255,255,255,0.1); 
+            backdrop-filter: blur(15px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 1rem 2rem; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center;
+            box-shadow: 0 2px 20px rgba(0,0,0,0.3);
+            position: relative;
+            z-index: 1000;
+        }
+        .navbar-brand { font-size: 1.5rem; font-weight: bold; color: white; text-decoration: none; }
+        .logo { height: 40px; margin-right: 10px; vertical-align: middle; }
+        .nav-links { display: flex; gap: 1.5rem; align-items: center; }
+        .nav-links a { text-decoration: none; color: white; font-weight: 500; padding: 0.5rem 1rem; border-radius: 6px; transition: all 0.3s; }
+        .nav-links a:hover { color: #00ff88; background: rgba(255,255,255,0.1); }
+        .balance { background: #667eea; color: white; padding: 0.5rem 1rem; border-radius: 20px; font-weight: bold; }
+        .dropdown { position: relative; display: inline-block; z-index: 2147483647; }
+        .dropdown-btn { background: rgba(255,255,255,0.1); color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-weight: 500; }
+        .dropdown-btn:hover { background: rgba(255,255,255,0.2); }
+        .dropdown-content { display: none; position: absolute; background: rgba(0,0,0,0.98); min-width: 200px; box-shadow: 0 8px 16px rgba(0,0,0,0.5); z-index: 999999; border-radius: 8px; top: 100%; right: 0; backdrop-filter: blur(15px); border: 1px solid rgba(255,255,255,0.3); transform: translateY(5px); }
+        .dropdown-content a { color: white !important; padding: 14px 18px !important; text-decoration: none !important; display: block !important; border-radius: 0 !important; white-space: nowrap !important; }
+        .dropdown-content a:hover { background: rgba(255,255,255,0.1); }
+        .dropdown:hover .dropdown-content { display: block; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; position: relative; z-index: 1; }
+        .card { 
+            background: rgba(255, 255, 255, 0.05); 
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 15px; 
+            padding: 2rem; 
+            margin: 2rem 0;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            color: white;
+            position: relative;
+            z-index: 1;
+        }
+        .btn { 
+            padding: 0.75rem 1.5rem; 
+            border: none; 
+            border-radius: 8px; 
+            font-weight: 600; 
+            cursor: pointer;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-decoration: none;
+            display: inline-block;
+            margin: 0.5rem;
+            transition: transform 0.2s;
+        }
+        .btn:hover { transform: translateY(-2px); }
+        .btn-success { background: #28a745; }
+        .btn-danger { background: #dc3545; }
+        .btn-secondary { background: #6c757d; }
+        .form-group { margin: 1rem 0; }
+        .form-control { 
+            width: 100%; 
+            padding: 0.75rem; 
+            border: 2px solid rgba(255, 255, 255, 0.3); 
+            border-radius: 8px;
+            font-size: 1rem;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            backdrop-filter: blur(10px);
+        }
+        .form-control:focus { outline: none; border-color: #00ff88; }
+        .alert { 
+            padding: 1rem; 
+            border-radius: 8px; 
+            margin: 1rem 0;
+        }
+        .alert-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .alert-error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .games-grid { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); 
+            gap: 1.5rem; 
+        }
+        .game-card { 
+            text-align: center; 
+            padding: 1.5rem; 
+            border: 2px solid rgba(255, 255, 255, 0.2); 
+            border-radius: 15px;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            color: white;
+        }
+        .game-card:hover { border-color: #00ff88; transform: translateY(-5px); box-shadow: 0 10px 30px rgba(0, 255, 136, 0.3); }
+        .game-icon { font-size: 3rem; margin-bottom: 1rem; }
+        .match-card { 
+            border: 1px solid rgba(255, 255, 255, 0.2); 
+            border-radius: 10px; 
+            padding: 1.5rem; 
+            margin: 1rem 0;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            color: white;
+        }
+        .match-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+        .status-badge { 
+            padding: 0.25rem 0.75rem; 
+            border-radius: 15px; 
+            font-size: 0.875rem; 
+            font-weight: 600;
+        }
+        .status-pending { background: #fff3cd; color: #856404; }
+        .status-active { background: #d4edda; color: #155724; }
+        .status-completed { background: #d1ecf1; color: #0c5460; }
+        .stats-grid { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); 
+            gap: 1.5rem; 
+            margin: 2rem 0;
+        }
+        .stat-card { 
+            text-align: center; 
+            padding: 2rem; 
+            background: linear-gradient(135deg, rgba(102,126,234,0.3), rgba(118,75,162,0.3));
+            color: white; 
+            border-radius: 15px;
+        }
+        .stat-number { font-size: 2.5rem; font-weight: bold; margin-bottom: 0.5rem; }
+        .stat-label { font-size: 1rem; opacity: 0.9; }
+        .modal { 
+            display: none; 
+            position: fixed; 
+            top: 0; left: 0; 
+            width: 100%; height: 100%; 
+            background: rgba(0,0,0,0.8);
+            z-index: 9999;
+            backdrop-filter: blur(5px);
+        }
+        .modal-content { 
+            background: rgba(255, 255, 255, 0.95); 
+            backdrop-filter: blur(10px);
+            margin: 5% auto; 
+            padding: 2rem; 
+            width: 90%; 
+            max-width: 500px;
+            border-radius: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+            color: #333 !important;
+        }
+        .modal-content h2 { color: #333 !important; }
+        .modal-content p { color: #333 !important; }
+        .modal-content label { color: #333 !important; }
+        .modal-content .form-control { color: #333 !important; background: rgba(255,255,255,0.8) !important; }
+        .close { float: right; font-size: 2rem; cursor: pointer; color: #333; }
+        .match-outcome { text-align: right; padding: 0.5rem 1rem; border-radius: 8px; min-width: 120px; }
+        .match-outcome.win { background: linear-gradient(135deg, #28a745, #20c997); color: white; }
+        .match-outcome.loss { background: linear-gradient(135deg, #dc3545, #e74c3c); color: white; }
+        .match-outcome.refund { background: linear-gradient(135deg, #ffc107, #fd7e14); color: white; }
+        .match-outcome.disputed { background: linear-gradient(135deg, #6c757d, #495057); color: white; }
+        .outcome-label { font-weight: bold; font-size: 0.9rem; letter-spacing: 1px; }
+        .outcome-amount { font-size: 1.1rem; font-weight: 600; margin-top: 0.2rem; }
+        .contact-info { color: #17a2b8; font-weight: 500; }
+        .lobby-title { color: #00ff88; font-size: 1.1rem; font-weight: bold; letter-spacing: 1px; }
+        .instruction-panel { margin: 1rem 0; padding: 0.8rem; background: rgba(255,255,255,0.05); border-radius: 6px; border-left: 4px solid #17a2b8; }
+        .game-codes-panel { margin: 1rem 0; padding: 0.8rem; background: rgba(255,193,7,0.1); border-radius: 6px; border-left: 4px solid #ffc107; }
+        .warning-panel { margin-top: 0.8rem; padding: 0.6rem; background: rgba(220,53,69,0.1); border-radius: 4px; border-left: 4px solid #dc3545; }
+        .section-header { color: #ffc107; font-weight: bold; font-size: 0.95rem; }
+        .instruction-list { margin-top: 0.5rem; line-height: 1.6; }
+        .step { margin: 0.3rem 0; }
+        .step-number { display: inline-block; width: 20px; height: 20px; background: #17a2b8; color: white; text-align: center; border-radius: 50%; font-size: 0.8rem; font-weight: bold; margin-right: 0.5rem; }
+        .game-list { margin-top: 0.5rem; font-size: 0.9rem; }
+        .game-item { margin: 0.3rem 0; padding: 0.2rem 0; }
+        .status-indicator { display: inline-block; padding: 0.1rem 0.4rem; border-radius: 3px; font-size: 0.7rem; font-weight: bold; margin-right: 0.5rem; }
+        .game-item.supported .status-indicator { background: #28a745; color: white; }
+        .game-item.unsupported .status-indicator { background: #dc3545; color: white; }
+        .warning-text { color: #dc3545; font-weight: bold; }
+        .confirmation-panel { margin: 1rem 0; padding: 0.8rem; background: rgba(40,167,69,0.1); border-radius: 6px; border-left: 4px solid #28a745; }
+        .room-status { color: #ffc107; font-weight: 500; margin-left: 0.5rem; }
+        .next-steps-panel { margin: 1rem 0; padding: 0.8rem; background: rgba(255,193,7,0.1); border-radius: 6px; border-left: 4px solid #ffc107; }
+        .steps-list { margin-top: 0.5rem; }
+        .next-step { margin: 0.4rem 0; padding: 0.2rem 0; }
+        .step-bullet { display: inline-block; width: 18px; height: 18px; background: #ffc107; color: black; text-align: center; border-radius: 50%; font-size: 0.8rem; font-weight: bold; margin-right: 0.5rem; }
+        .result-button-container { text-align: center; }
+        .users-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; margin-top: 1rem; }
+        .user-card { display: flex; justify-content: space-between; align-items: center; padding: 1rem; background: rgba(255,255,255,0.05); border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); }
+        .user-info { flex: 1; }
+        .user-actions { flex-shrink: 0; }
+        @media (max-width: 768px) {
+            .users-grid { grid-template-columns: 1fr; }
+            .user-card { flex-direction: column; gap: 0.5rem; text-align: center; }
+        }
+        .hero-section { text-align: center; padding: 3rem 0; background: linear-gradient(135deg, rgba(102,126,234,0.05), rgba(118,75,162,0.05)); margin-bottom: 2rem; border-radius: 15px; position: relative; z-index: 1; margin-top: 80px; }
+        .hero-title { font-size: 3rem; font-weight: bold; margin-bottom: 1rem; background: linear-gradient(135deg, #00ff88, #667eea); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .hero-subtitle { font-size: 1.3rem; margin-bottom: 2rem; opacity: 0.9; }
+        .hero-features, .hero-stats { display: flex; justify-content: center; gap: 2rem; flex-wrap: wrap; }
+        .feature-item, .stat-highlight { background: rgba(255,255,255,0.1); padding: 0.8rem 1.5rem; border-radius: 25px; font-weight: 500; }
+        .auth-container { display: grid; grid-template-columns: 1fr 1fr; gap: 3rem; max-width: 1000px; margin: 0 auto; }
+        .auth-card { background: rgba(255,255,255,0.1); padding: 2rem; border-radius: 15px; backdrop-filter: blur(10px); }
+        .auth-btn { width: 100%; background: linear-gradient(135deg, #00ff88, #00cc6a); color: black; font-weight: bold; padding: 1rem; }
+        .auth-link { text-align: center; margin-top: 1rem; }
+        .games-showcase { background: rgba(255,255,255,0.05); padding: 2rem; border-radius: 15px; }
+        .games-preview { display: grid; gap: 0.8rem; margin: 1rem 0; }
+        .game-preview { background: rgba(255,255,255,0.1); padding: 0.8rem; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; }
+        .game-preview.active { border-left: 4px solid #00ff88; }
+        .player-count { color: #00ff88; font-size: 0.9rem; }
+        .how-it-works, .recent-winners { margin-top: 2rem; }
+        .step-item, .winner-item { padding: 0.5rem 0; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        @media (max-width: 768px) {
+            .auth-container { grid-template-columns: 1fr; gap: 1rem; }
+            .hero-title { font-size: 2rem; }
+            .hero-features, .hero-stats { flex-direction: column; gap: 1rem; }
+        }
+        .leaderboard-hero { text-align: center; padding: 2rem 0; background: linear-gradient(135deg, rgba(255,215,0,0.1), rgba(255,140,0,0.1)); border-radius: 15px; margin-bottom: 2rem; }
+        .leaderboard-title { font-size: 2.5rem; font-weight: bold; background: linear-gradient(135deg, #FFD700, #FF8C00); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 0.5rem; }
+        .leaderboard-subtitle { font-size: 1.1rem; opacity: 0.8; }
+        .leaderboard-container { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; }
+        .leaderboard-section { background: rgba(255,255,255,0.05); border-radius: 15px; padding: 1.5rem; }
+        .section-header { text-align: center; margin-bottom: 2rem; padding-bottom: 1rem; border-bottom: 2px solid rgba(255,255,255,0.1); }
+        .section-title { font-size: 1.3rem; font-weight: bold; color: #FFD700; margin-bottom: 0.3rem; }
+        .section-subtitle { color: #ccc; font-size: 0.9rem; }
+        .rankings-list { display: flex; flex-direction: column; gap: 1rem; }
+        .player-rank { display: flex; align-items: center; padding: 1rem; background: rgba(255,255,255,0.05); border-radius: 10px; border-left: 4px solid transparent; transition: all 0.3s; }
+        .player-rank.top-1 { border-left-color: #FFD700; background: rgba(255,215,0,0.1); }
+        .player-rank.top-2 { border-left-color: #C0C0C0; background: rgba(192,192,192,0.1); }
+        .player-rank.top-3 { border-left-color: #CD7F32; background: rgba(205,127,50,0.1); }
+        .rank-position { width: 50px; text-align: center; }
+        .crown { font-size: 1.5rem; }
+        .rank-number { font-size: 1.2rem; font-weight: bold; color: #FFD700; }
+        .player-info { flex: 1; margin-left: 1rem; }
+        .player-name { font-size: 1.1rem; font-weight: bold; margin-bottom: 0.3rem; }
+        .player-stats { display: flex; gap: 1rem; }
+        .wins { color: #28a745; font-weight: 500; }
+        .losses { color: #dc3545; font-weight: 500; }
+        .winrate { color: #ffc107; font-weight: 500; }
+        .player-earnings { text-align: right; }
+        .player-earnings.highlight .earnings-amount { color: #00ff88; font-size: 1.2rem; }
+        .earnings-amount { font-size: 1.1rem; font-weight: bold; }
+        .earnings-label { font-size: 0.8rem; color: #ccc; }
+        .empty-state { text-align: center; padding: 3rem 1rem; }
+        .empty-icon { font-size: 3rem; margin-bottom: 1rem; }
+        .empty-text { color: #ccc; font-size: 1.1rem; }
+        @media (max-width: 768px) {
+            .leaderboard-container { grid-template-columns: 1fr; gap: 1rem; }
+            .leaderboard-title { font-size: 2rem; }
+            .player-rank { flex-direction: column; text-align: center; gap: 0.5rem; }
+            .player-stats { justify-content: center; }
+        }
+        .hero-actions { margin-top: 2rem; display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
+        .features-container { display: grid; grid-template-columns: 1fr 1fr; gap: 3rem; margin: 3rem 0; }
+        .feature-section, .games-section { background: rgba(255,255,255,0.05); padding: 2rem; border-radius: 15px; }
+        .steps-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; margin-top: 2rem; }
+        .step-card { text-align: center; padding: 1.5rem; background: rgba(255,255,255,0.1); border-radius: 10px; }
+        .step-number { display: inline-block; width: 40px; height: 40px; background: linear-gradient(135deg, #00ff88, #00cc6a); color: black; border-radius: 50%; font-size: 1.2rem; font-weight: bold; line-height: 40px; margin-bottom: 1rem; }
+        .games-showcase { display: flex; flex-direction: column; gap: 1rem; margin-top: 2rem; }
+        .game-item { display: flex; align-items: center; padding: 1rem; background: rgba(255,255,255,0.1); border-radius: 8px; }
+        .game-thumb { width: 60px; height: 60px; border-radius: 8px; margin-right: 1rem; }
+        .game-name { font-weight: bold; margin-bottom: 0.2rem; }
+        .game-desc { color: #ccc; font-size: 0.9rem; }
+        .cta-section { text-align: center; padding: 3rem 0; background: linear-gradient(135deg, rgba(102,126,234,0.1), rgba(118,75,162,0.1)); border-radius: 15px; margin-top: 3rem; }
+        .cta-content h2 { font-size: 2rem; margin-bottom: 1rem; }
+        .cta-content p { font-size: 1.1rem; margin-bottom: 2rem; opacity: 0.9; }
+        @media (max-width: 768px) {
+            .features-container { grid-template-columns: 1fr; gap: 2rem; }
+            .steps-grid { grid-template-columns: repeat(2, 1fr); gap: 1rem; }
+            .hero-actions { flex-direction: column; align-items: center; }
+        }
+        @media (max-width: 480px) {
+            .steps-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <a href="{{ url_for('home') }}" class="navbar-brand">
+            <img src="https://images.unsplash.com/photo-1542751371-adc38448a05e?w=50&h=50&fit=crop&crop=center" alt="SkillState" class="logo">
+            SkillState
+        </a>
+        {% if session.user_id %}
+            {% if session.username == 'admin' %}
+            <div class="nav-links">
+                <a href="{{ url_for('admin_dashboard') }}">Dashboard</a>
+                <a href="{{ url_for('admin_users') }}">Users</a>
+                <a href="{{ url_for('admin_transactions') }}">Transactions</a>
+                <a href="{{ url_for('admin_matches') }}">Matches</a>
+                <a href="{{ url_for('tournaments') }}">Tournaments</a>
+                <a href="{{ url_for('auto_create_tournament') }}">Auto Create Tournament</a>
+                <a href="{{ url_for('referrals') }}">Referrals</a>
+                <a href="{{ url_for('admin_support_center') }}" style="color: #ff6b6b; font-weight: bold;">Support Center</a>
+                <div style="color: #ff6b6b; font-weight: bold; font-size: 0.8rem;">ADMIN</div>
+                <a href="{{ url_for('logout') }}" class="btn btn-secondary">Logout</a>
+            </div>
+            {% else %}
+            <div class="nav-links">
+                <a href="{{ url_for('dashboard') }}">Dashboard</a>
+                <a href="{{ url_for('games') }}">Games</a>
+                <a href="{{ url_for('wallet') }}">Wallet</a>
+                <div class="dropdown">
+                    <button class="dropdown-btn">Menu ▼</button>
+                    <div class="dropdown-content">
+                        <a href="{{ url_for('matches') }}">My Matches</a>
+                        <a href="{{ url_for('tournaments') }}">Tournaments</a>
+                        <a href="{{ url_for('referrals') }}">Earn</a>
+                        <a href="{{ url_for('friends') }}">Friends</a>
+                        <a href="{{ url_for('leaderboard') }}">Rankings</a>
+                        <a href="{{ url_for('match_history') }}">Activity</a>
+                        <a href="{{ url_for('profile') }}">Account</a>
+                        <a href="{{ url_for('support_chat') }}">Help</a>
+                    </div>
+                </div>
+                <div class="balance">KSh {{ "%.0f"|format(session.balance) }}</div>
+                <a href="{{ url_for('logout') }}" class="btn btn-secondary">Logout</a>
+            </div>
+            {% endif %}
+        {% endif %}
+    </nav>
+
+    <div class="container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+    </div>
+</body>
+</html>

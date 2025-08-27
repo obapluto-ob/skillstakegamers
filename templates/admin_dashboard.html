@@ -1,0 +1,206 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card">
+    <h1>Admin Dashboard</h1>
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-number">{{ stats.total_users }}</div>
+            <div class="stat-label">Total Users</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number">{{ stats.active_matches }}</div>
+            <div class="stat-label">Active Matches</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number">KSh {{ "%.0f"|format(stats.total_deposits) }}</div>
+            <div class="stat-label">Total Deposits</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number">KSh {{ "%.0f"|format(stats.net_earnings) }}</div>
+            <div class="stat-label">Net Earnings</div>
+        </div>
+    </div>
+</div>
+
+<!-- Detailed Earnings Breakdown -->
+<div class="card">
+    <h2>💰 Earnings Breakdown</h2>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
+        <div style="background: rgba(40, 167, 69, 0.1); padding: 1rem; border-radius: 8px; border-left: 4px solid #28a745;">
+            <div style="font-size: 1.2rem; font-weight: bold; color: #28a745;">KSh {{ "%.0f"|format(earnings_data.match_commission) }}</div>
+            <div style="font-size: 0.9rem; opacity: 0.8;">Match Commission ({{ earnings_data.commission_rate }}%)</div>
+        </div>
+        <div style="background: rgba(23, 162, 184, 0.1); padding: 1rem; border-radius: 8px; border-left: 4px solid #17a2b8;">
+            <div style="font-size: 1.2rem; font-weight: bold; color: #17a2b8;">KSh {{ "%.0f"|format(earnings_data.deposit_fees) }}</div>
+            <div style="font-size: 0.9rem; opacity: 0.8;">Deposit Processing (3%)</div>
+        </div>
+        <div style="background: rgba(255, 193, 7, 0.1); padding: 1rem; border-radius: 8px; border-left: 4px solid #ffc107;">
+            <div style="font-size: 1.2rem; font-weight: bold; color: #ffc107;">KSh {{ "%.0f"|format(earnings_data.withdrawal_fees) }}</div>
+            <div style="font-size: 0.9rem; opacity: 0.8;">Withdrawal Fees</div>
+        </div>
+        <div style="background: rgba(220, 53, 69, 0.1); padding: 1rem; border-radius: 8px; border-left: 4px solid #dc3545;">
+            <div style="font-size: 1.2rem; font-weight: bold; color: #dc3545;">KSh {{ "%.0f"|format(earnings_data.bank_fees) }}</div>
+            <div style="font-size: 0.9rem; opacity: 0.8;">Bank/M-Pesa Fees</div>
+        </div>
+    </div>
+    <div style="text-align: center; padding: 1rem; background: rgba(108, 117, 125, 0.1); border-radius: 8px;">
+        <div style="font-size: 1.5rem; font-weight: bold; color: #28a745;">Total Net Earnings: KSh {{ "%.0f"|format(earnings_data.net_earnings) }}</div>
+    </div>
+</div>
+
+<!-- Pending Deposits -->
+<div class="card">
+    <h2>Pending Deposits ({{ pending_deposits|length }})</h2>
+    {% if pending_deposits %}
+        {% for deposit in pending_deposits %}
+        <div class="match-card" style="margin-bottom: 1rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <strong>{{ deposit[7] }}</strong> ({{ deposit[8] }})<br>
+                    <small>Amount: KSh {{ "%.0f"|format(deposit[3]) }} | Date: {{ deposit[5] }}</small>
+                </div>
+                <div style="display: flex; gap: 0.5rem;">
+                    <button onclick="viewDeposit({{ deposit[0] }})" class="btn btn-secondary">View Details</button>
+                    <a href="{{ url_for('approve_deposit', transaction_id=deposit[0]) }}" 
+                       class="btn btn-success" onclick="return confirm('Approve this deposit?')">Approve</a>
+                    <a href="{{ url_for('reject_deposit', transaction_id=deposit[0]) }}" 
+                       class="btn btn-danger" onclick="return confirm('Reject this deposit?')">Reject</a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <p>No pending deposits</p>
+    {% endif %}
+</div>
+
+<!-- Pending Withdrawals -->
+<div class="card">
+    <h2>Pending Withdrawals ({{ pending_withdrawals|length }})</h2>
+    {% if pending_withdrawals %}
+        {% for withdrawal in pending_withdrawals %}
+        <div class="match-card" style="margin-bottom: 1rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <strong>{{ withdrawal[1] }}</strong><br>
+                    <small>Amount: KSh {{ "%.0f"|format(withdrawal[2]) }}</small><br>
+                    <small>M-Pesa: {{ withdrawal[3] or 'Not provided' }}</small><br>
+                    <small>Date: {{ withdrawal[5] }}</small>
+                </div>
+                <div style="display: flex; gap: 0.5rem;">
+                    <a href="{{ url_for('approve_withdrawal', withdrawal_id=withdrawal[0]) }}" 
+                       class="btn btn-success">Approve & Upload Proof</a>
+                    <a href="{{ url_for('reject_withdrawal', withdrawal_id=withdrawal[0]) }}" 
+                       class="btn btn-danger" onclick="return confirm('Reject and refund?')">Reject</a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <p>No pending withdrawals</p>
+    {% endif %}
+</div>
+
+<!-- Disputed Matches -->
+<div class="card">
+    <h2>Disputed Matches ({{ disputed_matches|length }})</h2>
+    {% if disputed_matches %}
+        {% for dispute in disputed_matches %}
+        <div class="match-card" style="margin-bottom: 1rem; border: 2px solid #dc3545;">
+            <div style="margin-bottom: 1rem;">
+                <strong>{{ dispute[1].upper() }}</strong> - KSh {{ "%.0f"|format(dispute[2]) }} bet<br>
+                <strong>{{ dispute[4] }}</strong> claims: <span style="color: {% if dispute[6] == 'won' %}#28a745{% else %}#dc3545{% endif %};">{{ dispute[6] or 'No result' }}</span> | 
+                <strong>{{ dispute[5] }}</strong> claims: <span style="color: {% if dispute[7] == 'won' %}#28a745{% else %}#dc3545{% endif %};">{{ dispute[7] or 'No result' }}</span><br>
+                <span style="color: #dc3545;">⚠️ Conflicting results - both players claim they won!</span>
+            </div>
+            <div style="display: flex; gap: 1rem; margin-bottom: 1rem;">
+                <div style="flex: 1; text-align: center;">
+                    <strong>{{ dispute[4] }}'s Screenshot Proof:</strong><br>
+                    {% if dispute[8] and dispute[8]|length > 10 %}
+                        <img src="data:image/jpeg;base64,{{ dispute[8] }}" style="max-width: 200px; max-height: 150px; border: 1px solid #ddd; cursor: pointer;" onclick="window.open(this.src)">
+                        <br><small>Click to enlarge</small>
+                    {% else %}
+                        <span style="color: #dc3545;">No screenshot provided ({{ dispute[8]|length if dispute[8] else 0 }} chars)</span>
+                    {% endif %}
+                </div>
+                <div style="flex: 1; text-align: center;">
+                    <strong>{{ dispute[5] }}'s Screenshot Proof:</strong><br>
+                    {% if dispute[9] and dispute[9]|length > 10 %}
+                        <img src="data:image/jpeg;base64,{{ dispute[9] }}" style="max-width: 200px; max-height: 150px; border: 1px solid #ddd; cursor: pointer;" onclick="window.open(this.src)">
+                        <br><small>Click to enlarge</small>
+                    {% else %}
+                        <span style="color: #dc3545;">No screenshot provided ({{ dispute[9]|length if dispute[9] else 0 }} chars)</span>
+                    {% endif %}
+                </div>
+            </div>
+            <div style="display: flex; gap: 0.5rem; justify-content: center;">
+                <a href="{{ url_for('resolve_dispute', match_id=dispute[0], winner='player1') }}" 
+                   class="btn btn-success" onclick="return confirm('Award win to {{ dispute[4] }}?')">{{ dispute[4] }} Wins</a>
+                <a href="{{ url_for('resolve_dispute', match_id=dispute[0], winner='player2') }}" 
+                   class="btn btn-success" onclick="return confirm('Award win to {{ dispute[5] }}?')">{{ dispute[5] }} Wins</a>
+                <a href="{{ url_for('resolve_dispute', match_id=dispute[0], winner='draw') }}" 
+                   class="btn btn-secondary" onclick="return confirm('Refund both players?')">Refund Both</a>
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <p>No disputed matches</p>
+    {% endif %}
+</div>
+
+<!-- Deposit Details Modal -->
+<div id="depositModal" class="modal">
+    <div class="modal-content" style="max-width: 600px;">
+        <span class="close" onclick="closeDepositModal()">&times;</span>
+        <h2>Deposit Details</h2>
+        <div id="depositDetails"></div>
+    </div>
+</div>
+
+<script>
+function viewDeposit(transactionId) {
+    fetch(`/admin/view_deposit/${transactionId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const details = data.details;
+                document.getElementById('depositDetails').innerHTML = `
+                    <div style="margin-bottom: 1rem;">
+                        <strong>User:</strong> ${details.username} (${details.email})<br>
+                        <strong>M-Pesa Number:</strong> ${details.mpesa_number}<br>
+                        <strong>Sender Name:</strong> ${details.sender_name}<br>
+                        <strong>Amount Sent:</strong> KSh ${details.amount_sent}<br>
+                        <strong>Amount to Credit:</strong> KSh ${details.amount_to_credit}<br>
+                        <strong>Date:</strong> ${details.created_at}
+                    </div>
+                    <div style="text-align: center;">
+                        <strong>M-Pesa Receipt:</strong><br>
+                        <img src="data:image/jpeg;base64,${details.receipt_screenshot}" 
+                             style="max-width: 100%; max-height: 400px; border: 1px solid #ddd; border-radius: 8px; margin-top: 10px;">
+                    </div>
+                `;
+                document.getElementById('depositModal').style.display = 'block';
+            } else {
+                alert('Error loading deposit details');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error loading deposit details');
+        });
+}
+
+function closeDepositModal() {
+    document.getElementById('depositModal').style.display = 'none';
+}
+
+// Close modal when clicking outside
+window.onclick = function(event) {
+    const modal = document.getElementById('depositModal');
+    if (event.target == modal) {
+        modal.style.display = 'none';
+    }
+}
+</script>
+{% endblock %}

@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card">
+    <h1>Match Management</h1>
+    <p>Monitor all gaming matches and disputes</p>
+</div>
+
+<div class="card">
+    {% if matches %}
+        {% for match in matches %}
+        <div class="match-card">
+            <div class="match-header">
+                <div>
+                    <strong>{{ match[1].upper() }}</strong> - {{ match[8] or 'Standard' }}
+                    <br><small>Match ID: {{ match[0] }}</small>
+                </div>
+                <span class="status-badge status-{{ match[7] }}">{{ match[7].upper() }}</span>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; margin: 1rem 0;">
+                <div>
+                    <strong>Player 1:</strong><br>
+                    {{ match[10] or 'No Player' }}
+                </div>
+                <div>
+                    <strong>Player 2:</strong><br>
+                    {{ match[11] or 'Waiting...' }}
+                </div>
+                <div>
+                    <strong>Winner:</strong><br>
+                    {% if match[12] %}
+                        <span style="color: #28a745;">{{ match[12] }}</span>
+                    {% else %}
+                        <span style="color: #666;">TBD</span>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; margin: 1rem 0;">
+                <div>
+                    <strong>Bet Amount:</strong><br>
+                    KSh {{ "%.0f"|format(match[4]|float or 0) }}
+                </div>
+                <div>
+                    <strong>Total Pot:</strong><br>
+                    KSh {{ "%.0f"|format(match[5]|float or 0) }}
+                </div>
+                <div>
+                    <strong>Admin Commission:</strong><br>
+                    {% if match[7] == 'completed' %}
+                        <span style="color: #00ff88;">KSh {{ "%.0f"|format((match[5]|float or 0) * 0.16) }}</span>
+                    {% else %}
+                        <span style="color: #666;">Pending</span>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div style="font-size: 0.9rem; color: #ccc; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 0.5rem;">
+                Created: {{ match[9] }}
+                {% if match[7] == 'disputed' %}
+                    | <span style="color: #dc3545;">REQUIRES ADMIN REVIEW</span>
+                {% endif %}
+            </div>
+            
+            {% if match[7] == 'disputed' %}
+            <div style="margin-top: 1rem;">
+                <a href="/admin/resolve_dispute/{{ match[0] }}/player1" class="btn btn-success">{{ match[10] }} Wins</a>
+                <a href="/admin/resolve_dispute/{{ match[0] }}/player2" class="btn btn-success">{{ match[11] }} Wins</a>
+                <a href="/admin/resolve_dispute/{{ match[0] }}/draw" class="btn btn-secondary">Refund Both</a>
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    {% else %}
+        <p>No matches found.</p>
+    {% endif %}
+</div>
+{% endblock %}

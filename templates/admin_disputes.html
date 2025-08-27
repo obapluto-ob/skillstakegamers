@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card">
+    <h1>Match Disputes</h1>
+    <p>Resolve conflicts where both players claim different results</p>
+</div>
+
+{% if disputes %}
+    {% for dispute in disputes %}
+    <div class="card">
+        <h3>Dispute #{{ dispute[0] }} - {{ dispute[1].upper() }}</h3>
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin: 1rem 0;">
+            <div style="background: rgba(40, 167, 69, 0.1); padding: 1rem; border-radius: 8px; border-left: 4px solid #28a745;">
+                <h4>{{ dispute[10] }} Claims:</h4>
+                <p><strong>Result: {{ dispute[12].upper() if dispute[12] else 'No submission' }}</strong></p>
+                {% if dispute[13] %}
+                <p><strong>Evidence:</strong> {{ dispute[13] }}</p>
+                {% endif %}
+            </div>
+            
+            <div style="background: rgba(220, 53, 69, 0.1); padding: 1rem; border-radius: 8px; border-left: 4px solid #dc3545;">
+                <h4>{{ dispute[11] }} Claims:</h4>
+                <p><strong>Result: {{ dispute[14].upper() if dispute[14] else 'No submission' }}</strong></p>
+                {% if dispute[15] %}
+                <p><strong>Evidence:</strong> {{ dispute[15] }}</p>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div style="background: rgba(255, 193, 7, 0.1); padding: 1rem; border-radius: 8px; margin: 1rem 0;">
+            <strong>Match Details:</strong><br>
+            Game: {{ dispute[1] }} ({{ dispute[8] }})<br>
+            Pot: KSh {{ "%.0f"|format(dispute[5]) }}<br>
+            Date: {{ dispute[9] }}
+        </div>
+        
+        <div style="display: flex; gap: 1rem; margin-top: 1rem;">
+            <button class="btn btn-success" onclick="resolveDispute({{ dispute[0] }}, {{ dispute[2] }})">
+                Award to {{ dispute[10] }}
+            </button>
+            <button class="btn btn-success" onclick="resolveDispute({{ dispute[0] }}, {{ dispute[3] }})">
+                Award to {{ dispute[11] }}
+            </button>
+            <button class="btn btn-secondary" onclick="refundMatch({{ dispute[0] }})">
+                Refund Both Players
+            </button>
+        </div>
+    </div>
+    {% endfor %}
+{% else %}
+    <div class="card">
+        <div style="text-align: center; padding: 2rem; color: #666;">
+            <h3>No Active Disputes</h3>
+            <p>All matches are being resolved smoothly</p>
+        </div>
+    </div>
+{% endif %}
+
+<script>
+function resolveDispute(matchId, winnerId) {
+    if (confirm('Award this match to the selected player?')) {
+        fetch('/admin/resolve_dispute', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ match_id: matchId, winner_id: winnerId })
+        }).then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Dispute resolved successfully!');
+                location.reload();
+            } else {
+                alert('Error: ' + data.message);
+            }
+        });
+    }
+}
+
+function refundMatch(matchId) {
+    if (confirm('Refund both players their bet amounts?')) {
+        fetch('/admin/refund_match', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ match_id: matchId })
+        }).then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Match refunded successfully!');
+                location.reload();
+            } else {
+                alert('Error: ' + data.message);
+            }
+        });
+    }
+}
+</script>
+{% endblock %}

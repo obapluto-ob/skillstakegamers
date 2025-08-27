@@ -1,0 +1,234 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card">
+    <h1>💬 Support Chat</h1>
+    <p>Get instant help from our AI assistant</p>
+</div>
+
+<div class="card">
+    <div id="chatMessages" style="height: 400px; overflow-y: auto; border: 1px solid rgba(255,255,255,0.2); padding: 1rem; margin-bottom: 1rem; background: rgba(0,0,0,0.2);">
+        <div class="bot-message">
+            <strong>GameBot:</strong> Hi {{ session.username }}! 👋 I'm here to help you with:
+            <ul style="margin: 0.5rem 0; padding-left: 1.5rem;">
+                <li>Account & Balance Issues</li>
+                <li>How to Play & Rules</li>
+                <li>Deposits & Withdrawals</li>
+                <li>Tournament Information</li>
+                <li>Technical Problems</li>
+            </ul>
+            What can I help you with today?
+        </div>
+    </div>
+    
+    <div style="display: flex; gap: 0.5rem;">
+        <input type="text" id="userMessage" placeholder="Type your question..." 
+               style="flex: 1; padding: 0.5rem; border: 1px solid #444; background: #2a2a2a; color: white; border-radius: 4px;"
+               onkeypress="if(event.key==='Enter') sendMessage()">
+        <button onclick="sendMessage()" class="btn btn-primary">Send</button>
+    </div>
+    
+    <!-- Quick Help Buttons -->
+    <div style="margin-top: 1rem;">
+        <h3>Quick Help:</h3>
+        <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
+            <button onclick="quickMessage('How do I deposit money?')" class="btn btn-secondary">💰 Deposit Help</button>
+            <button onclick="quickMessage('How do I withdraw money?')" class="btn btn-secondary">💸 Withdrawal Help</button>
+            <button onclick="quickMessage('How do tournaments work?')" class="btn btn-secondary">🏆 Tournament Help</button>
+            <button onclick="quickMessage('My balance is wrong')" class="btn btn-secondary">⚠️ Balance Issue</button>
+            <button onclick="quickMessage('How do I invite friends?')" class="btn btn-secondary">👥 Referral Help</button>
+        </div>
+    </div>
+</div>
+
+<script>
+const responses = {
+    'deposit': {
+        keywords: ['deposit', 'add money', 'fund', 'mpesa', 'pay', 'how do i deposit'],
+        response: `To deposit money:
+        1. Go to Wallet page
+        2. Click "Add Funds"
+        3. Enter amount and your M-Pesa details
+        4. Upload M-Pesa receipt screenshot
+        5. Admin will approve within 1 hour
+        
+        💡 Tip: We charge 3% processing fee. Minimum deposit: KSh 50`
+    },
+    'withdraw': {
+        keywords: ['withdraw', 'cash out', 'get money', 'how do i withdraw'],
+        response: `To withdraw money:
+        1. Go to Wallet page
+        2. Click "Withdraw"
+        3. Enter amount and M-Pesa number
+        4. Admin processes within 2 hours
+        
+        💡 Tip: KSh 25 withdrawal fee applies. Minimum: KSh 100`
+    },
+    'tournament': {
+        keywords: ['tournament', 'competition', 'bracket', 'how do tournaments work'],
+        response: `Tournaments work like this:
+        1. Pay entry fee to join
+        2. Wait for tournament to fill up
+        3. Play elimination matches
+        4. Top 8 players share 80% of prize pool
+        
+        🏆 Prize Distribution:
+        1st: 35% | 2nd: 20% | 3rd: 12% | 4th: 8%
+        5th-8th: 1.25% each`
+    },
+    'balance': {
+        keywords: ['balance', 'money wrong', 'missing funds', 'my balance is wrong'],
+        response: `If your balance is wrong:
+        1. Check your transaction history
+        2. Look for pending deposits/withdrawals
+        3. Contact admin if still incorrect
+        
+        💡 Common causes:
+        - Pending deposit approval
+        - Match bet deductions
+        - Withdrawal processing`
+    },
+    'referral': {
+        keywords: ['referral', 'invite', 'friend', 'bonus', 'how do i invite friends'],
+        response: `Referral System:
+        1. Go to Referrals page to get your code
+        2. Friends use your code when registering
+        3. You get KSh 50 bonus per friend
+        4. You earn 4% of their losses forever!
+        
+        💰 More friends = More money!`
+    },
+    'rules': {
+        keywords: ['rules', 'how to play', 'game'],
+        response: `Game Rules:
+        1. Create/Join match with bet amount
+        2. Both players confirm in lobby
+        3. Play your game (PUBG, FIFA, etc.)
+        4. Submit result with screenshot
+        5. Winner gets 84% of total pot
+        
+        ⚠️ Important: Always take screenshots of final results!`
+    },
+    'default': {
+        keywords: [],
+        response: `I understand you need help! Here are your options:
+        
+        🔧 Common Issues:
+        - Deposit/Withdrawal problems
+        - Balance discrepancies  
+        - Tournament questions
+        - Game rules clarification
+        
+        📞 Need human help?
+        Contact admin: +254729237059
+        
+        Try asking more specifically about your issue!`
+    }
+};
+
+function sendMessage() {
+    const input = document.getElementById('userMessage');
+    const message = input.value.trim();
+    if (!message) return;
+    
+    addMessage('user', message);
+    input.value = '';
+    
+    // Simple AI response
+    setTimeout(() => {
+        const response = getBotResponse(message);
+        addMessage('bot', response);
+    }, 1000);
+}
+
+function quickMessage(message) {
+    addMessage('user', message);
+    
+    // Get bot response for quick messages
+    setTimeout(() => {
+        const response = getBotResponse(message);
+        addMessage('bot', response);
+    }, 500);
+}
+
+function addMessage(sender, message) {
+    const chatDiv = document.getElementById('chatMessages');
+    const messageDiv = document.createElement('div');
+    messageDiv.className = sender === 'user' ? 'user-message' : 'bot-message';
+    messageDiv.style.cssText = `
+        margin: 1rem 0; 
+        padding: 0.5rem; 
+        border-radius: 8px; 
+        background: ${sender === 'user' ? 'rgba(0,255,136,0.1)' : 'rgba(255,255,255,0.1)'};
+    `;
+    
+    messageDiv.innerHTML = `<strong>${sender === 'user' ? 'You' : 'GameBot'}:</strong> ${message.replace(/\\n/g, '<br>')}`;
+    chatDiv.appendChild(messageDiv);
+    chatDiv.scrollTop = chatDiv.scrollHeight;
+}
+
+let failedAttempts = parseInt(localStorage.getItem('failedAttempts') || '0');
+const maxAttempts = 3;
+
+function getBotResponse(message) {
+    const lowerMessage = message.toLowerCase();
+    
+    // Check for keywords first
+    for (const [key, data] of Object.entries(responses)) {
+        if (key === 'default') continue;
+        
+        if (data.keywords.some(keyword => lowerMessage.includes(keyword))) {
+            failedAttempts = 0;
+            localStorage.setItem('failedAttempts', '0');
+            return data.response;
+        }
+    }
+    
+    // Increment failed attempts
+    failedAttempts++;
+    localStorage.setItem('failedAttempts', failedAttempts.toString());
+    
+    // Escalate to admin after max attempts
+    if (failedAttempts >= maxAttempts) {
+        sendToAdmin(message);
+        return `I'm having trouble understanding your issue. Let me connect you with our admin for personalized help.
+        
+        📞 Admin Contact: +254729237059
+        📧 Your issue has been forwarded to admin support.
+        
+        An admin will respond to you shortly.`;
+    }
+    
+    return responses.default.response;
+}
+
+function sendToAdmin(userMessage) {
+    // Send escalation notification
+    fetch('/escalate_support', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            user: '{{ session.username }}',
+            message: userMessage,
+            timestamp: new Date().toISOString()
+        })
+    }).catch(console.error);
+}
+
+// Auto-scroll to bottom on load
+window.onload = function() {
+    document.getElementById('chatMessages').scrollTop = document.getElementById('chatMessages').scrollHeight;
+};
+</script>
+
+<style>
+.user-message {
+    text-align: right;
+    background: rgba(0,255,136,0.1) !important;
+}
+.bot-message {
+    text-align: left;
+    background: rgba(255,255,255,0.1) !important;
+}
+</style>
+{% endblock %}

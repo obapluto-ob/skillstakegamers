@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="leaderboard-hero">
+    <h1 class="leaderboard-title">Hall of Champions</h1>
+    <p class="leaderboard-subtitle">Compete with the best players and climb the rankings</p>
+</div>
+
+<div class="leaderboard-container">
+    <div class="leaderboard-section">
+        <div class="section-header">
+            <h2 class="section-title">TOP PLAYERS</h2>
+            <span class="section-subtitle">Ranked by Wins</span>
+        </div>
+        
+        {% if top_players %}
+            <div class="rankings-list">
+                {% for player in top_players %}
+                <div class="player-rank {% if loop.index <= 3 %}top-{{ loop.index }}{% endif %}">
+                    <div class="rank-position">
+                        {% if loop.index == 1 %}
+                            <span class="crown">👑</span>
+                        {% else %}
+                            <span class="rank-number">#{{ loop.index }}</span>
+                        {% endif %}
+                    </div>
+                    <div class="player-info">
+                        <div class="player-name">{{ player[0] }}</div>
+                        <div class="player-stats">
+                            <span class="wins">{{ player[1] }}W</span>
+                            <span class="losses">{{ player[2] }}L</span>
+                            <span class="winrate">{{ player[4] }}% WR</span>
+                        </div>
+                    </div>
+                    <div class="player-earnings">
+                        <div class="earnings-amount">KSh {{ "%.0f"|format(player[3]) }}</div>
+                        <div class="earnings-label">Total Earned</div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="empty-state">
+                <div class="empty-icon">🎮</div>
+                <div class="empty-text">No champions yet! Be the first to claim the throne.</div>
+            </div>
+        {% endif %}
+    </div>
+
+    <div class="leaderboard-section">
+        <div class="section-header">
+            <h2 class="section-title">TOP EARNERS</h2>
+            <span class="section-subtitle">Highest Earnings</span>
+        </div>
+        
+        {% if top_earners %}
+            <div class="rankings-list">
+                {% for earner in top_earners %}
+                <div class="player-rank {% if loop.index <= 3 %}top-{{ loop.index }}{% endif %}">
+                    <div class="rank-position">
+                        {% if loop.index == 1 %}
+                            <span class="crown">💰</span>
+                        {% else %}
+                            <span class="rank-number">#{{ loop.index }}</span>
+                        {% endif %}
+                    </div>
+                    <div class="player-info">
+                        <div class="player-name">{{ earner[0] }}</div>
+                        <div class="player-stats">
+                            <span class="wins">{{ earner[2] }}W</span>
+                            <span class="losses">{{ earner[3] }}L</span>
+                        </div>
+                    </div>
+                    <div class="player-earnings highlight">
+                        <div class="earnings-amount">KSh {{ "%.0f"|format(earner[1]) }}</div>
+                        <div class="earnings-label">Total Earned</div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="empty-state">
+                <div class="empty-icon">💸</div>
+                <div class="empty-text">No earnings recorded yet! Start playing to make money.</div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

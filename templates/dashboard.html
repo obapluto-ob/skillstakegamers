@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card">
+    <h1>Welcome back, {{ session.username }}!</h1>
+    <p>Ready to compete and win some money?</p>
+</div>
+
+<!-- Motivational Guide -->
+<div class="card" style="background: linear-gradient(135deg, rgba(0,255,136,0.1), rgba(102,126,234,0.1)); border-left: 4px solid #00ff88;">
+    <h3 style="color: #00ff88; margin-bottom: 1rem;">💡 Your Path to Success</h3>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem;">
+        <div style="background: rgba(255,255,255,0.1); padding: 1rem; border-radius: 8px;">
+            <h4 style="color: #ffc107;">1. Start Small, Win Big</h4>
+            <p>Begin with KSh 50-100 matches to build confidence and skills. Every pro started here!</p>
+        </div>
+        <div style="background: rgba(255,255,255,0.1); padding: 1rem; border-radius: 8px;">
+            <h4 style="color: #17a2b8;">2. Join Tournaments</h4>
+            <p>Tournaments offer bigger prizes! Entry fees are low but rewards are high. Check the Tournaments section.</p>
+        </div>
+        <div style="background: rgba(255,255,255,0.1); padding: 1rem; border-radius: 8px;">
+            <h4 style="color: #28a745;">3. Invite Friends & Earn</h4>
+            <p>Get KSh 30 for each friend + 4% of their activity forever. Visit Earn section for your referral link.</p>
+        </div>
+    </div>
+    <div style="margin-top: 1rem; padding: 1rem; background: rgba(255,193,7,0.1); border-radius: 8px; text-align: center;">
+        <strong style="color: #ffc107;">💰 Pro Tip:</strong> Consistent small wins beat risky big bets. Play smart, play often!
+    </div>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-number">KSh {{ "%.0f"|format(user[4]) }}</div>
+        <div class="stat-label">Current Balance</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number">{{ user[5] }}</div>
+        <div class="stat-label">Total Wins</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number">{{ user[6] }}</div>
+        <div class="stat-label">Total Losses</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number">KSh {{ "%.0f"|format(user[7]) }}</div>
+        <div class="stat-label">Total Earnings</div>
+    </div>
+</div>
+
+<div class="card">
+    <h3>Quick Actions</h3>
+    <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+        <a href="{{ url_for('games') }}" class="btn">Find Match</a>
+        <a href="{{ url_for('wallet') }}" class="btn btn-success">Add Funds</a>
+        <a href="{{ url_for('matches') }}" class="btn btn-secondary">View Matches</a>
+    </div>
+</div>
+
+<div class="card">
+    <h3>Recent Matches</h3>
+    {% if matches %}
+        {% for match in matches %}
+        <div class="match-card">
+            <div class="match-header">
+                <div><strong>{{ match[1].upper() }}</strong> - {{ match[8] or 'Standard' }}</div>
+                <span class="status-badge status-{{ match[7] }}">{{ match[7] }}</span>
+            </div>
+            <div style="margin: 1rem 0;">
+                <strong>{{ match[10] or 'Player 1' }}</strong> VS <strong>{{ match[11] or 'Waiting...' }}</strong>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <strong>Pot: KSh {{ "%.0f"|format(match[5]) }}</strong>
+                    {% if match[12] %}
+                        <span style="margin-left: 1rem; color: #28a745;">
+                            Winner: {{ match[12] }}
+                        </span>
+                    {% endif %}
+                </div>
+                
+                {% if match[7] == 'pending' or match[7] == 'waiting_start' or match[7] == 'active' %}
+                <div style="display: flex; gap: 0.5rem;">
+                    {% if match[7] == 'pending' %}
+                        <form method="POST" action="{{ url_for('cancel_match', match_id=match[0]) }}" style="display: inline;">
+                            <button type="submit" class="btn btn-danger" 
+                                    onclick="return confirm('Cancel this match? Your bet will be refunded.')">Cancel</button>
+                        </form>
+                    {% elif match[7] == 'waiting_start' %}
+                        <a href="{{ url_for('match_lobby', match_id=match[0]) }}" class="btn btn-success">Enter Lobby</a>
+                        <form method="POST" action="{{ url_for('cancel_match', match_id=match[0]) }}" style="display: inline;">
+                            <button type="submit" class="btn btn-danger" 
+                                    onclick="return confirm('Cancel this match? Both players will be refunded.')">Cancel</button>
+                        </form>
+                    {% elif match[7] == 'active' %}
+                        <a href="{{ url_for('match_result', match_id=match[0]) }}" class="btn btn-success">Submit Result</a>
+                        <form method="POST" action="{{ url_for('cancel_match', match_id=match[0]) }}" style="display: inline; margin-left: 0.5rem;">
+                            <button type="submit" class="btn btn-secondary" 
+                                    onclick="return confirm('Cancel active match? This may affect your reputation.')">Cancel</button>
+                        </form>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <div style="text-align: center; padding: 2rem; background: rgba(255,255,255,0.05); border-radius: 10px;">
+            <h4 style="color: #00ff88; margin-bottom: 1rem;">🎮 Ready to Start Earning?</h4>
+            <p style="margin-bottom: 1.5rem;">No matches yet, but that's about to change! Your gaming skills can make you money.</p>
+            <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+                <a href="{{ url_for('games') }}" class="btn btn-success">Create Your First Match</a>
+                <a href="{{ url_for('tournaments') }}" class="btn btn-primary">Join Tournament</a>
+            </div>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

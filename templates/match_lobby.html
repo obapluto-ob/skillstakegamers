@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card">
+    <h1>🎮 Match Lobby</h1>
+    <div class="match-card">
+        <div class="match-header">
+            <div><strong>{{ match[1].upper() }}</strong> - {{ match[8] or 'Standard' }}</div>
+            <span class="status-badge">Waiting for Confirmation</span>
+        </div>
+        
+        <div style="margin: 1rem 0;">
+            <strong>{{ p1_name }}</strong> VS <strong>{{ p2_name }}</strong><br>
+            <small>Bet Amount: KSh {{ "%.0f"|format(match[4]) }} each</small><br>
+            <small>Total Pot: KSh {{ "%.0f"|format(match[5]) }}</small>
+        </div>
+        
+        <div style="text-align: center; margin: 2rem 0;">
+            <h3>Both players must confirm they are ready to start</h3>
+            
+            <div style="display: flex; justify-content: space-around; margin: 2rem 0;">
+                <div style="text-align: center;">
+                    <div><strong>{{ p1_name }}</strong></div>
+                    {% if p1_confirmed %}
+                        <div style="color: #28a745; font-size: 2rem;">✓ Ready</div>
+                    {% else %}
+                        <div style="color: #ffc107; font-size: 2rem;">⏳ Waiting</div>
+                    {% endif %}
+                </div>
+                
+                <div style="text-align: center;">
+                    <div><strong>{{ p2_name or 'Player 2' }}</strong></div>
+                    {% if p2_confirmed %}
+                        <div style="color: #28a745; font-size: 2rem;">✓ Ready</div>
+                    {% else %}
+                        <div style="color: #ffc107; font-size: 2rem;">⏳ Waiting</div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            {% if not user_confirmed %}
+                <form method="POST" action="{{ url_for('confirm_ready', match_id=match[0]) }}">
+                    <button type="submit" class="btn btn-success" style="font-size: 1.2rem; padding: 1rem 2rem;">
+                        I'm Ready to Play!
+                    </button>
+                </form>
+            {% else %}
+                <div style="color: #28a745; font-size: 1.2rem;">
+                    ✓ You confirmed! Waiting for opponent...
+                </div>
+            {% endif %}
+            
+            {% if p1_confirmed and p2_confirmed %}
+                <div style="color: #28a745; font-size: 1.5rem; margin-top: 1rem;">
+                    🎉 Match is now ACTIVE! Good luck!
+                </div>
+                <a href="{{ url_for('matches') }}" class="btn btn-primary">Go to Active Matches</a>
+            {% endif %}
+        </div>
+        
+        <div style="text-align: center;">
+            <a href="{{ url_for('match_chat', match_id=match[0]) }}" class="btn btn-secondary">Chat with Opponent</a>
+        </div>
+    </div>
+</div>
+
+<script>
+// Auto-refresh every 3 seconds to check if opponent confirmed
+setTimeout(function() {
+    {% if not (p1_confirmed and p2_confirmed) %}
+        location.reload();
+    {% endif %}
+}, 3000);
+</script>
+{% endblock %}

@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card">
+    <h1>💳 Transaction History</h1>
+    <p>Complete audit trail of all financial transactions</p>
+</div>
+
+<div class="card">
+    <div style="overflow-x: auto;">
+        <table style="width: 100%; border-collapse: collapse;">
+            <thead>
+                <tr style="background: rgba(255,255,255,0.1);">
+                    <th style="padding: 1rem; text-align: left;">User</th>
+                    <th style="padding: 1rem; text-align: left;">Type</th>
+                    <th style="padding: 1rem; text-align: left;">Amount</th>
+                    <th style="padding: 1rem; text-align: left;">Description</th>
+                    <th style="padding: 1rem; text-align: left;">Date</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for transaction in transactions %}
+                <tr style="border-bottom: 1px solid rgba(255,255,255,0.1);">
+                    <td style="padding: 1rem;">{{ transaction[6] }}</td>
+                    <td style="padding: 1rem;">
+                        <span style="padding: 0.25rem 0.5rem; border-radius: 12px; font-size: 0.8rem; 
+                        {% if transaction[2] == 'deposit' %}background: #d4edda; color: #155724;
+                        {% elif transaction[2] == 'pending_deposit' %}background: #fff3cd; color: #856404;
+                        {% elif transaction[2] == 'rejected_deposit' %}background: #f8d7da; color: #721c24;
+                        {% elif transaction[2] == 'withdrawal' %}background: #d1ecf1; color: #0c5460;
+                        {% elif transaction[2] == 'pending_withdrawal' %}background: #fff3cd; color: #856404;
+                        {% elif transaction[2] == 'rejected_withdrawal' %}background: #f8d7da; color: #721c24;
+                        {% elif transaction[2] == 'bet' %}background: #e2e3e5; color: #383d41;
+                        {% elif transaction[2] == 'win' %}background: #d4edda; color: #155724;
+                        {% endif %}">
+                            {{ transaction[2].replace('_', ' ').title() }}
+                        </span>
+                    </td>
+                    <td style="padding: 1rem; color: {% if transaction[3] > 0 %}#28a745{% else %}#dc3545{% endif %}; font-weight: bold;">
+                        {% if transaction[3] > 0 %}+{% endif %}KSh {{ "%.0f"|format(transaction[3]) }}
+                    </td>
+                    <td style="padding: 1rem; font-size: 0.9rem;">{{ transaction[4] }}</td>
+                    <td style="padding: 1rem;">{{ transaction[5] }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

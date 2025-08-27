@@ -1,0 +1,182 @@
+{% extends "base.html" %}
+
+{% block content %}
+<!-- Check if match needs confirmation -->
+{% if match[7] == 'pending' and match[3] %}
+<div class="card" style="background: rgba(255, 193, 7, 0.1); border: 2px solid #ffc107;">
+    <h3 style="color: #856404;">⚠️ Match Not Started Yet</h3>
+    <p>Both players must confirm they are ready before the match can begin.</p>
+    <div style="text-align: center;">
+        <a href="{{ url_for('match_lobby', match_id=match[0]) }}" class="btn btn-warning">Go to Lobby & Confirm</a>
+    </div>
+</div>
+{% endif %}
+
+<div class="card">
+    <h1>Match Chat</h1>
+    <p>Communicate with your opponent during the match</p>
+</div>
+
+<div class="card">
+    <div style="height: 400px; overflow-y: auto; border: 1px solid rgba(255,255,255,0.2); padding: 1rem; margin-bottom: 1rem; background: rgba(0,0,0,0.2);">
+        {% if messages %}
+            {% for message in messages %}
+            <div style="margin-bottom: 1rem; padding: 0.5rem; background: {% if message[2] == session.username %}rgba(0,255,136,0.1){% else %}rgba(255,255,255,0.1){% endif %}; border-radius: 8px;">
+                <strong>{{ message[2] }}:</strong> {{ message[0] }}
+                <br><small style="color: #ccc;">{{ message[1] }}</small>
+            </div>
+            {% endfor %}
+        {% else %}
+            <p style="text-align: center; color: #ccc;">No messages yet. Start the conversation!</p>
+        {% endif %}
+    </div>
+    
+    <div style="margin-bottom: 1rem; padding: 1rem; background: rgba(0,255,136,0.1); border-radius: 8px; border-left: 4px solid #00ff88;">
+        <strong class="lobby-title">GAME ROOM SETUP - READ CAREFULLY</strong>
+        
+        <div class="instruction-panel">
+            <strong class="section-header">STEP-BY-STEP INSTRUCTIONS:</strong>
+            <div class="instruction-list">
+                <div class="step"><span class="step-number">1.</span> CREATE ROOM: Go to your game and create Custom/Private Room</div>
+                <div class="step"><span class="step-number">2.</span> GET CODE: Copy the Room ID/Code that appears</div>
+                <div class="step"><span class="step-number">3.</span> SHARE HERE: Paste the code below and click Share</div>
+                <div class="step"><span class="step-number">4.</span> WAIT: Opponent will join your room using the code</div>
+                <div class="step"><span class="step-number">5.</span> PLAY: Start match when both players are in room</div>
+            </div>
+        </div>
+        
+        <div class="game-codes-panel">
+            <strong class="section-header">SUPPORTED GAMES:</strong>
+            <div class="game-list">
+                <div class="game-item supported"><span class="status-indicator">SUPPORTED</span> PUBG Mobile: Room ID (Example: 123456789)</div>
+                <div class="game-item supported"><span class="status-indicator">SUPPORTED</span> COD Mobile: Room Code (Example: ABCD1234)</div>
+                <div class="game-item supported"><span class="status-indicator">SUPPORTED</span> FIFA Mobile: Friend Code for Head-to-Head</div>
+                <div class="game-item supported"><span class="status-indicator">SUPPORTED</span> eFootball: Match Room ID</div>
+                <div class="game-item supported"><span class="status-indicator">SUPPORTED</span> PES Mobile: Online Match Room Code</div>
+                <div class="game-item unsupported"><span class="status-indicator">UNSUPPORTED</span> Other Games: Use in-game friend system</div>
+            </div>
+        </div>
+        
+        <div style="margin-top: 0.5rem;">
+            <input type="text" id="lobbyCode" placeholder="Paste your Room ID/Code here (e.g., 123456789)" style="width: 70%; padding: 0.8rem; margin-right: 0.5rem; border: 2px solid #00ff88; border-radius: 4px; background: rgba(255,255,255,0.1); color: white; font-weight: bold;">
+            <button onclick="shareLobbyCode()" class="btn" style="padding: 0.8rem 1.2rem; background: #00ff88; color: black; font-weight: bold;">Share Room Code</button>
+        </div>
+        
+        <div class="warning-panel">
+            <strong class="warning-text">CRITICAL:</strong> Both players MUST be in the same room before starting the match!
+        </div>
+        
+        <div class="confirmation-panel">
+            <strong class="section-header">ROOM CONFIRMATION:</strong>
+            <div style="margin-top: 0.5rem;">
+                <button onclick="confirmInRoom()" class="btn" style="background: #28a745; color: white; margin-right: 0.5rem;">I'm In The Room</button>
+                <span id="roomStatus" class="room-status">Waiting for both players to confirm...</span>
+            </div>
+        </div>
+        
+        <div class="next-steps-panel">
+            <strong class="section-header">AFTER BOTH PLAYERS CONFIRM:</strong>
+            <div class="steps-list">
+                <div class="next-step"><span class="step-bullet">1.</span> Start the match in your game</div>
+                <div class="next-step"><span class="step-bullet">2.</span> Play against each other</div>
+                <div class="next-step"><span class="step-bullet">3.</span> Take screenshot of final result</div>
+                <div class="next-step"><span class="step-bullet">4.</span> Submit result with screenshot proof</div>
+                <div class="next-step"><span class="step-bullet">5.</span> Winner gets paid automatically</div>
+            </div>
+            <div class="result-button-container" style="margin-top: 1rem;">
+                <a href="{{ url_for('match_result', match_id=match_id) }}" class="btn" style="background: #ffc107; color: black; font-weight: bold;">Submit Match Result</a>
+            </div>
+        </div>
+    </div>
+    
+    <form method="POST" action="{{ url_for('send_message', match_id=match_id) }}" style="display: flex; gap: 1rem;">
+        <input type="text" name="message" class="form-control" placeholder="Type your message..." required style="flex: 1;">
+        <button type="submit" class="btn">Send</button>
+    </form>
+    
+    <div style="margin-top: 1rem;">
+        <a href="{{ url_for('matches') }}" class="btn btn-secondary">Back to Matches</a>
+    </div>
+</div>
+
+<script>
+// Auto-refresh chat every 30 seconds to allow longer typing
+setInterval(function() {
+    location.reload();
+}, 30000);
+
+// Auto-scroll to bottom
+window.onload = function() {
+    var chatDiv = document.querySelector('[style*="height: 400px"]');
+    chatDiv.scrollTop = chatDiv.scrollHeight;
+};
+
+// Share lobby code function
+function shareLobbyCode() {
+    var code = document.getElementById('lobbyCode').value.trim();
+    if (code) {
+        // Create a form and submit the lobby code as a message
+        var form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '{{ url_for("send_message", match_id=match_id) }}';
+        
+        var input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'message';
+        input.value = '[ROOM CODE] ' + code + ' - Join this room to play!';
+        
+        form.appendChild(input);
+        document.body.appendChild(form);
+        form.submit();
+    } else {
+        alert('Please enter a lobby code first!');
+    }
+}
+
+// Confirm player is in room
+function confirmInRoom() {
+    // Change button appearance immediately and permanently
+    var button = event.target;
+    button.innerHTML = 'CONFIRMED';
+    button.style.background = '#28a745';
+    button.style.cursor = 'default';
+    button.disabled = true;
+    button.onclick = null;
+    
+    // Update status text
+    document.getElementById('roomStatus').innerHTML = 'You confirmed! Waiting for opponent...';
+    document.getElementById('roomStatus').style.color = '#28a745';
+    
+    // Store confirmation in localStorage to persist across page refreshes
+    localStorage.setItem('confirmed_' + {{ match_id }}, 'true');
+    
+    var form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '{{ url_for("send_message", match_id=match_id) }}';
+    
+    var input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = 'message';
+    input.value = '[CONFIRMED] I am in the game room and ready to start!';
+    
+    form.appendChild(input);
+    document.body.appendChild(form);
+    form.submit();
+}
+
+// Check if user already confirmed on page load
+window.addEventListener('load', function() {
+    if (localStorage.getItem('confirmed_' + {{ match_id }}) === 'true') {
+        var button = document.querySelector('button[onclick="confirmInRoom()"]');
+        if (button) {
+            button.innerHTML = 'CONFIRMED';
+            button.style.background = '#28a745';
+            button.disabled = true;
+            button.onclick = null;
+            document.getElementById('roomStatus').innerHTML = 'You confirmed! Waiting for opponent...';
+            document.getElementById('roomStatus').style.color = '#28a745';
+        }
+    }
+});
+</script>
+{% endblock %}

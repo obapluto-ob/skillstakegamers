@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+
+{% block content %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+
+<div class="card">
+    <h1>Premium Features</h1>
+    <p>Professional tools to enhance your gaming performance</p>
+</div>
+
+<div class="games-grid">
+    <div class="game-card" onclick="buyBoost('analytics')">
+        <i class="fas fa-chart-line" style="font-size: 3rem; color: #667eea; margin-bottom: 1rem;"></i>
+        <h3>Performance Analytics</h3>
+        <p><strong>KSh 150</strong></p>
+        <p>Advanced match statistics and performance tracking. 30-day access.</p>
+        <small style="color: #28a745;">Data-driven insights</small>
+    </div>
+    
+    <div class="game-card" onclick="buyBoost('priority_queue')">
+        <i class="fas fa-bolt" style="font-size: 3rem; color: #f093fb; margin-bottom: 1rem;"></i>
+        <h3>Priority Queue</h3>
+        <p><strong>KSh 100</strong></p>
+        <p>Skip waiting times and get matched instantly. 7-day access.</p>
+        <small style="color: #28a745;">Faster gameplay</small>
+    </div>
+    
+    <div class="game-card" onclick="buyBoost('multi_table')">
+        <i class="fas fa-layer-group" style="font-size: 3rem; color: #43e97b; margin-bottom: 1rem;"></i>
+        <h3>Multi-Table Access</h3>
+        <p><strong>KSh 200</strong></p>
+        <p>Play multiple matches simultaneously. Increase earning potential.</p>
+        <small style="color: #ffc107;">Advanced feature</small>
+    </div>
+    
+    <div class="game-card" onclick="buyBoost('coaching')">
+        <i class="fas fa-graduation-cap" style="font-size: 3rem; color: #4facfe; margin-bottom: 1rem;"></i>
+        <h3>Pro Coaching</h3>
+        <p><strong>KSh 80</strong></p>
+        <p>AI-powered strategy recommendations and skill analysis.</p>
+        <small style="color: #17a2b8;">Skill improvement</small>
+    </div>
+</div>
+
+<div class="card">
+    <h3>Daily Challenges</h3>
+    <div style="background: rgba(255,193,7,0.1); padding: 1rem; border-radius: 8px; border-left: 4px solid #ffc107;">
+        <strong>Today's Challenge: Win 3 matches</strong><br>
+        <small>Reward: KSh 50 bonus + Performance boost for tomorrow</small><br>
+        <div style="margin-top: 0.5rem;">
+            <div style="background: #e9ecef; height: 8px; border-radius: 4px;">
+                <div style="background: #ffc107; height: 8px; border-radius: 4px; width: 33%;"></div>
+            </div>
+            <small>Progress: 1/3 matches won</small>
+        </div>
+    </div>
+</div>
+
+<script>
+function buyBoost(type) {
+    const boosts = {
+        'analytics': { name: 'Performance Analytics', price: 150 },
+        'priority_queue': { name: 'Priority Queue', price: 100 },
+        'multi_table': { name: 'Multi-Table Access', price: 200 },
+        'coaching': { name: 'Pro Coaching', price: 80 }
+    };
+    
+    const boost = boosts[type];
+    if (confirm(`Purchase ${boost.name} for KSh ${boost.price}?`)) {
+        fetch('/buy_boost', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type: type, price: boost.price })
+        }).then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Feature activated successfully!');
+                location.reload();
+            } else {
+                alert('Error: ' + data.message);
+            }
+        });
+    }
+}
+</script>
+{% endblock %}
