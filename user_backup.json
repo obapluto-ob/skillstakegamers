@@ -1,50 +1,64 @@
 {
-  "timestamp": "2025-09-04T13:27:12.764869",
   "users": [
     {
-      "username": "plutomania",
-      "email": "obedemoni@gmail.com",
-      "password_hash": "scrypt:32768:8:1$3MPlwuhXmnjKo0C9$d675bb08404f0381919d0c46480b0612c759817f6ae70726f2d008eea6cf94aa9a8d34b068aee2b6e5c4050be368a56ed7d48e3a7022824a91817e641f27ae6c",
-      "balance": 4391.16,
-      "phone": "+254729237059",
-      "referral_code": "PLU0325",
-      "created_at": "2025-08-26 16:35:45"
+      "username": "antonio",
+      "email": "antonio@gamebet.local",
+      "password_hash": "pbkdf2:sha256:600000$xqO82J5shYaUd0Jz$ad9fc08143347a97a874af02034c753bd4d79531fb81bbf38b601f02945821c0",
+      "balance": 200.0,
+      "phone": "0700000002",
+      "referral_code": "ANT002",
+      "created_at": "2024-01-16 11:00:00",
+      "wins": 0,
+      "losses": 0,
+      "total_earnings": 0
     },
     {
-      "username": "pluto",
-      "email": "obedemoni153@gmail.com",
-      "password_hash": "scrypt:32768:8:1$Wa1X8x8bcd7q1bw1$c14e52044bd256e2244598d1c4c0ab217c05eecad6e33e6716050070b2ffb8070ee51c4d19259010deeadc63c78a9bc2dfc92777577fbaa92b0067d012883d0e",
-      "balance": 150.0,
-      "phone": "+254729237050",
-      "referral_code": null,
-      "created_at": "2025-08-26 20:01:33"
+      "username": "codwarrior",
+      "email": "codwarrior@gamebet.local",
+      "password_hash": "pbkdf2:sha256:600000$KiKQZve2mklsxO8Q$733a8bc6c8faea0b7a3c29eb050fff48ab353ff50396b35601d93e71db825573",
+      "balance": 220.0,
+      "phone": "0700000011",
+      "referral_code": "COD011",
+      "created_at": "2024-01-24 19:00:00",
+      "wins": 0,
+      "losses": 0,
+      "total_earnings": 0
     },
     {
-      "username": "plutot",
-      "email": "0729237055@gamebet.local",
-      "password_hash": "scrypt:32768:8:1$9q5WPp5UZ3NnTZWB$11c88ee484a2cd1c2ca4cc62850a94464a50d1c6af681b62de3834b43aede3cf45714d18a04c6196ea49cf73aabb55b4efcf55859b2c134a18713a563f31e1fe",
-      "balance": 0.0,
-      "phone": "0729237055",
-      "referral_code": "PLU1615",
-      "created_at": "2025-08-27 12:02:00"
+      "username": "esportspro",
+      "email": "esportspro@gamebet.local",
+      "password_hash": "pbkdf2:sha256:600000$v4GuOXm4uSWzMMnT$298db32941969dd049aba02efd8d707585d4a81586bea033120563534facc922",
+      "balance": 400.0,
+      "phone": "0700000014",
+      "referral_code": "ESP014",
+      "created_at": "2024-01-27 22:00:00",
+      "wins": 0,
+      "losses": 0,
+      "total_earnings": 0
     },
     {
-      "username": "obapluto",
-      "email": "0729237059@gamebet.local",
-      "password_hash": "scrypt:32768:8:1$aTXJ5Yc76CWzY2rx$94998528896e1372c0d063df51d2ec52e173a701812be0020bc42625b124944b5c13564ece33c6a520510862fe5fe26987627908a86a372229452edcc7a39971",
-      "balance": 79.5,
-      "phone": "0729237059",
-      "referral_code": "OBA8222",
-      "created_at": "2025-08-27 13:45:42"
+      "username": "fifafan",
+      "email": "fifafan@gamebet.local",
+      "password_hash": "pbkdf2:sha256:600000$uM4TB6f6Me9iWv32$bc4c656f7ee2c8f7c959fafa48bd551fb3827a32ca4e1003271142775b522a73",
+      "balance": 120.0,
+      "phone": "0700000010",
+      "referral_code": "FIF010",
+      "created_at": "2024-01-23 18:00:00",
+      "wins": 0,
+      "losses": 0,
+      "total_earnings": 0
     },
     {
-      "username": "kasongo",
-      "email": "0729237050@gamebet.local",
-      "password_hash": "scrypt:32768:8:1$AtQaOoLEpqbc0ed6$30fbedea87ae2ae9ccdb4ef34e13573536cb13051c7256ea40f156c87de77319fe66444320f43abd81f175546de29f0acf8ac7f5db82cb18e29691c42a297cec",
-      "balance": 335.0,
-      "phone": "0729237050",
-      "referral_code": "KAS0643",
-      "created_at": "2025-08-27 17:40:16"
+      "username": "gamer123",
+      "email": "gamer123@gamebet.local",
+      "password_hash": "pbkdf2:sha256:600000$CJrNzaHlIMZb1QWo$2b51372ae174a75ef652df91a1096444f8cd5c8f17f664b92802fdc83695f374",
+      "balance": 250.0,
+      "phone": "0700000007",
+      "referral_code": "GAM007",
+      "created_at": "2024-01-18 12:00:00",
+      "wins": 0,
+      "losses": 0,
+      "total_earnings": 0
     },
     {
       "username": "kaleb",
@@ -53,43 +67,22 @@
       "balance": 1242.5,
       "phone": "0797656882",
       "referral_code": "KAL9279",
-      "created_at": "2025-08-27 20:14:19"
+      "created_at": "2025-08-27 20:14:19",
+      "wins": 0,
+      "losses": 0,
+      "total_earnings": 0
     },
     {
-      "username": "skubii",
-      "email": "0729237051@gamebet.local",
-      "password_hash": "scrypt:32768:8:1$UMuV6LZvMprniBU1$5a8b15fc9b43cc9023eba8905f3674f02f5cd27b8566c3e26ed5183d5dd24277363e2672fc6a52844dd13dd1774b6c00ef43e3aa879479c919bd2277210bbef5",
-      "balance": 0.0,
-      "phone": "0729237051",
-      "referral_code": "SKU7213",
-      "created_at": "2025-08-28 16:43:48"
-    },
-    {
-      "username": "test_deposit_user",
-      "email": "test_deposit_user@test.com",
-      "password_hash": "test123",
-      "balance": 970.0,
-      "phone": null,
-      "referral_code": null,
-      "created_at": "2025-08-31 18:18:49"
-    },
-    {
-      "username": "test_withdrawal_user",
-      "email": "test_withdrawal_user@test.com",
-      "password_hash": "test123",
-      "balance": 0.0,
-      "phone": null,
-      "referral_code": null,
-      "created_at": "2025-08-31 18:18:49"
-    },
-    {
-      "username": "test_refund_user",
-      "email": "test_refund_user@test.com",
-      "password_hash": "test123",
-      "balance": 0.0,
-      "phone": null,
-      "referral_code": null,
-      "created_at": "2025-08-31 18:18:49"
+      "username": "kasongo",
+      "email": "0729237050@gamebet.local",
+      "password_hash": "scrypt:32768:8:1$AtQaOoLEpqbc0ed6$30fbedea87ae2ae9ccdb4ef34e13573536cb13051c7256ea40f156c87de77319fe66444320f43abd81f175546de29f0acf8ac7f5db82cb18e29691c42a297cec",
+      "balance": 335.0,
+      "phone": "0729237050",
+      "referral_code": "KAS0643",
+      "created_at": "2025-08-27 17:40:16",
+      "wins": 2,
+      "losses": 3,
+      "total_earnings": 0
     },
     {
       "username": "kasongomustgo",
@@ -98,16 +91,10 @@
       "balance": 523.5,
       "phone": "0729237053",
       "referral_code": "KAS6408",
-      "created_at": "2025-08-31 21:11:08"
-    },
-    {
-      "username": "kolul",
-      "email": "0789187292@gamebet.local",
-      "password_hash": "pbkdf2:sha256:600000$DY6uh1tA9DnIdIQh$88db9b7f40273fdf1125dc395401b6255765d72686917891cdc0b1e46437dc1c",
-      "balance": 0.0,
-      "phone": "0789187292",
-      "referral_code": "KOL6873",
-      "created_at": "2025-09-02 21:30:45"
+      "created_at": "2025-08-31 21:11:08",
+      "wins": 2,
+      "losses": 1,
+      "total_earnings": 212.0
     },
     {
       "username": "kolu",
@@ -116,7 +103,166 @@
       "balance": 3099.2400000000002,
       "phone": "0789187291",
       "referral_code": "KOL1700",
-      "created_at": "2025-09-02 21:31:18"
+      "created_at": "2025-09-02 21:31:18",
+      "wins": 1,
+      "losses": 0,
+      "total_earnings": 812.0
+    },
+    {
+      "username": "kolul",
+      "email": "0789187292@gamebet.local",
+      "password_hash": "pbkdf2:sha256:600000$DY6uh1tA9DnIdIQh$88db9b7f40273fdf1125dc395401b6255765d72686917891cdc0b1e46437dc1c",
+      "balance": 0.0,
+      "phone": "0789187292",
+      "referral_code": "KOL6873",
+      "created_at": "2025-09-02 21:30:45",
+      "wins": 0,
+      "losses": 0,
+      "total_earnings": 0
+    },
+    {
+      "username": "mobilegamer",
+      "email": "mobilegamer@gamebet.local",
+      "password_hash": "pbkdf2:sha256:600000$pOTXOkLrkbHx3DWH$c9b870944e9bd15458a14f708373274e0af7c2eb793b1cc93941b3fb792d1bab",
+      "balance": 90.0,
+      "phone": "0700000013",
+      "referral_code": "MOB013",
+      "created_at": "2024-01-26 21:00:00",
+      "wins": 0,
+      "losses": 0,
+      "total_earnings": 0
+    },
+    {
+      "username": "obapluto",
+      "email": "0729237059@gamebet.local",
+      "password_hash": "scrypt:32768:8:1$aTXJ5Yc76CWzY2rx$94998528896e1372c0d063df51d2ec52e173a701812be0020bc42625b124944b5c13564ece33c6a520510862fe5fe26987627908a86a372229452edcc7a39971",
+      "balance": 79.5,
+      "phone": "0729237059",
+      "referral_code": "OBA8222",
+      "created_at": "2025-08-27 13:45:42",
+      "wins": 3,
+      "losses": 2,
+      "total_earnings": 0
+    },
+    {
+      "username": "pluto",
+      "email": "obedemoni153@gmail.com",
+      "password_hash": "scrypt:32768:8:1$Wa1X8x8bcd7q1bw1$c14e52044bd256e2244598d1c4c0ab217c05eecad6e33e6716050070b2ffb8070ee51c4d19259010deeadc63c78a9bc2dfc92777577fbaa92b0067d012883d0e",
+      "balance": 150.0,
+      "phone": "+254729237050",
+      "referral_code": null,
+      "created_at": "2025-08-26 20:01:33",
+      "wins": 5,
+      "losses": 1,
+      "total_earnings": 0
+    },
+    {
+      "username": "plutomania",
+      "email": "obedemoni@gmail.com",
+      "password_hash": "scrypt:32768:8:1$3MPlwuhXmnjKo0C9$d675bb08404f0381919d0c46480b0612c759817f6ae70726f2d008eea6cf94aa9a8d34b068aee2b6e5c4050be368a56ed7d48e3a7022824a91817e641f27ae6c",
+      "balance": 4391.16,
+      "phone": "+254729237059",
+      "referral_code": "PLU0325",
+      "created_at": "2025-08-26 16:35:45",
+      "wins": 3,
+      "losses": 9,
+      "total_earnings": 592.0
+    },
+    {
+      "username": "plutot",
+      "email": "0729237055@gamebet.local",
+      "password_hash": "scrypt:32768:8:1$9q5WPp5UZ3NnTZWB$11c88ee484a2cd1c2ca4cc62850a94464a50d1c6af681b62de3834b43aede3cf45714d18a04c6196ea49cf73aabb55b4efcf55859b2c134a18713a563f31e1fe",
+      "balance": 0.0,
+      "phone": "0729237055",
+      "referral_code": "PLU1615",
+      "created_at": "2025-08-27 12:02:00",
+      "wins": 0,
+      "losses": 0,
+      "total_earnings": 0
+    },
+    {
+      "username": "pubgpro",
+      "email": "pubgpro@gamebet.local",
+      "password_hash": "pbkdf2:sha256:600000$FZImDOFPyVGRLs29$432c78222646d35450853f0faafb41dcc4ad0aa8f811f33a9d3410dc54de1ddc",
+      "balance": 180.0,
+      "phone": "0700000009",
+      "referral_code": "PUB009",
+      "created_at": "2024-01-22 15:00:00",
+      "wins": 0,
+      "losses": 0,
+      "total_earnings": 0
+    },
+    {
+      "username": "skillmaster",
+      "email": "skillmaster@gamebet.local",
+      "password_hash": "pbkdf2:sha256:600000$S5jQYpNes1gBrVwv$c9da97cedbc0bbc46bc27017bafd5312fe4236543525f7495a3cfbf344304e4a",
+      "balance": 300.0,
+      "phone": "0700000008",
+      "referral_code": "SKI008",
+      "created_at": "2024-01-19 13:00:00",
+      "wins": 0,
+      "losses": 0,
+      "total_earnings": 0
+    },
+    {
+      "username": "skubii",
+      "email": "0729237051@gamebet.local",
+      "password_hash": "scrypt:32768:8:1$UMuV6LZvMprniBU1$5a8b15fc9b43cc9023eba8905f3674f02f5cd27b8566c3e26ed5183d5dd24277363e2672fc6a52844dd13dd1774b6c00ef43e3aa879479c919bd2277210bbef5",
+      "balance": 0.0,
+      "phone": "0729237051",
+      "referral_code": "SKU7213",
+      "created_at": "2025-08-28 16:43:48",
+      "wins": 0,
+      "losses": 0,
+      "total_earnings": 0
+    },
+    {
+      "username": "streamer1",
+      "email": "streamer1@gamebet.local",
+      "password_hash": "pbkdf2:sha256:600000$5720wBMA4D8I590y$325641652b49e9a3c5e0cbee85699edc055fa840d0a115b90a91b8abffee090d",
+      "balance": 350.0,
+      "phone": "0700000012",
+      "referral_code": "STR012",
+      "created_at": "2024-01-25 20:00:00",
+      "wins": 0,
+      "losses": 0,
+      "total_earnings": 0
+    },
+    {
+      "username": "test_deposit_user",
+      "email": "test_deposit_user@test.com",
+      "password_hash": "test123",
+      "balance": 970.0,
+      "phone": null,
+      "referral_code": null,
+      "created_at": "2025-08-31 18:18:49",
+      "wins": 0,
+      "losses": 0,
+      "total_earnings": 0
+    },
+    {
+      "username": "test_refund_user",
+      "email": "test_refund_user@test.com",
+      "password_hash": "test123",
+      "balance": 0.0,
+      "phone": null,
+      "referral_code": null,
+      "created_at": "2025-08-31 18:18:49",
+      "wins": 0,
+      "losses": 0,
+      "total_earnings": 0
+    },
+    {
+      "username": "test_withdrawal_user",
+      "email": "test_withdrawal_user@test.com",
+      "password_hash": "test123",
+      "balance": 0.0,
+      "phone": null,
+      "referral_code": null,
+      "created_at": "2025-08-31 18:18:49",
+      "wins": 0,
+      "losses": 0,
+      "total_earnings": 0
     },
     {
       "username": "testuser",
@@ -125,7 +271,49 @@
       "balance": 0.0,
       "phone": "0712345678",
       "referral_code": "TES3200",
-      "created_at": "2025-09-03 23:45:58"
+      "created_at": "2025-09-03 23:45:58",
+      "wins": 0,
+      "losses": 0,
+      "total_earnings": 0
+    },
+    {
+      "username": "testuser1",
+      "email": "testuser1@gamebet.local",
+      "password_hash": "pbkdf2:sha256:600000$TyuuKKtg2UwgFdN4$8e970709b77f2b9c1180a619058020b926649f610c361a766e79fced147f9e71",
+      "balance": 100.0,
+      "phone": "0700000005",
+      "referral_code": "TES005",
+      "created_at": "2024-01-20 16:00:00",
+      "wins": 0,
+      "losses": 0,
+      "total_earnings": 0
+    },
+    {
+      "username": "testuser2",
+      "email": "testuser2@gamebet.local",
+      "password_hash": "pbkdf2:sha256:600000$ewumDT8MZn64KRV8$3b9fed4fd82be24028c0659797e5fd913ae9a1f68aaa4ac08bed619103f2fbac",
+      "balance": 75.0,
+      "phone": "0700000006",
+      "referral_code": "TES006",
+      "created_at": "2024-01-21 17:00:00",
+      "wins": 0,
+      "losses": 0,
+      "total_earnings": 0
+    },
+    {
+      "username": "uradii",
+      "email": "uradii@gamebet.local",
+      "password_hash": "pbkdf2:sha256:600000$jZ3OE0hQLvObmBtu$c4fceb88c7d3bcf4aca6a0e9702120dfaa32318ea6dfe904ada0ca0373502326",
+      "balance": 150.0,
+      "phone": "0700000001",
+      "referral_code": "URA001",
+      "created_at": "2024-01-15 10:00:00",
+      "wins": 0,
+      "losses": 0,
+      "total_earnings": 0
     }
-  ]
+  ],
+  "backup_date": "2024-01-28",
+  "total_users": 26,
+  "total_balance": 13225.9
 }

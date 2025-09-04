@@ -55,11 +55,67 @@
         .nav-links a:hover { color: #00ff88; background: rgba(255,255,255,0.1); }
         .balance { background: #667eea; color: white; padding: 0.5rem 1rem; border-radius: 20px; font-weight: bold; }
         .dropdown { position: relative; display: inline-block; z-index: 2147483647; }
-        .dropdown-btn { background: rgba(255,255,255,0.1); color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-weight: 500; }
-        .dropdown-btn:hover { background: rgba(255,255,255,0.2); }
-        .dropdown-content { display: none; position: absolute; background: rgba(0,0,0,0.98); min-width: 200px; box-shadow: 0 8px 16px rgba(0,0,0,0.5); z-index: 999999; border-radius: 8px; top: 100%; right: 0; backdrop-filter: blur(15px); border: 1px solid rgba(255,255,255,0.3); transform: translateY(5px); }
-        .dropdown-content a { color: white !important; padding: 14px 18px !important; text-decoration: none !important; display: block !important; border-radius: 0 !important; white-space: nowrap !important; }
-        .dropdown-content a:hover { background: rgba(255,255,255,0.1); }
+        .dropdown-btn { 
+            background: rgba(255,255,255,0.1); 
+            color: white; 
+            border: 2px solid rgba(255,255,255,0.3); 
+            padding: 0.6rem 1.2rem; 
+            border-radius: 8px; 
+            cursor: pointer; 
+            font-weight: 600; 
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .dropdown-btn:hover, .dropdown-btn:focus { 
+            background: rgba(255,255,255,0.2); 
+            border-color: #00ff88;
+            transform: translateY(-1px);
+        }
+        .dropdown-content { 
+            display: none; 
+            position: absolute; 
+            background: rgba(0,0,0,0.95); 
+            min-width: 220px; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.7); 
+            z-index: 999999; 
+            border-radius: 12px; 
+            top: calc(100% + 8px); 
+            right: 0; 
+            backdrop-filter: blur(20px); 
+            border: 2px solid rgba(255,255,255,0.2);
+            overflow: hidden;
+            animation: dropdownFadeIn 0.3s ease;
+        }
+        @keyframes dropdownFadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .dropdown-content a { 
+            color: white !important; 
+            padding: 16px 20px !important; 
+            text-decoration: none !important; 
+            display: flex !important;
+            align-items: center !important;
+            gap: 10px !important;
+            border-radius: 0 !important; 
+            white-space: nowrap !important;
+            font-weight: 500 !important;
+            font-size: 0.95rem !important;
+            transition: all 0.2s ease !important;
+            border-bottom: 1px solid rgba(255,255,255,0.1) !important;
+        }
+        .dropdown-content a:last-child {
+            border-bottom: none !important;
+        }
+        .dropdown-content a:hover { 
+            background: rgba(0,255,136,0.15) !important;
+            color: #00ff88 !important;
+            transform: translateX(5px) !important;
+        }
+        .dropdown.show .dropdown-content { display: block; }
         .dropdown:hover .dropdown-content { display: block; }
         .container { max-width: 1200px; margin: 0 auto; padding: 20px; position: relative; z-index: 1; }
         .card { 
@@ -329,26 +385,25 @@
                 <a href="{{ url_for('dashboard') }}">Dashboard</a>
                 <a href="{{ url_for('games') }}">Games</a>
                 <a href="{{ url_for('wallet') }}">Wallet</a>
-                <div class="dropdown">
-                    <button class="dropdown-btn">Menu ▼</button>
-                    <div class="dropdown-content">
-                        <a href="{{ url_for('quick_matches') }}">Quick Match</a>
-                        <a href="{{ url_for('live_streams') }}">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                                <circle cx="12" cy="12" r="8"/>
-                            </svg>
-                            LIVE
-                        </a>
-                        <a href="{{ url_for('streaming_matches') }}">Stream Match</a>
-                        <a href="{{ url_for('matches') }}">My Matches</a>
-                        <a href="{{ url_for('tournaments_new') }}">Streaming Tournaments</a>
-                        <a href="{{ url_for('user_bonuses_page') }}">New User Bonuses</a>
-                        <a href="{{ url_for('referrals') }}">Earn</a>
-                        <a href="{{ url_for('friends') }}">Friends</a>
-                        <a href="{{ url_for('leaderboard') }}">Rankings</a>
-                        <a href="{{ url_for('match_history') }}">Activity</a>
-                        <a href="{{ url_for('profile') }}">Account</a>
-                        <a href="{{ url_for('support_chat') }}">Help</a>
+                <div class="dropdown" id="mainDropdown">
+                    <button class="dropdown-btn" onclick="toggleDropdown()">
+                        <span>☰</span>
+                        <span>Menu</span>
+                        <span id="dropdownArrow">▼</span>
+                    </button>
+                    <div class="dropdown-content" id="dropdownContent">
+                        <a href="{{ url_for('quick_matches') }}">🎮 Quick Match</a>
+                        <a href="{{ url_for('live_streams') }}">🔴 LIVE Streams</a>
+                        <a href="{{ url_for('streaming_matches') }}">📺 Stream Match</a>
+                        <a href="{{ url_for('matches') }}">⚔️ My Matches</a>
+                        <a href="{{ url_for('tournaments_new') }}">🏆 Tournaments</a>
+                        <a href="{{ url_for('user_bonuses_page') }}">🎁 Bonuses</a>
+                        <a href="{{ url_for('referrals') }}">💰 Earn Money</a>
+                        <a href="{{ url_for('friends') }}">👥 Friends</a>
+                        <a href="{{ url_for('leaderboard') }}">🏅 Rankings</a>
+                        <a href="{{ url_for('match_history') }}">📊 Activity</a>
+                        <a href="{{ url_for('profile') }}">👤 Account</a>
+                        <a href="{{ url_for('support_chat') }}">❓ Help</a>
                     </div>
                 </div>
                 <div class="balance">KSh {{ "%.0f"|format(session.balance) }}</div>
@@ -370,5 +425,50 @@
         {% block content %}{% endblock %}
     </div>
     <script src="{{ url_for('static', filename='button-fixes.js') }}"></script>
+    <script>
+        // Improved dropdown functionality
+        function toggleDropdown() {
+            const dropdown = document.getElementById('mainDropdown');
+            const content = document.getElementById('dropdownContent');
+            const arrow = document.getElementById('dropdownArrow');
+            
+            dropdown.classList.toggle('show');
+            
+            if (dropdown.classList.contains('show')) {
+                arrow.innerHTML = '▲';
+                content.style.display = 'block';
+            } else {
+                arrow.innerHTML = '▼';
+                content.style.display = 'none';
+            }
+        }
+        
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function(event) {
+            const dropdown = document.getElementById('mainDropdown');
+            const dropdownBtn = dropdown?.querySelector('.dropdown-btn');
+            
+            if (dropdown && !dropdown.contains(event.target)) {
+                dropdown.classList.remove('show');
+                document.getElementById('dropdownContent').style.display = 'none';
+                document.getElementById('dropdownArrow').innerHTML = '▼';
+            }
+        });
+        
+        // Close dropdown on mobile when link is clicked
+        document.querySelectorAll('.dropdown-content a').forEach(link => {
+            link.addEventListener('click', function() {
+                const dropdown = document.getElementById('mainDropdown');
+                dropdown.classList.remove('show');
+                document.getElementById('dropdownContent').style.display = 'none';
+                document.getElementById('dropdownArrow').innerHTML = '▼';
+            });
+        });
+        
+        // Prevent dropdown from closing when clicking inside
+        document.getElementById('dropdownContent')?.addEventListener('click', function(e) {
+            e.stopPropagation();
+        });
+    </script>
 </body>
 </html>
