@@ -547,26 +547,33 @@ def register():
 @smart_rate_limit(max_requests=50, window=300, user_based=False)
 def login():
     if request.method == 'POST':
-        login_input = request.form['login_input'].strip()
-        password = request.form['password']
-        
-        with sqlite3.connect("gamebet.db") as conn:
-            c = conn.cursor()
-        
-            c.execute('SELECT * FROM users WHERE username = ? OR phone = ?', (login_input, login_input))
-        user = c.fetchone()
-        
-        if user and check_password_hash(user[3], password):
-            session['user_id'] = user[0]
-            session['username'] = user[1]
-            session['balance'] = user[4]
-            # Set admin flag
-            if user[1] == 'admin':
-                session['is_admin'] = True
-            else:
-                session['is_admin'] = False
-            return redirect(url_for('dashboard'))
-        flash('Invalid username/M-Pesa number or password!', 'error')
+        try:
+            login_input = request.form.get('login_input', '').strip()
+            password = request.form.get('password', '')
+            
+            if not login_input or not password:
+                flash('Please enter both username/phone and password!', 'error')
+                return render_template('login.html')
+            
+            with sqlite3.connect("gamebet.db") as conn:
+                c = conn.cursor()
+                c.execute('SELECT id, username, email, password, balance FROM users WHERE username = ? OR phone = ?', 
+                         (login_input, login_input))
+                user = c.fetchone()
+                
+                if user and check_password_hash(user[3], password):
+                    session['user_id'] = user[0]
+                    session['username'] = user[1]
+                    session['balance'] = user[4]
+                    session['is_admin'] = (user[1] == 'admin')
+                    return redirect(url_for('dashboard'))
+                else:
+                    flash('Invalid username/M-Pesa number or password!', 'error')
+                    
+        except sqlite3.Error as e:
+            flash('Database error occurred. Please try again.', 'error')
+        except Exception as e:
+            flash('Login error occurred. Please try again.', 'error')
     
     return render_template('login.html')
 
