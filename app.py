@@ -523,6 +523,46 @@ def init_db():
 # Initialize database on startup
 init_db()
 
+# Auto-restore users from environment backup if needed
+def restore_users_from_env():
+    """Restore users from environment variable if database is empty"""
+    try:
+        backup_data_str = os.getenv('USER_BACKUP_DATA')
+        if not backup_data_str:
+            return
+            
+        import json
+        backup_data = json.loads(backup_data_str)
+        
+        with sqlite3.connect("gamebet.db") as conn:
+            c = conn.cursor()
+            
+            # Check if we need to restore
+            c.execute('SELECT COUNT(*) FROM users WHERE username != "admin"')
+            user_count = c.fetchone()[0]
+            
+            if user_count == 0:
+                print("Restoring users from environment backup...")
+                restored = 0
+                for user in backup_data['users']:
+                    try:
+                        c.execute('''INSERT INTO users (username, email, password, balance, phone, referral_code, created_at)
+                                     VALUES (?, ?, ?, ?, ?, ?, ?)''',
+                                 (user['username'], user['email'], user['password_hash'], 
+                                  user['balance'], user['phone'], user['referral_code'], user['created_at']))
+                        restored += 1
+                    except Exception as e:
+                        print(f"Failed to restore {user['username']}: {e}")
+                
+                conn.commit()
+                print(f"Restored {restored} users from backup")
+                
+    except Exception as e:
+        print(f"User restoration failed: {e}")
+
+# Restore users if needed
+restore_users_from_env()
+
 # Add error handlers and optimization if available
 if NEW_FEATURES_AVAILABLE:
     handle_user_friendly_errors(app)
