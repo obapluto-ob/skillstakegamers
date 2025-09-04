@@ -2097,8 +2097,8 @@ def add_funds():
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )''')
     
-    processing_fee = 0  # No commission on deposits
-    amount_to_credit = amount  # Credit full amount
+    processing_fee = amount * 0.03  # 3% processing fee for platform revenue
+    amount_to_credit = amount - processing_fee  # Credit amount after fee
     
     description = f'M-Pesa deposit KSh {amount} from {sender_name} ({mpesa_number}) - To credit: KSh {amount_to_credit:.0f}'
     c.execute('''INSERT INTO transactions (user_id, type, amount, description, created_at)
@@ -2329,14 +2329,40 @@ def referrals():
             c.execute('UPDATE users SET referral_code = ? WHERE id = ?', (referral_code, session['user_id']))
             conn.commit()
     
-    # Get referral earnings
-    c.execute('SELECT COALESCE(SUM(amount), 0) FROM transactions WHERE user_id = ? AND type = "referral_bonus"', (session['user_id'],))
-    referral_earnings = c.fetchone()[0]
+    # Get total referral earnings (signup bonuses + ongoing commissions)
+    c.execute('SELECT COALESCE(SUM(amount), 0) FROM transactions WHERE user_id = ? AND type IN ("referral_bonus", "referral_commission")', (session['user_id'],))
+    total_referral_earnings = c.fetchone()[0]
     
-    # Get referred users
-    c.execute('SELECT username, created_at FROM users WHERE referred_by = ? ORDER BY created_at DESC', (session['user_id'],))
+    # Get signup bonuses only
+    c.execute('SELECT COALESCE(SUM(amount), 0) FROM transactions WHERE user_id = ? AND type = "referral_bonus"', (session['user_id'],))
+    signup_bonuses = c.fetchone()[0]
+    
+    # Get ongoing commissions only
+    c.execute('SELECT COALESCE(SUM(amount), 0) FROM transactions WHERE user_id = ? AND type = "referral_commission"', (session['user_id'],))
+    ongoing_commissions = c.fetchone()[0]
+    
+    # Get referred users with their activity
+    c.execute('''SELECT u.username, u.created_at, 
+                        COALESCE(SUM(CASE WHEN t.type = 'referral_commission' THEN t.amount ELSE 0 END), 0) as commission_earned
+                 FROM users u
+                 LEFT JOIN transactions t ON t.user_id = ? AND t.description LIKE '%' || u.username || '%' AND t.type = 'referral_commission'
+                 WHERE u.referred_by = ?
+                 GROUP BY u.id, u.username, u.created_at
+                 ORDER BY u.created_at DESC''', (session['user_id'], session['user_id']))
     referred_users = c.fetchall()
-    return render_template('referrals.html', referral_code=referral_code, referral_earnings=referral_earnings, referred_users=referred_users)
+    
+    referral_stats = {
+        'total_earnings': total_referral_earnings,
+        'signup_bonuses': signup_bonuses,
+        'ongoing_commissions': ongoing_commissions,
+        'referred_count': len(referred_users)
+    }
+    
+    return render_template('referrals.html', 
+                         referral_code=referral_code, 
+                         referral_earnings=total_referral_earnings,
+                         referral_stats=referral_stats,
+                         referred_users=referred_users)
 
 @app.route('/friends')
 @login_required
@@ -2982,12 +3008,18 @@ def approve_deposit(transaction_id):
             c.execute('UPDATE users SET balance = balance + ? WHERE id = ?', (amount, user_id))
             flash(f'Deposit corrected from rejected to approved! KSh {amount:.0f} credited to user.', 'success')
         elif current_type == 'pending_deposit':
-            # No fee on M-Pesa deposits - credit full amount
-            net_amount = amount
+            # Apply 3% processing fee on deposits for platform revenue
+            processing_fee = amount * 0.03
+            net_amount = amount - processing_fee
             
             c.execute('UPDATE users SET balance = balance + ? WHERE id = ?', (net_amount, user_id))
             c.execute('UPDATE transactions SET type = "deposit", amount = ?, description = ? WHERE id = ?', 
-                     (net_amount, f'M-Pesa deposit KSh {amount} - Full amount credited', transaction_id))
+                     (net_amount, f'M-Pesa deposit KSh {amount} - Processing fee: KSh {processing_fee:.2f} - Net credited: KSh {net_amount:.2f}', transaction_id))
+            
+            # Record platform processing fee
+            c.execute('''INSERT INTO transactions (user_id, type, amount, description)
+                         VALUES (?, ?, ?, ?)''',
+                     (1, 'deposit_fee', processing_fee, f'3% processing fee from KSh {amount} deposit - User ID {user_id}'))
             
             flash(f'Deposit approved! KSh {net_amount:.0f} credited (full amount)', 'success')
         else:
@@ -4002,6 +4034,56 @@ def charge_fake_screenshots(match_id):
     conn.commit()
     return jsonify({'success': True, 'message': message})
 
+def calculate_referral_commission(match_id, winner_id, loser_id, bet_amount):
+    """Calculate and award referral commission when a user loses a match"""
+    with sqlite3.connect("gamebet.db") as conn:
+        c = conn.cursor()
+        
+        # Create referral_commissions table if not exists
+        c.execute('''CREATE TABLE IF NOT EXISTS referral_commissions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            referrer_id INTEGER,
+            referred_user_id INTEGER,
+            match_id INTEGER,
+            loss_amount REAL,
+            commission_amount REAL,
+            commission_rate REAL DEFAULT 0.04,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )''')
+        
+        # Check if the loser was referred by someone
+        c.execute('SELECT referred_by, username FROM users WHERE id = ?', (loser_id,))
+        loser_data = c.fetchone()
+        
+        if not loser_data or not loser_data[0]:
+            return 0  # No referrer, no commission
+        
+        referrer_id = loser_data[0]
+        loser_username = loser_data[1]
+        
+        # Calculate 4% commission on the loss
+        commission_rate = 0.04
+        commission_amount = bet_amount * commission_rate
+        
+        # Award commission to referrer
+        c.execute('UPDATE users SET balance = balance + ? WHERE id = ?', 
+                 (commission_amount, referrer_id))
+        
+        # Record the commission transaction
+        c.execute('''INSERT INTO transactions (user_id, type, amount, description)
+                     VALUES (?, ?, ?, ?)''',
+                 (referrer_id, 'referral_commission', commission_amount, 
+                  f'4% commission from {loser_username} match loss - KSh {bet_amount} × 4% = KSh {commission_amount:.2f}'))
+        
+        # Track the commission for analytics
+        c.execute('''INSERT INTO referral_commissions 
+                     (referrer_id, referred_user_id, match_id, loss_amount, commission_amount, commission_rate)
+                     VALUES (?, ?, ?, ?, ?, ?)''',
+                 (referrer_id, loser_id, match_id, bet_amount, commission_amount, commission_rate))
+        
+        conn.commit()
+        return commission_amount
+
 @app.route('/admin/resolve_dispute/<int:match_id>/<winner>', methods=['GET', 'POST'])
 def resolve_dispute(match_id, winner):
     if 'user_id' not in session or session.get('username') != 'admin':
@@ -4037,19 +4119,34 @@ def resolve_dispute(match_id, winner):
             return redirect(url_for('admin_support_center'))
         
         # Award winner with precise calculation
-        winnings = calculate_winnings(bet_amount, 1.68)
+        total_pot = bet_amount * 2
+        winnings = total_pot * 0.68  # 68% to winner
+        platform_commission = total_pot * 0.32  # 32% platform commission
+        
+        # Process referral commission for loser
+        referral_commission = calculate_referral_commission(match_id, winner_id, loser_id, bet_amount)
+        
+        # Adjust platform commission if referral was paid
+        net_platform_commission = platform_commission - referral_commission
+        
         c.execute('UPDATE users SET balance = balance + ?, wins = wins + 1, total_earnings = total_earnings + ? WHERE id = ?', 
                  (winnings, winnings, winner_id))
         c.execute('UPDATE users SET losses = losses + 1 WHERE id = ?', (loser_id,))
         c.execute('UPDATE matches SET winner_id = ?, status = "completed" WHERE id = ?', (winner_id, match_id))
         
-        # Record admin resolution transaction
+        # Record winner transaction
         c.execute('''INSERT INTO transactions (user_id, type, amount, description)
                      VALUES (?, ?, ?, ?)''',
-                 (winner_id, 'match_win', winnings, f'Match #{match_id} admin resolution - {game.upper()} - Dispute resolved in your favor'))
+                 (winner_id, 'match_win', winnings, f'Match #{match_id} admin resolution - {game.upper()} - KSh {winnings:.2f} (68% of KSh {total_pot})'))
+        
+        # Record platform commission (after referral deduction)
+        c.execute('''INSERT INTO transactions (user_id, type, amount, description)
+                     VALUES (?, ?, ?, ?)''',
+                 (1, 'match_commission', net_platform_commission, 
+                  f'Match #{match_id} commission - 32% minus KSh {referral_commission:.2f} referral cost'))
         
         conn.commit()
-        flash('Match verified and completed!', 'success')
+        flash(f'Match verified and completed! Referral commission: KSh {referral_commission:.2f}', 'success')
     return redirect(url_for('admin_support_center'))
 
 @app.route('/withdrawal_chat/<int:withdrawal_id>')

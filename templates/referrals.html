@@ -57,8 +57,8 @@
             <p>Get KSh 30 immediately when they sign up</p>
         </div>
         <div style="background: rgba(255,255,255,0.1); padding: 1rem; border-radius: 8px;">
-            <h3 style="color: #17a2b8;">3. Lifetime Earnings</h3>
-            <p>Earn 4% of all their losses forever!</p>
+            <h3 style="color: #17a2b8;">3. Ongoing Commission</h3>
+            <p>Earn 4% of all their match losses forever!</p>
         </div>
     </div>
 </div>
@@ -83,7 +83,7 @@
                         <td style="padding: 1rem;">{{ friend[0] }}</td>
                         <td style="padding: 1rem;">{{ friend[1] }}</td>
                         <td style="padding: 1rem;"><span style="color: #28a745;">Active</span></td>
-                        <td style="padding: 1rem; color: #00ff88;">KSh 30+</td>
+                        <td style="padding: 1rem; color: #00ff88;">KSh 30 + KSh {{ "%.0f"|format(friend[2] if friend|length > 2 else 0) }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -105,8 +105,8 @@
             <h4 style="color: #28a745; margin: 0 0 10px 0;">How Referrals Work:</h4>
             <div style="font-size: 14px; line-height: 1.6;">
                 <strong>1. Instant Bonus:</strong> Get KSh 30 when friend signs up<br>
-                <strong>2. Lifetime Earnings:</strong> Earn 4% of all their match losses<br>
-                <strong>3. No Limits:</strong> Refer unlimited friends, earn forever
+                <strong>2. Ongoing Commission:</strong> Earn 4% of all their match losses automatically<br>
+                <strong>3. No Limits:</strong> Refer unlimited friends, earn forever from their activity
             </div>
         </div>
         <ul style="margin: 0; padding-left: 1.5rem;">
