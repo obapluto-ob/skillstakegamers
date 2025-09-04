@@ -467,7 +467,7 @@ def home():
     return render_template('home.html')
 
 @app.route('/register', methods=['GET', 'POST'])
-@smart_rate_limit(max_requests=10, window=300, user_based=False)
+@smart_rate_limit(max_requests=30, window=300, user_based=False)
 def register():
     if request.method == 'POST':
         # Validate inputs
@@ -544,7 +544,7 @@ def register():
     return render_template('register.html')
 
 @app.route('/login', methods=['GET', 'POST'])
-@smart_rate_limit(max_requests=8, window=300, user_based=False)
+@smart_rate_limit(max_requests=50, window=300, user_based=False)
 def login():
     if request.method == 'POST':
         login_input = request.form['login_input'].strip()

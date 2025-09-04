@@ -10,11 +10,13 @@ def smart_rate_limit(max_requests=5, window=300, user_based=True):
         def decorated_function(*args, **kwargs):
             current_time = time.time()
             
-            # Use user ID if logged in, otherwise IP
+            # Use user ID if logged in, otherwise IP with higher limits
             if user_based and 'user_id' in session:
                 identifier = f"user_{session['user_id']}"
             else:
+                # For anonymous users, use IP but with more generous limits
                 identifier = f"ip_{request.remote_addr}"
+                max_requests = max_requests * 3  # Triple the limit for shared IPs
             
             with sqlite3.connect("gamebet.db") as conn:
                 c = conn.cursor()
