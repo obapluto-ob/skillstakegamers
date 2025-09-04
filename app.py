@@ -278,21 +278,7 @@ def analyze_screenshot(screenshot_data, claimed_result, game_type):
             win_patterns = ['YOU WIN', 'VICTORY', 'WIN']
             lose_patterns = ['YOU LOSE', 'DEFEAT', 'LOSE']
             
-            # Use claimed_result for validation
-            has_win = any(pattern in text_upper for pattern in win_patterns)
-            has_lose = any(pattern in text_upper for pattern in lose_patterns)
-            
-            if has_win and claimed_result == 'win':
-                return True, 'FIFA victory detected'
-            elif has_lose and claimed_result == 'loss':
-                return True, 'FIFA defeat detected'
-        
-        # COD Mobile patterns
-        elif game_type == 'cod_mobile':
-            win_patterns = ['VICTORY', 'MATCH WON', 'WIN']
-            lose_patterns = ['DEFEAT', 'MATCH LOST', 'ELIMINATED']
-            
-            # Score detection
+            # Score detection for FIFA
             score_match = re.search(r'(\d+)-(\d+)', text_upper)
             if score_match:
                 score1, score2 = int(score_match.group(1)), int(score_match.group(2))
@@ -412,6 +398,17 @@ def analyze_screenshot(screenshot_data, claimed_result, game_type):
     # Advanced validation
     if 'ANALYSIS_FAILED' in analysis_result:
         return {
+            'valid': False,
+            'reason': 'Image analysis failed',
+            'fraud_score': 100
+        }
+    
+    return {
+        'valid': result_matches,
+        'reason': detection_reason,
+        'fraud_score': fraud_score,
+        'screenshot_hash': screenshot_hash
+    }
             'validity': 'INVALID',
             'reason': 'Screenshot analysis failed. Please try again.',
             'analysis_result': analysis_result,
