@@ -24,7 +24,11 @@ def rate_limit_endpoint(max_requests=5, window=300):
             ]
             
             if len(rate_limits[client_ip]) >= max_requests:
-                return jsonify({'error': 'Too many requests'}), 429
+                from flask import flash, redirect, url_for
+                if request.method == 'POST':
+                    flash(f'Too many attempts. Please wait {window//60} minutes before trying again.', 'error')
+                    return redirect(request.url)
+                return jsonify({'error': f'Too many requests. Wait {window//60} minutes.'}), 429
             
             rate_limits[client_ip].append(current_time)
             return f(*args, **kwargs)
