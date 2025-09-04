@@ -398,21 +398,52 @@ def analyze_screenshot(screenshot_data, claimed_result, game_type):
     # Advanced validation
     if 'ANALYSIS_FAILED' in analysis_result:
         return {
-            'valid': False,
-            'reason': 'Image analysis failed',
-            'fraud_score': 100
-        }
-    
-    return {
-        'valid': result_matches,
-        'reason': detection_reason,
-        'fraud_score': fraud_score,
-        'screenshot_hash': screenshot_hash
-    }
             'validity': 'INVALID',
             'reason': 'Screenshot analysis failed. Please try again.',
             'analysis_result': analysis_result,
             'verification_method': 'analysis_failed'
+        }
+    
+    if 'INVALID' in analysis_result:
+        return {
+            'validity': 'INVALID',
+            'reason': f'Screenshot validation failed: {analysis_result.replace("INVALID_", "").replace("_", " ").lower()}',
+            'analysis_result': analysis_result,
+            'verification_method': 'strict_validation'
+        }
+    
+    if 'FRAUD DETECTED' in detection_reason:
+        return {
+            'validity': 'FRAUD_DETECTED',
+            'reason': detection_reason,
+            'fraud_score': fraud_score,
+            'analysis_result': analysis_result,
+            'claimed_result': claimed_result,
+            'screenshot_hash': screenshot_hash,
+            'verification_method': 'fraud_detection_system'
+        }
+    elif result_matches:
+        return {
+            'validity': 'VALID_OCR_VERIFIED',
+            'is_game_screenshot': True,
+            'matches_claimed_result': True,
+            'confidence': 0.85,
+            'detected_game': game_type,
+            'detected_result': claimed_result,
+            'analysis_result': analysis_result,
+            'detection_reason': detection_reason,
+            'screenshot_hash': screenshot_hash,
+            'timestamp': datetime.now().isoformat(),
+            'verification_method': 'ocr_with_fraud_check'
+        }
+    else:
+        return {
+            'validity': 'NEEDS_ADMIN_REVIEW',
+            'reason': f'OCR verification inconclusive: {detection_reason}',
+            'analysis_result': analysis_result,
+            'claimed_result': claimed_result,
+            'screenshot_hash': screenshot_hash,
+            'verification_method': 'ocr_unclear_admin_needed'
         }
     
     if 'INVALID' in analysis_result:
