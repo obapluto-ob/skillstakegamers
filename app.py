@@ -2179,7 +2179,18 @@ def referrals():
     # Get user's referral code and earnings
     c.execute('SELECT referral_code FROM users WHERE id = ?', (session['user_id'],))
     user_data = c.fetchone()
-    referral_code = user_data[0] if user_data else 'N/A'
+    referral_code = user_data[0] if user_data and user_data[0] and user_data[0] != 'None' else None
+    
+    # Generate referral code if user doesn't have one
+    if not referral_code:
+        import random, string
+        c.execute('SELECT username FROM users WHERE id = ?', (session['user_id'],))
+        username_data = c.fetchone()
+        if username_data:
+            username = username_data[0]
+            referral_code = username[:3].upper() + ''.join(random.choices(string.digits, k=4))
+            c.execute('UPDATE users SET referral_code = ? WHERE id = ?', (referral_code, session['user_id']))
+            conn.commit()
     
     # Get referral earnings
     c.execute('SELECT COALESCE(SUM(amount), 0) FROM transactions WHERE user_id = ? AND type = "referral_bonus"', (session['user_id'],))
