@@ -434,6 +434,13 @@ if NEW_FEATURES_AVAILABLE:
     optimize_database()
 else:
     print("Running with basic features - new modules not available")
+
+# Add admin utilities
+try:
+    from admin_clear_limits import admin_bp
+    app.register_blueprint(admin_bp)
+except ImportError:
+    pass
 app.config['SESSION_COOKIE_SECURE'] = True
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
@@ -460,7 +467,7 @@ def home():
     return render_template('home.html')
 
 @app.route('/register', methods=['GET', 'POST'])
-@smart_rate_limit(max_requests=5, window=600, user_based=False)
+@smart_rate_limit(max_requests=10, window=300, user_based=False)
 def register():
     if request.method == 'POST':
         # Validate inputs
