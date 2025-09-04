@@ -1,0 +1,350 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+        <div>
+            <h1><svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="10" fill="#dc3545"/><circle cx="12" cy="12" r="3" fill="white"/></svg> {{ stream[4] }}</h1>
+            <p>Streamed by <strong>{{ stream[9] }}</strong></p>
+        </div>
+        <div style="display: flex; gap: 1rem; align-items: center;">
+            <span style="background: #dc3545; color: white; padding: 0.5rem 1rem; border-radius: 20px;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="10" fill="#dc3545"/><circle cx="12" cy="12" r="3" fill="white"/></svg> LIVE
+            </span>
+            <span style="color: #ffc107;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M16 21V19C16 16.79 14.21 15 12 15H5C2.79 15 1 16.79 1 19V21M12.5 7C12.5 9.21 10.71 11 8.5 11S4.5 9.21 4.5 7S6.29 3 8.5 3S12.5 4.79 12.5 7ZM20 8V6M23 7H17" stroke="#ffc107" stroke-width="2"/></svg> {{ stream[5] }} viewers</span>
+        </div>
+    </div>
+</div>
+
+<!-- Stream Player -->
+<div class="card">
+    <div id="streamPlayer" style="aspect-ratio: 16/9; background: #000; border-radius: 12px; position: relative; overflow: hidden;">
+        <video id="liveVideo" autoplay muted style="width: 100%; height: 100%; object-fit: contain; background: #000;"></video>
+        
+        <!-- Loading overlay -->
+        <div id="loadingOverlay" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); display: flex; flex-direction: column; align-items: center; justify-content: center; color: white;">
+            <div style="font-size: 4rem; margin-bottom: 1rem; animation: pulse 2s infinite;">🎮</div>
+            <h2>Connecting to Stream...</h2>
+            <p style="opacity: 0.8;">{{ stream[4] }}</p>
+        </div>
+        
+        <!-- Stream controls -->
+        <div id="streamControls" style="position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); display: flex; gap: 1rem; opacity: 0; transition: opacity 0.3s;">
+            <button class="btn btn-secondary" onclick="toggleFullscreen()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M8 3H5C3.89 3 3 3.89 3 5V8M21 8V5C21 3.89 20.11 3 19 3H16M16 21H19C20.11 21 21 20.11 21 19V16M3 16V19C3 20.11 3.89 21 5 21H8" stroke="white" stroke-width="2"/></svg> Fullscreen</button>
+            <button class="btn btn-secondary" onclick="toggleMute()" id="muteBtn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="white"/><path d="M19.07 4.93C20.9 6.76 21.99 9.26 21.99 12S20.9 17.24 19.07 19.07M15.54 8.46C16.48 9.4 17 10.67 17 12S16.48 14.6 15.54 15.54" stroke="white" stroke-width="2"/></svg> Audio</button>
+            {% if session.username == stream[9] %}
+            <button class="btn btn-success" onclick="toggleVoiceChat()" id="voiceBtn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 1C10.34 1 9 2.34 9 4V12C9 13.66 10.34 15 12 15S15 13.66 15 12V4C15 2.34 13.66 1 12 1Z" fill="white"/><path d="M19 10V12C19 16.42 15.42 20 11 20H13C17.42 20 21 16.42 21 12V10H19Z" fill="white"/></svg> Speak</button>
+            {% endif %}
+            <button class="btn btn-danger" onclick="reportStream()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 9V13M12 17H12.01M21 12C21 16.97 16.97 21 12 21S3 16.97 3 12S7.03 3 12 3S21 7.03 21 12Z" stroke="white" stroke-width="2"/></svg> Report</button>
+        </div>
+        
+        <!-- Live indicator -->
+        <div style="position: absolute; top: 20px; left: 20px; background: #dc3545; color: white; padding: 0.5rem 1rem; border-radius: 20px; font-weight: bold;">
+            LIVE
+        </div>
+        
+        {% if session.username == 'admin' %}
+        <!-- Admin monitoring indicator -->
+        <div style="position: absolute; top: 20px; left: 120px; background: #ffc107; color: black; padding: 0.5rem 1rem; border-radius: 20px; font-weight: bold;">
+            ADMIN MONITORING
+        </div>
+        {% endif %}
+        
+        <!-- Viewer count -->
+        <div style="position: absolute; top: 20px; right: 20px; background: rgba(0,0,0,0.7); color: white; padding: 0.5rem 1rem; border-radius: 20px;">
+            <span id="viewerCount">{{ stream[5] }}</span> watching{% if session.username == 'admin' %} + Admin{% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Stream Info & Chat -->
+<div style="display: grid; grid-template-columns: 2fr 1fr; gap: 1rem;">
+    <!-- Stream Details -->
+    <div class="card">
+        <h3>Stream Details</h3>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
+            <div>
+                <strong>Streamer:</strong><br>
+                <span style="color: #ffc107;">{{ stream[9] }}</span>
+            </div>
+            <div>
+                <strong>Started:</strong><br>
+                {{ stream[8] }}
+            </div>
+            <div>
+                <strong>Viewers:</strong><br>
+                <span style="color: #28a745;">{{ stream[5] }} watching</span>
+            </div>
+            <div>
+                <strong>Status:</strong><br>
+                <span style="color: #dc3545;">🔴 {{ stream[6].upper() }}</span>
+            </div>
+        </div>
+        
+        {% if stream[2] %}
+        <div style="background: rgba(255, 193, 7, 0.1); padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+            <h4 style="color: #ffc107;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="10" stroke="#ffc107" stroke-width="2"/><path d="M12 6L12 12L16 16" stroke="#ffc107" stroke-width="2"/></svg> Match in Progress</h4>
+            <p>This streamer is currently in a live match! Watch and learn their strategies.</p>
+        </div>
+        {% endif %}
+        
+        {% if stream[3] %}
+        <div style="background: rgba(220, 53, 69, 0.1); padding: 1rem; border-radius: 8px;">
+            <h4 style="color: #dc3545;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 2L15.09 8.26L22 9L17 14L18.18 21L12 17.77L5.82 21L7 14L2 9L8.91 8.26L12 2Z" fill="#dc3545"/></svg> Tournament Stream</h4>
+            <p>This is a tournament match stream. High stakes gaming!</p>
+            <a href="{{ url_for('tournament_details', tournament_id=stream[3]) }}" class="btn btn-primary">View Tournament</a>
+        </div>
+        {% endif %}
+    </div>
+    
+    <!-- Live Chat -->
+    <div class="card">
+        <h3><svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M21 15C21 15.5304 20.7893 16.0391 20.4142 16.4142C20.0391 16.7893 19.5304 17 19 17H7L3 21V5C3 4.46957 3.21071 3.96086 3.58579 3.58579C3.96086 3.21071 4.46957 3 5 3H19C19.5304 3 20.0391 3.21071 20.4142 3.58579C20.7893 3.96086 21 4.46957 21 5V15Z" stroke="currentColor" stroke-width="2" fill="none"/></svg> Live Chat</h3>
+        <div id="chatMessages" style="height: 300px; overflow-y: auto; background: rgba(0,0,0,0.1); padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+            <div style="color: #28a745; margin-bottom: 0.5rem;">
+                <strong>System:</strong> Welcome to the stream!
+            </div>
+            <div style="color: #ffc107; margin-bottom: 0.5rem;">
+                <strong>{{ session.username }}:</strong> Great gameplay! 🎮
+            </div>
+            <div style="color: #17a2b8; margin-bottom: 0.5rem;">
+                <strong>Viewer123:</strong> How do you aim so well?
+            </div>
+        </div>
+        
+        <div style="display: flex; gap: 0.5rem;">
+            <input type="text" id="chatInput" placeholder="Type a message..." style="flex: 1; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px; background: rgba(255,255,255,0.1); color: white;">
+            <button onclick="sendMessage()" class="btn btn-primary">Send</button>
+        </div>
+    </div>
+</div>
+
+<!-- Related Streams -->
+<div class="card">
+    <h3><svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/><path d="M12 6L12 12L16 16" stroke="currentColor" stroke-width="2"/></svg> Other Live Streams</h3>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem;">
+        <div style="background: rgba(255,255,255,0.05); padding: 1rem; border-radius: 8px; text-align: center;">
+            <div style="color: #ffc107; font-size: 2rem; margin-bottom: 0.5rem;"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 12C6 9.79 7.79 8 10 8H14C16.21 8 18 9.79 18 12C18 14.21 16.21 16 14 16H10C7.79 16 6 14.21 6 12Z" stroke="#ffc107" stroke-width="2"/><circle cx="9" cy="12" r="1" fill="#ffc107"/><circle cx="15" cy="12" r="1" fill="#ffc107"/></svg></div>
+            <h4>PUBG Tournament</h4>
+            <p style="opacity: 0.8;">45 viewers</p>
+            <button class="btn btn-secondary">Watch</button>
+        </div>
+        <div style="background: rgba(255,255,255,0.05); padding: 1rem; border-radius: 8px; text-align: center;">
+            <div style="color: #28a745; font-size: 2rem; margin-bottom: 0.5rem;"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="10" stroke="#28a745" stroke-width="2"/><path d="M12 2L15.5 8.5L22 9L17 14L18.5 21L12 17.5L5.5 21L7 14L2 9L8.5 8.5L12 2Z" fill="#28a745"/></svg></div>
+            <h4>FIFA Match</h4>
+            <p style="opacity: 0.8;">23 viewers</p>
+            <button class="btn btn-secondary">Watch</button>
+        </div>
+    </div>
+</div>
+
+<script>
+let streamVideo = null;
+let isMuted = true;
+let voiceStream = null;
+let isVoiceChatActive = false;
+
+// Initialize stream connection
+window.addEventListener('load', function() {
+    connectToStream();
+    
+    // Show controls on hover
+    const player = document.getElementById('streamPlayer');
+    const controls = document.getElementById('streamControls');
+    
+    player.addEventListener('mouseenter', () => {
+        controls.style.opacity = '1';
+    });
+    
+    player.addEventListener('mouseleave', () => {
+        controls.style.opacity = '0';
+    });
+});
+
+async function connectToStream() {
+    const video = document.getElementById('liveVideo');
+    const loading = document.getElementById('loadingOverlay');
+    
+    try {
+        // Connect to real stream via WebRTC or fetch stream URL
+        const response = await fetch(`/get_stream_url/{{ stream[0] }}`);
+        const data = await response.json();
+        
+        if (data.stream_url) {
+            video.src = data.stream_url;
+            streamVideo = video;
+        } else {
+            // Show stream is offline
+            video.style.display = 'none';
+            loading.innerHTML = `
+                <div style="text-align: center;">
+                    <h2>Stream Offline</h2>
+                    <p>{{ stream[9] }} is not currently streaming</p>
+                    <button class="btn btn-primary" onclick="location.reload()">Refresh</button>
+                </div>
+            `;
+            return;
+        }
+        
+        video.onloadeddata = () => {
+            loading.style.display = 'none';
+        };
+        
+        video.onerror = () => {
+            loading.innerHTML = `
+                <div style="text-align: center;">
+                    <h2>Connection Failed</h2>
+                    <p>Unable to load stream</p>
+                    <button class="btn btn-primary" onclick="location.reload()">Retry</button>
+                </div>
+            `;
+        };
+        
+    } catch (error) {
+        loading.innerHTML = `
+            <div style="text-align: center;">
+                <h2>Stream Unavailable</h2>
+                <p>Unable to connect to the live stream</p>
+                <button class="btn btn-primary" onclick="location.reload()">Retry</button>
+            </div>
+        `;
+    }
+}
+
+function toggleFullscreen() {
+    const video = document.getElementById('liveVideo');
+    if (document.fullscreenElement) {
+        document.exitFullscreen();
+    } else {
+        video.requestFullscreen().catch(err => {
+            alert('Fullscreen not supported');
+        });
+    }
+}
+
+function toggleMute() {
+    const video = document.getElementById('liveVideo');
+    const btn = document.getElementById('muteBtn');
+    
+    if (video) {
+        isMuted = !isMuted;
+        video.muted = isMuted;
+        btn.innerHTML = isMuted ? '🔇 Unmute' : '🔊 Mute';
+    }
+}
+
+async function toggleVoiceChat() {
+    const btn = document.getElementById('voiceBtn');
+    
+    if (!isVoiceChatActive) {
+        try {
+            voiceStream = await navigator.mediaDevices.getUserMedia({
+                audio: {
+                    echoCancellation: true,
+                    noiseSuppression: true,
+                    autoGainControl: true
+                }
+            });
+            
+            isVoiceChatActive = true;
+            btn.innerHTML = '🔇 Stop Speaking';
+            btn.className = 'btn btn-danger';
+            
+            // Add voice indicator
+            const indicator = document.createElement('div');
+            indicator.id = 'voiceIndicator';
+            indicator.innerHTML = '🎤 SPEAKING';
+            indicator.style.cssText = 'position: absolute; top: 70px; left: 20px; background: #28a745; color: white; padding: 0.5rem 1rem; border-radius: 20px; font-weight: bold; animation: pulse 2s infinite;';
+            document.getElementById('streamPlayer').appendChild(indicator);
+            
+        } catch (err) {
+            alert('Microphone access denied');
+        }
+    } else {
+        if (voiceStream) {
+            voiceStream.getTracks().forEach(track => track.stop());
+            voiceStream = null;
+        }
+        
+        isVoiceChatActive = false;
+        btn.innerHTML = '🎤 Speak';
+        btn.className = 'btn btn-success';
+        
+        // Remove voice indicator
+        const indicator = document.getElementById('voiceIndicator');
+        if (indicator) indicator.remove();
+    }
+}
+
+function reportStream() {
+    if (confirm('Report this stream for inappropriate content?')) {
+        alert('Stream reported. Thank you for keeping our community safe!');
+    }
+}
+
+function sendMessage() {
+    const input = document.getElementById('chatInput');
+    const message = input.value.trim();
+    if (message) {
+        const chatDiv = document.getElementById('chatMessages');
+        const newMessage = document.createElement('div');
+        newMessage.style.color = '#ffc107';
+        newMessage.style.marginBottom = '0.5rem';
+        newMessage.innerHTML = `<strong>{{ session.username }}:</strong> ${message}`;
+        chatDiv.appendChild(newMessage);
+        chatDiv.scrollTop = chatDiv.scrollHeight;
+        input.value = '';
+    }
+}
+
+// Update real viewer count
+setInterval(() => {
+    fetch(`/stream_viewers/{{ stream[0] }}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.count !== undefined) {
+                document.getElementById('viewerCount').textContent = data.count;
+            }
+        })
+        .catch(() => {});
+}, 10000);
+
+// Load real chat messages
+setInterval(() => {
+    fetch(`/get_stream_chat/{{ stream[0] }}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.messages) {
+                const chatDiv = document.getElementById('chatMessages');
+                chatDiv.innerHTML = data.messages.map(msg => 
+                    `<div style="color: #17a2b8; margin-bottom: 0.5rem;"><strong>${msg.username}:</strong> ${msg.message}</div>`
+                ).join('');
+                chatDiv.scrollTop = chatDiv.scrollHeight;
+            }
+        })
+        .catch(() => {});
+}, 2000);
+
+// Enter key to send message
+document.getElementById('chatInput').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        sendMessage();
+    }
+});
+
+// Keyboard shortcut for voice chat (V key for stream owner)
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'v' && document.getElementById('voiceBtn')) {
+        e.preventDefault();
+        toggleVoiceChat();
+    }
+});
+
+// Stop voice chat when leaving page
+window.addEventListener('beforeunload', () => {
+    if (voiceStream) {
+        voiceStream.getTracks().forEach(track => track.stop());
+    }
+});
+</script>
+{% endblock %}

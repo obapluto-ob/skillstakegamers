@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card">
+    <h2>🚫 Reject Withdrawal</h2>
+    
+    <form method="POST">
+        <div class="form-group">
+            <label><strong>Select Rejection Reason:</strong></label>
+            <select name="rejection_reason" class="form-control" required style="font-size: 1rem; padding: 0.75rem; height: auto; background: #2c3e50; color: white; border: 1px solid #34495e;">
+                <option value="" style="background: #2c3e50; color: white;">-- Select Rejection Reason --</option>
+                
+                <option value="Wrong M-Pesa name provided. Your registered name is different from the M-Pesa name you entered. Please use the exact name on your M-Pesa account." style="background: #2c3e50; color: white;">✗ Wrong M-Pesa name - use exact name on your M-Pesa</option>
+                <option value="Invalid M-Pesa number format. Please provide a valid 10-digit Kenyan number starting with 07 or 01 (e.g., 0712345678)." style="background: #2c3e50; color: white;">✗ Invalid phone format - use 07XXXXXXXX or 01XXXXXXXX</option>
+                <option value="Name verification failed. Your SkillStake account name must match your M-Pesa account name exactly for security purposes." style="background: #2c3e50; color: white;">✗ Name mismatch - SkillStake name must match M-Pesa name</option>
+                
+                <option value="Account verification required. New accounts must complete profile verification before first withdrawal. Please upload your ID and complete KYC." style="background: #2c3e50; color: white;">⚬ Account not verified - upload ID for KYC verification</option>
+                <option value="Incomplete profile information. Please update your full name, phone number, and ID details in your profile settings." style="background: #2c3e50; color: white;">⚬ Missing profile info - complete your account details</option>
+                <option value="First withdrawal security check. New accounts require manual verification for the first withdrawal. This usually takes 2-4 hours." style="background: #2c3e50; color: white;">⚬ First withdrawal - manual verification needed (2-4 hours)</option>
+                
+                <option value="Below minimum withdrawal limit. Minimum withdrawal is KSh 100. Your current request is below this limit." style="background: #2c3e50; color: white;">$ Below KSh 100 minimum - increase withdrawal amount</option>
+                <option value="Daily withdrawal limit exceeded. Your daily limit is KSh 10,000. You have already withdrawn your daily maximum. Try again tomorrow." style="background: #2c3e50; color: white;">$ Daily limit KSh 10,000 exceeded - try tomorrow</option>
+                <option value="Large withdrawal requires verification. Amounts over KSh 5,000 need additional security checks. Please contact support with your ID." style="background: #2c3e50; color: white;">$ Over KSh 5,000 limit - contact support for verification</option>
+                
+                <option value="Suspicious activity detected on your account. Multiple rapid withdrawal attempts or unusual patterns. Please wait 24 hours and contact support." style="background: #2c3e50; color: white;">! Suspicious activity - wait 24 hours, contact support</option>
+                <option value="Too many withdrawal attempts. You have made 5+ attempts in the last hour. Please wait 2 hours before trying again." style="background: #2c3e50; color: white;">! 5+ attempts in 1 hour - wait 2 hours before retry</option>
+                <option value="Account under security review. You have pending match disputes or reported issues. Resolve these first before withdrawing." style="background: #2c3e50; color: white;">! Account flagged - resolve pending disputes first</option>
+                
+                <option value="M-Pesa system maintenance in progress. Safaricom M-Pesa services are temporarily down. Please try again in 30-60 minutes." style="background: #2c3e50; color: white;">⚙ M-Pesa down - try again in 30-60 minutes</option>
+                <option value="Payment processing failed due to network timeout. This is a temporary technical issue. Please retry your withdrawal in 15 minutes." style="background: #2c3e50; color: white;">⚙ Network timeout - retry in 15 minutes</option>
+                <option value="System maintenance mode active. Withdrawals are temporarily disabled for platform updates. Service will resume in 2-4 hours." style="background: #2c3e50; color: white;">⚙ System maintenance - service resumes in 2-4 hours</option>
+            </select>
+        </div>
+        
+        <div style="margin-top: 1rem;">
+            <button type="submit" class="btn btn-danger">
+                ❌ Reject Withdrawal
+            </button>
+            <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary">
+                Cancel
+            </a>
+        </div>
+    </form>
+</div>
+{% endblock %}

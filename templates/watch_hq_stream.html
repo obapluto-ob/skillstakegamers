@@ -1,0 +1,378 @@
+{% extends "base.html" %}
+
+{% block content %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+
+<div class="card">
+    <h1>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="red">
+            <circle cx="12" cy="12" r="8"/>
+        </svg>
+        Watching: {{stream[7]}} Live Stream
+    </h1>
+    
+    <!-- Main video player -->
+    <div class="video-container">
+        <video id="remoteVideo" autoplay style="width: 100%; max-height: 70vh; border-radius: 8px; background: #000;"></video>
+        
+        <!-- Stream overlay -->
+        <div class="stream-overlay">
+            <div class="stream-info">
+                <span><i class="fas fa-user"></i> {{stream[7]}}</span>
+                <span><i class="fas fa-users"></i> <span id="viewerCount">{{stream[3]}}</span> watching</span>
+                <span><i class="fas fa-hd-video"></i> {{stream[2]}} Quality</span>
+            </div>
+            
+            <!-- Viewer actions -->
+            <div class="viewer-actions">
+                <button onclick="tipStreamer(10)" class="btn btn-success btn-sm">
+                    <i class="fas fa-gem"></i> Tip KSh 10
+                </button>
+                <button onclick="tipStreamer(25)" class="btn btn-success btn-sm">
+                    <i class="fas fa-gem"></i> Tip KSh 25
+                </button>
+                <button onclick="tipStreamer(50)" class="btn btn-success btn-sm">
+                    <i class="fas fa-gem"></i> Tip KSh 50
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Stream stats -->
+    <div class="stream-stats">
+        <div class="stat-item">
+            <i class="fas fa-eye"></i>
+            <span>Total Viewers: <span id="totalViewers">{{stream[3]}}</span></span>
+        </div>
+        <div class="stat-item">
+            <i class="fas fa-coins"></i>
+            <span>Streamer Earnings: KSh <span id="streamerEarnings">{{stream[4]}}</span></span>
+        </div>
+        <div class="stat-item">
+            <i class="fas fa-clock"></i>
+            <span>Stream Duration: <span id="streamDuration">Live</span></span>
+        </div>
+    </div>
+    
+    <!-- Live chat -->
+    <div class="live-chat">
+        <h4><i class="fas fa-comments"></i> Live Chat</h4>
+        <div id="chatMessages" class="chat-messages"></div>
+        <div class="chat-input">
+            <input type="text" id="messageInput" placeholder="Type a message..." maxlength="200">
+            <button onclick="sendMessage()" class="btn btn-primary">
+                <i class="fas fa-paper-plane"></i>
+            </button>
+        </div>
+    </div>
+</div>
+
+<style>
+.video-container {
+    position: relative;
+    margin-bottom: 1rem;
+}
+
+.stream-overlay {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    right: 10px;
+    background: rgba(0,0,0,0.7);
+    color: white;
+    padding: 1rem;
+    border-radius: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.stream-info {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.stream-info span {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.9rem;
+}
+
+.viewer-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.viewer-actions button {
+    padding: 0.3rem 0.8rem;
+    font-size: 0.8rem;
+}
+
+.stream-stats {
+    display: flex;
+    gap: 2rem;
+    justify-content: center;
+    background: #f8f9fa;
+    padding: 1rem;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+}
+
+.stat-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: bold;
+}
+
+.live-chat {
+    background: #f8f9fa;
+    padding: 1rem;
+    border-radius: 8px;
+    max-height: 400px;
+}
+
+.chat-messages {
+    height: 250px;
+    overflow-y: auto;
+    background: white;
+    padding: 1rem;
+    border-radius: 6px;
+    margin-bottom: 1rem;
+    border: 1px solid #dee2e6;
+}
+
+.chat-input {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.chat-input input {
+    flex: 1;
+    padding: 0.5rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+.chat-message {
+    margin-bottom: 0.5rem;
+    padding: 0.3rem 0.5rem;
+    border-radius: 4px;
+    background: #e9ecef;
+}
+
+.chat-message .username {
+    font-weight: bold;
+    color: #007bff;
+}
+
+.tip-notification {
+    background: #d4edda;
+    border: 1px solid #c3e6cb;
+    color: #155724;
+    padding: 0.5rem;
+    border-radius: 4px;
+    margin-bottom: 0.5rem;
+    text-align: center;
+}
+
+@media (max-width: 768px) {
+    .stream-overlay {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .stream-info {
+        justify-content: center;
+    }
+    
+    .viewer-actions {
+        justify-content: center;
+    }
+    
+    .stream-stats {
+        flex-direction: column;
+        gap: 1rem;
+    }
+}
+</style>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+<script>
+class HQStreamViewer {
+    constructor(streamId) {
+        this.streamId = streamId;
+        this.socket = io();
+        this.peer = null;
+        this.setupViewer();
+        this.joinStream();
+    }
+    
+    setupViewer() {
+        // Setup WebRTC peer connection
+        this.peer = new RTCPeerConnection({
+            iceServers: [{urls: 'stun:stun.l.google.com:19302'}]
+        });
+        
+        // Handle incoming stream
+        this.peer.ontrack = (event) => {
+            const remoteVideo = document.getElementById('remoteVideo');
+            if (remoteVideo) {
+                remoteVideo.srcObject = event.streams[0];
+            }
+        };
+        
+        // Socket event listeners
+        this.socket.on('stream_data', (data) => {
+            this.handleStreamData(data);
+        });
+        
+        this.socket.on('viewer_update', (data) => {
+            document.getElementById('viewerCount').textContent = data.count;
+            document.getElementById('totalViewers').textContent = data.count;
+        });
+        
+        this.socket.on('earnings_update', (data) => {
+            document.getElementById('streamerEarnings').textContent = data.earnings;
+        });
+        
+        this.socket.on('chat_message', (data) => {
+            this.addChatMessage(data.username, data.message);
+        });
+        
+        this.socket.on('tip_notification', (data) => {
+            this.showTipNotification(data);
+        });
+    }
+    
+    joinStream() {
+        this.socket.emit('join_stream', {
+            stream_id: this.streamId,
+            user_type: 'viewer'
+        });
+    }
+    
+    handleStreamData(data) {
+        // Handle WebRTC signaling data
+        if (data.type === 'offer') {
+            this.peer.setRemoteDescription(new RTCSessionDescription(data))
+                .then(() => this.peer.createAnswer())
+                .then(answer => this.peer.setLocalDescription(answer))
+                .then(() => {
+                    this.socket.emit('stream_answer', {
+                        stream_id: this.streamId,
+                        answer: this.peer.localDescription
+                    });
+                });
+        }
+    }
+    
+    addChatMessage(username, message) {
+        const chatMessages = document.getElementById('chatMessages');
+        const messageDiv = document.createElement('div');
+        messageDiv.className = 'chat-message';
+        messageDiv.innerHTML = `
+            <span class="username">${username}:</span>
+            <span class="message">${message}</span>
+        `;
+        chatMessages.appendChild(messageDiv);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+    
+    showTipNotification(data) {
+        const chatMessages = document.getElementById('chatMessages');
+        const tipDiv = document.createElement('div');
+        tipDiv.className = 'tip-notification';
+        tipDiv.innerHTML = `
+            <i class="fas fa-gem"></i>
+            ${data.tipper} tipped KSh ${data.amount}!
+        `;
+        chatMessages.appendChild(tipDiv);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+}
+
+// Initialize viewer
+const streamId = {{stream_id}};
+const viewer = new HQStreamViewer(streamId);
+
+// Global functions
+function tipStreamer(amount) {
+    if (confirm(`Send KSh ${amount} tip to streamer?`)) {
+        fetch('/tip_streamer', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                amount: amount,
+                room_id: '{{stream[1]}}'
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(`Tip sent! Streamer received KSh ${data.streamer_amount}`);
+                // Update balance display if exists
+                if (window.updateBalance) {
+                    window.updateBalance();
+                }
+            } else {
+                alert('Error: ' + data.message);
+            }
+        })
+        .catch(error => {
+            alert('Error sending tip: ' + error.message);
+        });
+    }
+}
+
+function sendMessage() {
+    const messageInput = document.getElementById('messageInput');
+    const message = messageInput.value.trim();
+    
+    if (message) {
+        viewer.socket.emit('chat_message', {
+            stream_id: streamId,
+            message: message
+        });
+        messageInput.value = '';
+    }
+}
+
+// Allow Enter key to send message
+document.getElementById('messageInput').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        sendMessage();
+    }
+});
+
+// Update stream duration
+function updateStreamDuration() {
+    const startTime = new Date('{{stream[6]}}');
+    const now = new Date();
+    const duration = Math.floor((now - startTime) / 60000); // minutes
+    
+    const hours = Math.floor(duration / 60);
+    const minutes = duration % 60;
+    const timeString = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+    
+    document.getElementById('streamDuration').textContent = timeString;
+}
+
+// Update duration every minute
+setInterval(updateStreamDuration, 60000);
+updateStreamDuration(); // Initial call
+
+// Cleanup on page unload
+window.addEventListener('beforeunload', function() {
+    if (viewer.socket) {
+        viewer.socket.emit('leave_stream', {stream_id: streamId});
+    }
+});
+</script>
+{% endblock %}

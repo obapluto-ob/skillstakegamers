@@ -1,75 +1,342 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="card">
-    <h1>🎮 Match Lobby</h1>
-    <div class="match-card">
-        <div class="match-header">
-            <div><strong>{{ match[1].upper() }}</strong> - {{ match[8] or 'Standard' }}</div>
-            <span class="status-badge">Waiting for Confirmation</span>
+<div class="card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none;">
+    <h1><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M7.5 6.5C7.5 8.981 9.519 11 12 11s4.5-2.019 4.5-4.5S14.481 2 12 2 7.5 4.019 7.5 6.5zM20 21h1v1H3v-1h1c0-3.859 3.141-7 7-7h2c3.859 0 7 3.141 7 7z"/></svg> GAME LOBBY</h1>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1rem;">
+        <div>
+            <h3>{{ match[1].replace('_', ' ').upper() }}</h3>
+            <p>{{ match[8] or 'Standard Mode' }}</p>
         </div>
-        
-        <div style="margin: 1rem 0;">
-            <strong>{{ p1_name }}</strong> VS <strong>{{ p2_name }}</strong><br>
-            <small>Bet Amount: KSh {{ "%.0f"|format(match[4]) }} each</small><br>
-            <small>Total Pot: KSh {{ "%.0f"|format(match[5]) }}</small>
-        </div>
-        
-        <div style="text-align: center; margin: 2rem 0;">
-            <h3>Both players must confirm they are ready to start</h3>
-            
-            <div style="display: flex; justify-content: space-around; margin: 2rem 0;">
-                <div style="text-align: center;">
-                    <div><strong>{{ p1_name }}</strong></div>
-                    {% if p1_confirmed %}
-                        <div style="color: #28a745; font-size: 2rem;">✓ Ready</div>
-                    {% else %}
-                        <div style="color: #ffc107; font-size: 2rem;">⏳ Waiting</div>
-                    {% endif %}
-                </div>
-                
-                <div style="text-align: center;">
-                    <div><strong>{{ p2_name or 'Player 2' }}</strong></div>
-                    {% if p2_confirmed %}
-                        <div style="color: #28a745; font-size: 2rem;">✓ Ready</div>
-                    {% else %}
-                        <div style="color: #ffc107; font-size: 2rem;">⏳ Waiting</div>
-                    {% endif %}
-                </div>
+        <div style="text-align: right;">
+            <div style="background: rgba(255,255,255,0.2); padding: 0.5rem 1rem; border-radius: 20px; margin-bottom: 0.5rem;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1.41 16.09V20h-2.67v-1.93c-1.71-.36-3.16-1.46-3.27-3.4h1.96c.1 1.05.82 1.87 2.65 1.87 1.96 0 2.4-.98 2.4-1.59 0-.83-.44-1.61-2.67-2.14-2.48-.6-4.18-1.62-4.18-3.67 0-1.72 1.39-2.84 3.11-3.21V4h2.67v1.95c1.86.45 2.79 1.86 2.85 3.39H14.3c-.05-1.11-.64-1.87-2.22-1.87-1.5 0-2.4.68-2.4 1.64 0 .84.65 1.39 2.67 1.91s4.18 1.39 4.18 3.91c-.01 1.83-1.38 2.83-3.12 3.16z"/></svg> KSh {{ match[4] }} each
             </div>
-            
-            {% if not user_confirmed %}
-                <form method="POST" action="{{ url_for('confirm_ready', match_id=match[0]) }}">
-                    <button type="submit" class="btn btn-success" style="font-size: 1.2rem; padding: 1rem 2rem;">
-                        I'm Ready to Play!
-                    </button>
-                </form>
-            {% else %}
-                <div style="color: #28a745; font-size: 1.2rem;">
-                    ✓ You confirmed! Waiting for opponent...
-                </div>
-            {% endif %}
-            
-            {% if p1_confirmed and p2_confirmed %}
-                <div style="color: #28a745; font-size: 1.5rem; margin-top: 1rem;">
-                    🎉 Match is now ACTIVE! Good luck!
-                </div>
-                <a href="{{ url_for('matches') }}" class="btn btn-primary">Go to Active Matches</a>
-            {% endif %}
-        </div>
-        
-        <div style="text-align: center;">
-            <a href="{{ url_for('match_chat', match_id=match[0]) }}" class="btn btn-secondary">Chat with Opponent</a>
+            <div style="background: rgba(255,255,255,0.2); padding: 0.5rem 1rem; border-radius: 20px;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M7 3V1h10v2h5v6l-2 8H4l-2-8V3h5zm8 2H9v1h6V5zm-6 3h6v1H9V8zm6 3H9v1h6v-1z"/></svg> Winner gets KSh {{ (match[4] * 1.68)|round|int }}
+            </div>
         </div>
     </div>
 </div>
 
-<script>
-// Auto-refresh every 3 seconds to check if opponent confirmed
-setTimeout(function() {
-    {% if not (p1_confirmed and p2_confirmed) %}
-        location.reload();
+<div class="card" style="background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%); color: #333; border: none;">
+    <h2><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M16 4c0-1.11.89-2 2-2s2 .89 2 2-.89 2-2 2-2-.89-2-2zm4 18v-6h2.5l-2.54-7.63A1.5 1.5 0 0 0 18.54 8H16c-.8 0-1.54.37-2.01.99L12 11l-1.99-2.01A2.5 2.5 0 0 0 8 8H5.46c-.8 0-1.49.59-1.42 1.37L6.5 16H9v6h2v-6h2v6h2zM12.5 11.5c.83 0 1.5-.67 1.5-1.5s-.67-1.5-1.5-1.5S11 9.17 11 10s.67 1.5 1.5 1.5z"/></svg> BATTLE ARENA</h2>
+    <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem 0;">
+        <div style="text-align: center; flex: 1;">
+            <div style="width: 80px; height: 80px; background: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 0.5rem;"><svg width="40" height="40" viewBox="0 0 24 24" fill="#333"><path d="M7.5 6.5C7.5 8.981 9.519 11 12 11s4.5-2.019 4.5-4.5S14.481 2 12 2 7.5 4.019 7.5 6.5zM20 21h1v1H3v-1h1c0-3.859 3.141-7 7-7h2c3.859 0 7 3.141 7 7z"/></svg></div>
+            <h4>{{ match[10] if match[10] else 'Player 1' }}</h4>
+            <span style="background: #28a745; color: white; padding: 0.2rem 0.8rem; border-radius: 15px; font-size: 0.8rem;">PLAYER 1</span>
+        </div>
+        <div style="text-align: center; color: #ff6b6b;"><svg width="40" height="40" viewBox="0 0 24 24" fill="currentColor"><path d="M6.92 5L12 10.07 17.08 5 19 6.93 13.93 12 19 17.07 17.08 19 12 13.93 6.92 19 5 17.07 10.07 12 5 6.93 6.92 5z"/></svg></div>
+        <div style="text-align: center; flex: 1;">
+            <div style="width: 80px; height: 80px; background: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 0.5rem;"><svg width="40" height="40" viewBox="0 0 24 24" fill="#333"><path d="M7.5 6.5C7.5 8.981 9.519 11 12 11s4.5-2.019 4.5-4.5S14.481 2 12 2 7.5 4.019 7.5 6.5zM20 21h1v1H3v-1h1c0-3.859 3.141-7 7-7h2c3.859 0 7 3.141 7 7z"/></svg></div>
+            <h4>{{ match[11] if match[11] else 'Waiting...' }}</h4>
+            <span style="background: #dc3545; color: white; padding: 0.2rem 0.8rem; border-radius: 15px; font-size: 0.8rem;">PLAYER 2</span>
+        </div>
+    </div>
+</div>
+
+{% if match[7] == 'active' and match[3] %}
+<div class="card" style="background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%); color: #333; border: none;">
+    <h2><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg> ROOM SETUP</h2>
+    
+    {% if not lobby %}
+    <div class="setup-steps">
+        <div class="step-card" style="background: white; padding: 1rem; border-radius: 10px; margin-bottom: 1rem; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+            <h4><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17 2H7c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H7V6h10v10z"/></svg> Step 1: Open {{ match[1].replace('_', ' ').title() }} on your device</h4>
+            <p>Launch the game app on your mobile device or PC</p>
+        </div>
+        
+        <div class="step-card" style="background: white; padding: 1rem; border-radius: 10px; margin-bottom: 1rem; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+            <h4><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg> Step 2: Create a Custom Room</h4>
+            <p>Go to multiplayer → Create Room → Set to {{ match[8] or 'Standard' }} mode</p>
+        </div>
+        
+        <div class="step-card" style="background: white; padding: 1rem; border-radius: 10px; margin-bottom: 1rem; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+            <h4><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"/></svg> Step 3: Share Room Details</h4>
+            <div style="background: #d4edda; border: 1px solid #c3e6cb; border-radius: 8px; padding: 1rem; margin: 0.5rem 0;">
+                <p style="margin: 0; font-size: 0.9rem; color: #155724;"><strong>✅ SIMPLE:</strong> Just create an open room (no password needed) and share the Room ID with your opponent.</p>
+            </div>
+            <div style="margin-bottom: 1rem;">
+                <label style="display: block; margin-bottom: 0.5rem; font-weight: bold; color: #333;">🎮 Room ID (Required):</label>
+                <input type="text" id="roomCode" placeholder="e.g. ABC123, 456789, ROOM01" style="width: 100%; padding: 0.8rem; border: 2px solid #007bff; border-radius: 8px; font-size: 1rem; font-weight: bold;">
+                <small style="color: #007bff; font-size: 0.8rem;">📋 Copy this from your game's "Create Room" screen</small>
+            </div>
+            <button onclick="shareRoom()" class="btn" style="width: 100%; background: linear-gradient(135deg, #667eea, #764ba2); color: white; border: none; padding: 1rem; border-radius: 8px; font-weight: bold; font-size: 1rem;"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="margin-right: 0.5rem;"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z"/></svg>SHARE ROOM WITH OPPONENT</button>
+        </div>
+    </div>
+    {% else %}
+    <div class="room-shared" style="text-align: center; padding: 2rem;">
+        <div style="background: white; padding: 2rem; border-radius: 15px; box-shadow: 0 4px 20px rgba(0,0,0,0.1);">
+            <h3 style="color: #28a745; margin-bottom: 1rem;"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg> ROOM SHARED!</h3>
+            <div style="background: #f8f9fa; padding: 1.5rem; border-radius: 10px; margin: 1rem 0; border-left: 4px solid #28a745;">
+                <div style="display: flex; align-items: center; margin-bottom: 1rem;">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="#28a745" style="margin-right: 0.5rem;"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/></svg>
+                    <span style="font-size: 1.2rem; font-weight: bold; color: #28a745;">Room ID: {{ lobby[2] }}</span>
+                </div>
+                <div style="display: flex; align-items: center; margin-bottom: 1rem;">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="#28a745" style="margin-right: 0.5rem;"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+                    <span style="font-size: 1.1rem; font-weight: bold; color: #28a745;">Open Room (No Password)</span>
+                </div>
+                <div style="background: #e7f3ff; padding: 0.8rem; border-radius: 6px; border-left: 3px solid #007bff;">
+                    <p style="margin: 0; font-size: 0.9rem; color: #0056b3;">📱 <strong>Instructions for opponent:</strong> Open {{ match[1].replace('_', ' ').title() }} → Multiplayer → Join Room → Enter Room ID</p>
+                </div>
+            </div>
+            <div style="display: flex; gap: 0.5rem; justify-content: center;">
+                <button onclick="copyRoomDetails()" class="btn" style="background: #17a2b8; color: white; border: none; padding: 0.8rem 1.5rem; border-radius: 8px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="margin-right: 0.5rem;"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>COPY</button>
+                <button onclick="openChat()" class="btn" style="background: #28a745; color: white; border: none; padding: 0.8rem 1.5rem; border-radius: 8px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="margin-right: 0.5rem;"><path d="M20 2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h4v3c0 .6.4 1 1 1h.5c.2 0 .5-.1.7-.3L14.6 18H20c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>CHAT</button>
+            </div>
+        </div>
+    </div>
     {% endif %}
-}, 3000);
+</div>
+
+<div class="card" style="background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%); color: #333; border: none;">
+    <h2><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg> MATCH RULES</h2>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem;">
+        <div style="background: white; padding: 1rem; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+            <h4 style="color: #28a745;"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="margin-right: 0.5rem;"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>TO WIN</h4>
+            <ul style="margin: 0; padding-left: 1.2rem;">
+                <li>Join room using shared Room ID</li>
+                <li>Play match fairly and honestly</li>
+                <li>Take clear screenshot of victory screen</li>
+                <li>Submit screenshot proof to claim win</li>
+                <li>Winner gets KSh {{ (match[4] * 1.68)|round|int }}</li>
+            </ul>
+        </div>
+        <div style="background: white; padding: 1rem; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+            <h4 style="color: #dc3545;"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="margin-right: 0.5rem;"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>PENALTIES</h4>
+            <ul style="margin: 0; padding-left: 1.2rem;">
+                <li><strong>1st fake screenshot:</strong> Warning only</li>
+                <li><strong>2nd fake screenshot:</strong> KSh 50 penalty + opponent wins</li>
+                <li><strong>3rd fake screenshot:</strong> Account ban</li>
+                <li><strong>No-show/Forfeit:</strong> Opponent wins automatically</li>
+                <li><strong>Wrong game screenshot:</strong> Same penalties as fake</li>
+            </ul>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+
+<div class="card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none;">
+    <h2><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M7 2v11h3v9l7-12h-4l4-8z"/></svg> QUICK ACTIONS</h2>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-top: 1rem;">
+        <a href="/matches" class="btn" style="background: rgba(255,255,255,0.2); color: white; border: none; padding: 1rem; border-radius: 10px; text-decoration: none; text-align: center; font-weight: bold;">← BACK TO MATCHES</a>
+        
+        {% if match[7] == 'completed' %}
+            <div class="btn" style="background: rgba(40,167,69,0.3); color: white; border: none; padding: 1rem; border-radius: 10px; text-align: center; opacity: 0.7;"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="margin-right: 0.5rem;"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>MATCH COMPLETED</div>
+        {% elif match[11] and match[7] == 'active' %}
+            <a href="/submit_screenshot/{{ match[0] }}" class="btn" style="background: linear-gradient(135deg, #28a745, #20c997); color: white; border: none; padding: 1rem; border-radius: 10px; text-decoration: none; text-align: center; font-weight: bold;"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="margin-right: 0.5rem;"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>SUBMIT PROOF</a>
+        {% endif %}
+        
+        <button onclick="openChat()" class="btn" style="background: linear-gradient(135deg, #17a2b8, #138496); color: white; border: none; padding: 1rem; border-radius: 10px; font-weight: bold;"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="margin-right: 0.5rem;"><path d="M20 2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h4v3c0 .6.4 1 1 1h.5c.2 0 .5-.1.7-.3L14.6 18H20c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>LIVE CHAT</button>
+        <button onclick="refreshLobby()" class="btn" style="background: rgba(255,255,255,0.2); color: white; border: none; padding: 1rem; border-radius: 10px; font-weight: bold;"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="margin-right: 0.5rem;"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>REFRESH</button>
+    </div>
+</div>
+
+<script>
+function shareRoom() {
+    const roomCode = document.getElementById('roomCode').value.trim();
+    
+    if (!roomCode) {
+        showNotification('Please enter Room ID from your game!', 'error');
+        document.getElementById('roomCode').focus();
+        return;
+    }
+    
+    // Validate room code format
+    if (roomCode.length < 2) {
+        showNotification('Room ID seems too short. Please check and try again.', 'error');
+        document.getElementById('roomCode').focus();
+        return;
+    }
+    
+    // Check if user entered phone number as room ID
+    if (roomCode.includes('-') && roomCode.length > 10) {
+        showNotification('⚠️ Room ID should be short (like ABC123 or 456789). Phone numbers are not Room IDs.', 'error');
+        document.getElementById('roomCode').focus();
+        return;
+    }
+    
+    // Show loading
+    const btn = event.target;
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="margin-right: 0.5rem; animation: spin 1s linear infinite;"><path d="M12 6v3l4-4-4-4v3c-4.42 0-8 3.58-8 8 0 1.57.46 3.03 1.24 4.26L6.7 14.8c-.45-.83-.7-1.79-.7-2.8 0-3.31 2.69-6 6-6z"/></svg>SHARING ROOM...';
+    btn.disabled = true;
+    
+    fetch('/create_lobby', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            match_id: {{ match[0] }},
+            lobby_code: roomCode,
+            lobby_password: null
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification(data.message, 'success');
+            setTimeout(() => location.reload(), 1500);
+        } else {
+            showNotification('Error: ' + data.error, 'error');
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('Connection error! Please try again.', 'error');
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    });
+}
+
+function copyRoomDetails() {
+    const roomId = '{{ lobby[2] if lobby else '' }}';
+    
+    let text = `🎮 GAME ROOM INVITATION\n\n`;
+    text += `Game: {{ match[1].replace('_', ' ').title() }}\n`;
+    text += `Room ID: ${roomId}\n`;
+    text += `Bet: KSh {{ match[4] }} each\n`;
+    text += `Winner gets: KSh {{ (match[4] * 1.68)|round|int }}\n\n`;
+    
+    text += `📱 How to join:\n`;
+    text += `1. Open {{ match[1].replace('_', ' ').title() }}\n`;
+    text += `2. Go to Multiplayer → Join Room\n`;
+    text += `3. Enter Room ID: ${roomId}\n\n`;
+    text += `Let's play! 🚀`;
+    
+    navigator.clipboard.writeText(text).then(() => {
+        showNotification('Room details copied to clipboard!', 'success');
+    }).catch(() => {
+        showNotification('Copy failed. Please copy manually.', 'error');
+    });
+}
+
+function openChat() {
+    window.open('/match_chat/{{ match[0] }}', '_blank', 'width=400,height=600,scrollbars=yes,resizable=yes');
+}
+
+function refreshLobby() {
+    const btn = event.target;
+    btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="margin-right: 0.5rem;"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>REFRESHING...';
+    setTimeout(() => {
+        location.reload();
+    }, 500);
+}
+
+function showNotification(message, type) {
+    const notification = document.createElement('div');
+    const colors = {
+        'success': 'linear-gradient(135deg, #28a745, #20c997)',
+        'error': 'linear-gradient(135deg, #dc3545, #c82333)',
+        'info': 'linear-gradient(135deg, #17a2b8, #138496)'
+    };
+    
+    notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 1rem 1.5rem;
+        border-radius: 10px;
+        color: white;
+        font-weight: bold;
+        z-index: 1000;
+        background: ${colors[type]};
+        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        animation: slideIn 0.3s ease;
+        max-width: 300px;
+    `;
+    
+    notification.textContent = message;
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        notification.style.animation = 'slideOut 0.3s ease';
+        setTimeout(() => notification.remove(), 300);
+    }, 3000);
+}
+
+// Add CSS animations
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes slideIn {
+        from { transform: translateX(100%); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
+    }
+    @keyframes slideOut {
+        from { transform: translateX(0); opacity: 1; }
+        to { transform: translateX(100%); opacity: 0; }
+    }
+    @keyframes spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+    }
+    .btn:hover {
+        transform: translateY(-2px);
+        transition: all 0.3s ease;
+    }
+    input:focus {
+        outline: none;
+        border-color: #007bff;
+        box-shadow: 0 0 0 3px rgba(0,123,255,0.25);
+    }
+`;
+document.head.appendChild(style);
+
+// Auto-refresh every 30 seconds
+setInterval(() => {
+    if (document.visibilityState === 'visible') {
+        fetch(window.location.href)
+        .then(response => response.text())
+        .then(html => {
+            // Check if opponent joined
+            if (html.includes('Waiting...') !== document.body.innerHTML.includes('Waiting...')) {
+                showNotification('Opponent status changed! Refreshing...', 'info');
+                setTimeout(() => location.reload(), 1000);
+            }
+        });
+    }
+}, 30000);
 </script>
+
+<style>
+.card {
+    margin-bottom: 1.5rem;
+    border-radius: 15px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    overflow: hidden;
+}
+
+.step-card:hover {
+    transform: translateY(-2px);
+    transition: all 0.3s ease;
+}
+
+.room-shared {
+    animation: fadeIn 0.5s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 768px) {
+    .card {
+        margin: 0.5rem;
+        padding: 1rem;
+    }
+    
+    .step-card {
+        margin-bottom: 0.5rem;
+    }
+    
+    input {
+        font-size: 16px; /* Prevent zoom on iOS */
+    }
+}
+</style>
 {% endblock %}

@@ -1,23 +1,23 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="card">
-    <h1>💬 Support Chat</h1>
-    <p>Get instant help from our AI assistant</p>
+<div class="card" style="background: linear-gradient(135deg, #17a2b8, #138496); color: white; border: none;">
+    <h1>AI SUPPORT SYSTEM</h1>
+    <p>Advanced neural network assistant - Instant solutions 24/7</p>
 </div>
 
 <div class="card">
     <div id="chatMessages" style="height: 400px; overflow-y: auto; border: 1px solid rgba(255,255,255,0.2); padding: 1rem; margin-bottom: 1rem; background: rgba(0,0,0,0.2);">
         <div class="bot-message">
-            <strong>GameBot:</strong> Hi {{ session.username }}! 👋 I'm here to help you with:
+            <strong>SKILLSTATE AI:</strong> SYSTEM INITIALIZED. USER {{ session.username }} AUTHENTICATED.
             <ul style="margin: 0.5rem 0; padding-left: 1.5rem;">
-                <li>Account & Balance Issues</li>
-                <li>How to Play & Rules</li>
-                <li>Deposits & Withdrawals</li>
-                <li>Tournament Information</li>
-                <li>Technical Problems</li>
+                <li>ACCOUNT MANAGEMENT PROTOCOLS</li>
+                <li>FINANCIAL TRANSACTION PROCESSING</li>
+                <li>MATCH COORDINATION SYSTEMS</li>
+                <li>TOURNAMENT INFRASTRUCTURE</li>
+                <li>TECHNICAL DIAGNOSTICS</li>
             </ul>
-            What can I help you with today?
+            AWAITING USER INPUT. PROCESSING CAPABILITIES: UNLIMITED.
         </div>
     </div>
     
@@ -32,11 +32,11 @@
     <div style="margin-top: 1rem;">
         <h3>Quick Help:</h3>
         <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
-            <button onclick="quickMessage('How do I deposit money?')" class="btn btn-secondary">💰 Deposit Help</button>
-            <button onclick="quickMessage('How do I withdraw money?')" class="btn btn-secondary">💸 Withdrawal Help</button>
-            <button onclick="quickMessage('How do tournaments work?')" class="btn btn-secondary">🏆 Tournament Help</button>
-            <button onclick="quickMessage('My balance is wrong')" class="btn btn-secondary">⚠️ Balance Issue</button>
-            <button onclick="quickMessage('How do I invite friends?')" class="btn btn-secondary">👥 Referral Help</button>
+            <button onclick="quickMessage('How do I deposit money?')" class="btn btn-secondary">DEPOSIT PROTOCOL</button>
+            <button onclick="quickMessage('How do I withdraw money?')" class="btn btn-secondary">WITHDRAWAL SYSTEM</button>
+            <button onclick="quickMessage('How do tournaments work?')" class="btn btn-secondary">TOURNAMENT MATRIX</button>
+            <button onclick="quickMessage('My balance is wrong')" class="btn btn-secondary">BALANCE AUDIT</button>
+            <button onclick="quickMessage('How do I invite friends?')" class="btn btn-secondary">REFERRAL ENGINE</button>
         </div>
     </div>
 </div>
@@ -162,7 +162,7 @@ function addMessage(sender, message) {
         background: ${sender === 'user' ? 'rgba(0,255,136,0.1)' : 'rgba(255,255,255,0.1)'};
     `;
     
-    messageDiv.innerHTML = `<strong>${sender === 'user' ? 'You' : 'GameBot'}:</strong> ${message.replace(/\\n/g, '<br>')}`;
+    messageDiv.innerHTML = `<strong>${sender === 'user' ? 'USER' : 'SKILLSTATE AI'}:</strong> ${message.replace(/\\n/g, '<br>')}`;
     chatDiv.appendChild(messageDiv);
     chatDiv.scrollTop = chatDiv.scrollHeight;
 }

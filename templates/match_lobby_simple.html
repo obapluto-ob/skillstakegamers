@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card">
+    <h1>🎮 Match Lobby</h1>
+    <p><strong>Game:</strong> {{ match[1].upper() }} | <strong>Bet:</strong> KSh {{ match[4] }}</p>
+    <p><strong>Players:</strong> {{ match[10] }} vs {{ match[11] if match[11] else 'Waiting...' }}</p>
+</div>
+
+{% if match[7] == 'active' and match[3] %}
+<div class="card">
+    <h2>🎯 Quick Setup</h2>
+    
+    {% if not lobby %}
+    <div class="setup-form">
+        <p>1. Create room in {{ match[1].replace('_', ' ').title() }}</p>
+        <p>2. Copy the Room ID and paste below:</p>
+        
+        <input type="text" id="roomCode" placeholder="Paste Room ID here" style="width: 100%; padding: 0.5rem; margin: 0.5rem 0;">
+        <input type="text" id="roomPass" placeholder="Password (optional)" style="width: 100%; padding: 0.5rem; margin: 0.5rem 0;">
+        
+        <button onclick="createRoom()" class="btn btn-success">Share Room with Opponent</button>
+    </div>
+    {% else %}
+    <div class="room-ready">
+        <h3>✅ Room Created!</h3>
+        <p><strong>Room ID:</strong> {{ lobby[2] }}</p>
+        {% if lobby[3] %}<p><strong>Password:</strong> {{ lobby[3] }}</p>{% endif %}
+        
+        <button onclick="copyRoom()" class="btn btn-info">Copy Room Details</button>
+        <a href="/match_chat/{{ match[0] }}" class="btn btn-primary">Chat with Opponent</a>
+    </div>
+    {% endif %}
+</div>
+
+<div class="card">
+    <h2>📋 Game Instructions</h2>
+    <ol>
+        <li>Both players join the room using ID above</li>
+        <li>Play your match</li>
+        <li>Winner submits screenshot first</li>
+        <li>Get paid instantly!</li>
+    </ol>
+</div>
+{% endif %}
+
+<div class="card">
+    <a href="/matches" class="btn btn-secondary">← Back to Matches</a>
+    {% if match[11] and match[7] == 'active' %}
+        <a href="/submit_screenshot/{{ match[0] }}" class="btn btn-success">📸 Submit Screenshot</a>
+    {% endif %}
+</div>
+
+<script>
+function createRoom() {
+    const roomCode = document.getElementById('roomCode').value.trim();
+    const roomPass = document.getElementById('roomPass').value.trim();
+    
+    if (!roomCode) {
+        alert('Please enter Room ID');
+        return;
+    }
+    
+    fetch('/create_lobby', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            match_id: {{ match[0] }},
+            lobby_code: roomCode,
+            lobby_password: roomPass
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Error: ' + data.error);
+        }
+    });
+}
+
+function copyRoom() {
+    const text = `Room ID: {{ lobby[2] if lobby else '' }}{% if lobby and lobby[3] %}\nPassword: {{ lobby[3] }}{% endif %}`;
+    navigator.clipboard.writeText(text).then(() => {
+        alert('Room details copied!');
+    });
+}
+</script>
+{% endblock %}

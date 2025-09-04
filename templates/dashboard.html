@@ -1,49 +1,66 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="card">
-    <h1>Welcome back, {{ session.username }}!</h1>
-    <p>Ready to compete and win some money?</p>
+<div class="card" style="background: linear-gradient(135deg, rgba(0,255,136,0.2), rgba(102,126,234,0.2)); border: 2px solid #00ff88; text-align: center;">
+    <h1 style="color: #00ff88; font-size: 2.5rem; margin-bottom: 0.5rem;">SkillStake</h1>
+    <h2 style="color: white; margin-bottom: 1rem;">Welcome back, {{ session.username }}!</h2>
+    <p style="font-size: 1.2rem; color: #ffc107;">Transform your gaming skills into real money. Every match is an opportunity.</p>
 </div>
 
 <!-- Motivational Guide -->
 <div class="card" style="background: linear-gradient(135deg, rgba(0,255,136,0.1), rgba(102,126,234,0.1)); border-left: 4px solid #00ff88;">
-    <h3 style="color: #00ff88; margin-bottom: 1rem;">💡 Your Path to Success</h3>
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem;">
-        <div style="background: rgba(255,255,255,0.1); padding: 1rem; border-radius: 8px;">
-            <h4 style="color: #ffc107;">1. Start Small, Win Big</h4>
-            <p>Begin with KSh 50-100 matches to build confidence and skills. Every pro started here!</p>
+    <h3 style="color: #00ff88; margin-bottom: 1rem; font-size: 1.8rem;"><img src="/static/icons/trophy.svg" class="icon icon-trophy" alt="Trophy"> Your Path to Domination</h3>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem;">
+        <div style="background: linear-gradient(135deg, rgba(255,193,7,0.2), rgba(255,193,7,0.1)); padding: 1.5rem; border-radius: 12px; border-left: 4px solid #ffc107;">
+            <h4 style="color: #ffc107; font-size: 1.3rem;">⚡ Master Your Craft</h4>
+            <p style="font-weight: 500;">Start with KSh 50-100 matches. Build your reputation, sharpen your skills, and establish your dominance in the arena!</p>
         </div>
-        <div style="background: rgba(255,255,255,0.1); padding: 1rem; border-radius: 8px;">
-            <h4 style="color: #17a2b8;">2. Join Tournaments</h4>
-            <p>Tournaments offer bigger prizes! Entry fees are low but rewards are high. Check the Tournaments section.</p>
+        <div style="background: linear-gradient(135deg, rgba(23,162,184,0.2), rgba(23,162,184,0.1)); padding: 1.5rem; border-radius: 12px; border-left: 4px solid #17a2b8;">
+            <h4 style="color: #17a2b8; font-size: 1.3rem;">🏆 Conquer Tournaments</h4>
+            <p style="font-weight: 500;">Enter the big leagues! Tournaments are where legends are made. Low entry, massive rewards. Your skills deserve the spotlight!</p>
         </div>
-        <div style="background: rgba(255,255,255,0.1); padding: 1rem; border-radius: 8px;">
-            <h4 style="color: #28a745;">3. Invite Friends & Earn</h4>
-            <p>Get KSh 30 for each friend + 4% of their activity forever. Visit Earn section for your referral link.</p>
+        <div style="background: linear-gradient(135deg, rgba(40,167,69,0.2), rgba(40,167,69,0.1)); padding: 1.5rem; border-radius: 12px; border-left: 4px solid #28a745;">
+            <h4 style="color: #28a745; font-size: 1.3rem;">💰 Build Your Empire</h4>
+            <p style="font-weight: 500;">Recruit your squad! KSh 30 per friend + 4% lifetime earnings. Turn your network into your net worth!</p>
         </div>
     </div>
     <div style="margin-top: 1rem; padding: 1rem; background: rgba(255,193,7,0.1); border-radius: 8px; text-align: center;">
-        <strong style="color: #ffc107;">💰 Pro Tip:</strong> Consistent small wins beat risky big bets. Play smart, play often!
+        <strong style="color: #ffc107; font-size: 1.1rem;"><img src="/static/icons/money.svg" class="icon icon-money" alt="Money"> Champion's Mindset:</strong> Consistency breeds champions. Small victories compound into massive success. Play smart, dominate often!
     </div>
 </div>
 
-<div class="stats-grid">
+<div class="stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
     <div class="stat-card">
-        <div class="stat-number">KSh {{ "%.0f"|format(user[4]) }}</div>
+        <div class="stat-number">KSh {{ "%.0f"|format(stats.balance) }}</div>
         <div class="stat-label">Current Balance</div>
     </div>
     <div class="stat-card">
-        <div class="stat-number">{{ user[5] }}</div>
+        <div class="stat-number">{{ stats.wins }}</div>
         <div class="stat-label">Total Wins</div>
     </div>
     <div class="stat-card">
-        <div class="stat-number">{{ user[6] }}</div>
+        <div class="stat-number">{{ stats.losses }}</div>
         <div class="stat-label">Total Losses</div>
     </div>
     <div class="stat-card">
-        <div class="stat-number">KSh {{ "%.0f"|format(user[7]) }}</div>
+        <div class="stat-number">KSh {{ "%.0f"|format(stats.earnings) }}</div>
         <div class="stat-label">Total Earnings</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number">KSh {{ "%.0f"|format(stats.refunds) }}</div>
+        <div class="stat-label">Total Refunds</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number">KSh {{ "%.0f"|format(stats.rejected_withdrawals) }}</div>
+        <div class="stat-label">Rejected Withdrawals</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number">KSh {{ "%.0f"|format(stats.topups) }}</div>
+        <div class="stat-label">Total Top-ups</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number">KSh {{ "%.0f"|format(stats.accepted_withdrawals) }}</div>
+        <div class="stat-label">Paid Withdrawals</div>
     </div>
 </div>
 
@@ -51,10 +68,48 @@
     <h3>Quick Actions</h3>
     <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
         <a href="{{ url_for('games') }}" class="btn">Find Match</a>
+        <a href="{{ url_for('live_streams') }}" class="btn btn-danger">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                <circle cx="12" cy="12" r="8"/>
+            </svg>
+            LIVE
+        </a>
         <a href="{{ url_for('wallet') }}" class="btn btn-success">Add Funds</a>
         <a href="{{ url_for('matches') }}" class="btn btn-secondary">View Matches</a>
+
     </div>
 </div>
+
+<!-- User's Active Streams -->
+{% if user_streams %}
+<div class="card">
+    <h3><img src="/static/icons/live.svg" class="icon" alt="Live"> Your Active Streams</h3>
+    {% for stream in user_streams %}
+    <div class="match-card" style="border-left: 4px solid #dc3545;">
+        <div class="match-header">
+            <div><strong>{{ stream[4] }}</strong></div>
+            <span class="status-badge" style="background: #dc3545;"><img src="/static/icons/live.svg" class="icon icon-sm" alt="Live"> {{ stream[6].upper() }}</span>
+        </div>
+        <div style="margin: 1rem 0;">
+            <p>Stream Key: <code>{{ stream[7] }}</code></p>
+            <p>Viewers: {{ stream[5] }} | Type: {{ stream[8] or 'screen' }}</p>
+            {% if stream[2] %}
+                <p style="color: #ffc107;">🎮 Match Stream</p>
+            {% else %}
+                <p style="color: #00ff88;">🔴 Independent Stream (Earning from ads!)</p>
+            {% endif %}
+        </div>
+        <div style="display: flex; gap: 0.5rem;">
+            <a href="/watch_stream/{{ stream[0] }}" class="btn btn-primary">View Stream</a>
+            <button onclick="showStreamViewers({{ stream[0] }})" class="btn btn-secondary">View Audience</button>
+            <form method="POST" action="/stop_stream/{{ stream[0] }}" style="display: inline;">
+                <button type="submit" class="btn btn-danger">Stop Stream</button>
+            </form>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
 
 <div class="card">
     <h3>Recent Matches</h3>
@@ -92,7 +147,7 @@
                                     onclick="return confirm('Cancel this match? Both players will be refunded.')">Cancel</button>
                         </form>
                     {% elif match[7] == 'active' %}
-                        <a href="{{ url_for('match_result', match_id=match[0]) }}" class="btn btn-success">Submit Result</a>
+                        <a href="{{ url_for('submit_screenshot_page', match_id=match[0]) }}" class="btn btn-success">Submit Result</a>
                         <form method="POST" action="{{ url_for('cancel_match', match_id=match[0]) }}" style="display: inline; margin-left: 0.5rem;">
                             <button type="submit" class="btn btn-secondary" 
                                     onclick="return confirm('Cancel active match? This may affect your reputation.')">Cancel</button>
@@ -105,13 +160,34 @@
         {% endfor %}
     {% else %}
         <div style="text-align: center; padding: 2rem; background: rgba(255,255,255,0.05); border-radius: 10px;">
-            <h4 style="color: #00ff88; margin-bottom: 1rem;">🎮 Ready to Start Earning?</h4>
+            <h4 style="color: #00ff88; margin-bottom: 1rem;"><img src="/static/icons/gamepad.svg" class="icon icon-gamepad" alt="Games"> Ready to Start Earning?</h4>
             <p style="margin-bottom: 1.5rem;">No matches yet, but that's about to change! Your gaming skills can make you money.</p>
             <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
                 <a href="{{ url_for('games') }}" class="btn btn-success">Create Your First Match</a>
-                <a href="{{ url_for('tournaments') }}" class="btn btn-primary">Join Tournament</a>
+
             </div>
         </div>
     {% endif %}
 </div>
+<script>
+function showStreamViewers(streamId) {
+    fetch(`/stream_viewers/${streamId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.viewers) {
+                let viewerList = `Current Viewers (${data.count}):\n\n`;
+                data.viewers.forEach(viewer => {
+                    const joinTime = new Date(viewer.joined_at).toLocaleTimeString();
+                    viewerList += `• ${viewer.username} (joined ${joinTime})\n`;
+                });
+                alert(viewerList || 'No viewers currently watching');
+            } else {
+                alert('Unable to load viewer list');
+            }
+        })
+        .catch(err => {
+            alert('Error loading viewers');
+        });
+}
+</script>
 {% endblock %}

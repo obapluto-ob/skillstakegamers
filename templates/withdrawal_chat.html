@@ -1,0 +1,616 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card">
+    <h1>💬 Withdrawal Support Chat</h1>
+    
+    <!-- Withdrawal Details Card -->
+    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 1.5rem; border-radius: 12px; margin-bottom: 1rem; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 0.8rem; margin-bottom: 1rem;">
+            {% if 'M-Pesa' in withdrawal[4] %}
+            <div>
+                <div style="font-size: 0.9rem; opacity: 0.8;">👤 M-Pesa Name</div>
+                <div style="font-weight: bold; font-size: 1.1rem;">{{ withdrawal[4].split('to ')[1].split(' (')[0] if withdrawal[4] and 'to ' in withdrawal[4] and ' (' in withdrawal[4] else session.username.title() }}</div>
+            </div>
+            <div>
+                <div style="font-size: 0.9rem; opacity: 0.8;">💳 M-Pesa Number</div>
+                <div style="font-weight: bold; font-size: 1.1rem;">{{ withdrawal[4].split('(')[1].split(')')[0] if withdrawal[4] and '(' in withdrawal[4] and ')' in withdrawal[4] else 'N/A' }}</div>
+            </div>
+            {% elif 'PayPal' in withdrawal[4] %}
+            <div>
+                <div style="font-size: 0.9rem; opacity: 0.8;">📧 PayPal Email</div>
+                <div style="font-weight: bold; font-size: 1.1rem;">{{ withdrawal[4].split('to ')[1].split(' -')[0] if withdrawal[4] and 'to ' in withdrawal[4] else 'N/A' }}</div>
+            </div>
+            {% elif 'Crypto' in withdrawal[4] %}
+            <div>
+                <div style="font-size: 0.9rem; opacity: 0.8;">🪙 Crypto Address</div>
+                <div style="font-weight: bold; font-size: 1.1rem;">{{ withdrawal[4].split('to ')[1].split(' (')[0] if withdrawal[4] and 'to ' in withdrawal[4] and ' (' in withdrawal[4] else withdrawal[4].split('to ')[1].split(' -')[0] if withdrawal[4] and 'to ' in withdrawal[4] else 'N/A' }}</div>
+            </div>
+            <div>
+                <div style="font-size: 0.9rem; opacity: 0.8;">💰 Currency</div>
+                <div style="font-weight: bold; font-size: 1.1rem;">{{ withdrawal[4].split('(')[1].split(')')[0] if withdrawal[4] and '(' in withdrawal[4] and ')' in withdrawal[4] else 'USDT' }}</div>
+            </div>
+            {% elif 'Bank' in withdrawal[4] %}
+            <div>
+                <div style="font-size: 0.9rem; opacity: 0.8;">🏦 Bank Name</div>
+                <div style="font-weight: bold; font-size: 1.1rem;">{{ withdrawal[4].split('to ')[1].split(' -')[0] if withdrawal[4] and 'to ' in withdrawal[4] and ' -' in withdrawal[4] else 'N/A' }}</div>
+            </div>
+            <div>
+                <div style="font-size: 0.9rem; opacity: 0.8;">👤 Account Name</div>
+                <div style="font-weight: bold; font-size: 1.1rem;">{{ withdrawal[4].split(' - ')[1].split(' (')[0] if withdrawal[4] and ' - ' in withdrawal[4] and ' (' in withdrawal[4] else 'N/A' }}</div>
+            </div>
+            <div>
+                <div style="font-size: 0.9rem; opacity: 0.8;">🔢 Account Number</div>
+                <div style="font-weight: bold; font-size: 1.1rem;">{{ withdrawal[4].split('(')[1].split(')')[0] if withdrawal[4] and '(' in withdrawal[4] and ')' in withdrawal[4] else 'N/A' }}</div>
+            </div>
+            {% else %}
+            <div>
+                <div style="font-size: 0.9rem; opacity: 0.8;">📋 Details</div>
+                <div style="font-weight: bold; font-size: 1.1rem;">{{ withdrawal[4].split('to ')[1] if withdrawal[4] and 'to ' in withdrawal[4] else 'N/A' }}</div>
+            </div>
+            {% endif %}
+            <div>
+                <div style="font-size: 0.9rem; opacity: 0.8;">💰 Requested Amount</div>
+                <div style="font-weight: bold; font-size: 1.1rem;">KSh {{ "%.0f"|format(withdrawal[3]|float|abs) }}</div>
+            </div>
+            <div>
+                <div style="font-size: 0.9rem; opacity: 0.8;">💸 Total Fees</div>
+                <div style="font-weight: bold; font-size: 1.1rem;">
+                    {% if 'M-Pesa' in withdrawal[4] %}
+                        KSh {{ "%.0f"|format(25 + (withdrawal[3]|float|abs * 0.02)) }}
+                    {% elif 'PayPal' in withdrawal[4] %}
+                        KSh {{ "%.0f"|format((withdrawal[3]|float|abs * 0.055) + (withdrawal[3]|float|abs * 0.02)) }}
+                    {% elif 'Crypto' in withdrawal[4] %}
+                        KSh {{ "%.0f"|format((withdrawal[3]|float|abs * 0.035) + (withdrawal[3]|float|abs * 0.02)) }}
+                    {% elif 'Bank' in withdrawal[4] %}
+                        KSh {{ "%.0f"|format(50 + (withdrawal[3]|float|abs * 0.02)) }}
+                    {% else %}
+                        KSh 15
+                    {% endif %}
+                </div>
+            </div>
+            <div>
+                <div style="font-size: 0.9rem; opacity: 0.8;">✅ You'll Receive</div>
+                <div style="font-weight: bold; font-size: 1.2rem; color: #90EE90;">
+                    {% if 'M-Pesa' in withdrawal[4] %}
+                        KSh {{ "%.0f"|format((withdrawal[3]|float|abs) - (25 + (withdrawal[3]|float|abs * 0.02))) }}
+                    {% elif 'PayPal' in withdrawal[4] %}
+                        KSh {{ "%.0f"|format((withdrawal[3]|float|abs) - ((withdrawal[3]|float|abs * 0.055) + (withdrawal[3]|float|abs * 0.02))) }}
+                    {% elif 'Crypto' in withdrawal[4] %}
+                        KSh {{ "%.0f"|format((withdrawal[3]|float|abs) - ((withdrawal[3]|float|abs * 0.035) + (withdrawal[3]|float|abs * 0.02))) }}
+                    {% elif 'Bank' in withdrawal[4] %}
+                        KSh {{ "%.0f"|format((withdrawal[3]|float|abs) - (50 + (withdrawal[3]|float|abs * 0.02))) }}
+                    {% else %}
+                        KSh {{ "%.0f"|format((withdrawal[3]|float|abs) - 15) }}
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <div style="font-size: 0.85rem; opacity: 0.7; text-align: center; border-top: 1px solid rgba(255,255,255,0.2); padding-top: 0.5rem;">
+            Status: <span style="font-weight: bold;">{{ withdrawal[2].replace('_', ' ').title() }}</span>
+        </div>
+    </div>
+    
+    <div id="adminStatus" style="padding: 1rem; border-radius: 12px; margin: 1rem 0; border: 2px solid rgba(255,255,255,0.3); box-shadow: 0 4px 15px rgba(0,0,0,0.1); transition: all 0.3s ease;"></div>
+    
+    <div id="quickActions" style="display: flex; gap: 0.5rem; margin: 1rem 0;">
+        <button onclick="refreshStatus()" class="btn btn-info" style="flex: 1; border-radius: 20px; font-weight: bold; padding: 0.5rem; font-size: 0.9rem;">
+            🔄 Refresh
+        </button>
+        <button onclick="toggleNotifications()" class="btn btn-secondary" style="flex: 1; border-radius: 20px; font-weight: bold; padding: 0.5rem; font-size: 0.9rem;" id="notifyBtn">
+            🔔 Alerts
+        </button>
+    </div>
+</div>
+
+<div class="card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 1.5rem; margin-bottom: 1rem; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+    <div style="display: flex; align-items: center; margin-bottom: 1rem;">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" style="margin-right: 0.5rem;">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+        </svg>
+        <h3 style="margin: 0; font-weight: 600;">Support Guidelines</h3>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem;">
+        <div style="background: rgba(255,255,255,0.1); padding: 1rem; border-radius: 8px; backdrop-filter: blur(10px);">
+            <div style="display: flex; align-items: center; margin-bottom: 0.5rem;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="margin-right: 0.5rem;">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 15h2v2h-2v-2zm0-8h2v6h-2V9z"/>
+                </svg>
+                <strong>Response Time</strong>
+            </div>
+            <p style="margin: 0; font-size: 0.9rem; opacity: 0.9;">Admin responds within 24 hours during business days</p>
+        </div>
+        <div style="background: rgba(255,255,255,0.1); padding: 1rem; border-radius: 8px; backdrop-filter: blur(10px);">
+            <div style="display: flex; align-items: center; margin-bottom: 0.5rem;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="margin-right: 0.5rem;">
+                    <path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm3.5-9c.83 0 1.5-.67 1.5-1.5S16.33 8 15.5 8 14 8.67 14 9.5s.67 1.5 1.5 1.5zm-7 0c.83 0 1.5-.67 1.5-1.5S9.33 8 8.5 8 7 8.67 7 9.5 7.67 11 8.5 11zm3.5 6.5c2.33 0 4.31-1.46 5.11-3.5H6.89c.8 2.04 2.78 3.5 5.11 3.5z"/>
+                </svg>
+                <strong>Be Patient</strong>
+            </div>
+            <p style="margin: 0; font-size: 0.9rem; opacity: 0.9;">Respectful communication ensures faster assistance</p>
+        </div>
+        <div style="background: rgba(255,255,255,0.1); padding: 1rem; border-radius: 8px; backdrop-filter: blur(10px);">
+            <div style="display: flex; align-items: center; margin-bottom: 0.5rem;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="margin-right: 0.5rem;">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm5 11h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/>
+                </svg>
+                <strong>Auto-Refund</strong>
+            </div>
+            <p style="margin: 0; font-size: 0.9rem; opacity: 0.9;">Available if admin inactive for more than 30 minutes</p>
+        </div>
+    </div>
+</div>
+
+<div class="card" style="{% if session.username == 'admin' %}height: 250px;{% else %}height: 300px;{% endif %} display: flex; flex-direction: column;">
+    <div id="chatMessages" style="flex: 1; overflow-y: auto; padding: 1rem; border: 1px solid #ddd; margin-bottom: 1rem; background: white;">
+        {% for message in messages %}
+        <div style="margin-bottom: 1rem; {% if message[1] == 1 %}text-align: right;{% else %}text-align: left;{% endif %}">
+            <div style="display: inline-block; padding: 0.5rem 1rem; border-radius: 10px; max-width: 70%; 
+                        {% if message[1] == 1 %}background: #007bff; color: white;{% else %}background: #f1f1f1; color: black;{% endif %}">
+                <div>{{ message[0] }}</div>
+                <small style="opacity: 0.7;">{{ message[2] }}</small>
+            </div>
+        </div>
+        {% endfor %}
+        
+        <!-- Show payment proof if withdrawal is completed -->
+        {% if withdrawal[2] == 'withdrawal' and withdrawal|length > 6 and withdrawal[6] %}
+        <div style="margin-bottom: 1rem; text-align: center; padding: 1rem; background: #d4edda; border-radius: 10px; border: 2px solid #28a745;">
+            <div style="color: #155724; font-weight: bold; margin-bottom: 0.5rem;">
+                🎉 Payment Completed - Admin's M-Pesa Screenshot:
+            </div>
+            <img src="data:image/jpeg;base64,{{ withdrawal[6] }}" 
+                 style="max-width: 200px; max-height: 150px; border-radius: 8px; cursor: pointer; border: 2px solid #28a745;" 
+                 onclick="showPaymentProof('{{ withdrawal[6] }}')"
+                 title="Click to view full size">
+            <div style="font-size: 0.8rem; color: #155724; margin-top: 0.5rem;">
+                Click image to view full size
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    
+    <div style="display: flex; gap: 0.5rem;">
+        <input type="text" id="messageInput" placeholder="Type your message..." 
+               style="flex: 1; padding: 0.5rem; border: 1px solid #ccc; border-radius: 4px; background: white; color: black;">
+        <button onclick="sendMessage()" class="btn btn-primary">Send</button>
+    </div>
+</div>
+
+{% if session.username == 'admin' %}
+<div class="card" style="margin-top: 1rem; padding: 1.5rem; background: white; border-radius: 8px; border: 1px solid #e0e0e0; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+    <h4 style="margin: 0 0 1rem 0; color: #333; font-weight: 600;">💰 Admin Payment Processing</h4>
+    
+    <form id="markPaidForm" enctype="multipart/form-data">
+        <div style="margin-bottom: 1rem;">
+            <label style="display: block; margin-bottom: 0.5rem; font-weight: 500; color: #555;">Upload M-Pesa Payment Screenshot:</label>
+            <input type="file" id="paymentProof" accept="image/*" class="form-control" required>
+            <div id="previewContainer" style="margin-top: 0.5rem; display: none;">
+                <img id="previewImage" style="max-width: 150px; max-height: 100px; border-radius: 4px; border: 1px solid #ddd;">
+            </div>
+        </div>
+        
+        <button type="button" onclick="markAsPaid()" class="btn btn-success" style="width: 100%; font-weight: 600;">
+            ✅ Mark as Paid
+        </button>
+    </form>
+</div>
+
+<script>
+document.getElementById('paymentProof').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            document.getElementById('previewImage').src = e.target.result;
+            document.getElementById('previewContainer').style.display = 'block';
+        };
+        reader.readAsDataURL(file);
+    }
+});
+</script>
+{% endif %}
+
+<div class="card">
+    {% if session.username != 'admin' and withdrawal[2] != 'withdrawal' %}
+        <button onclick="cancelWithdrawal()" class="btn btn-danger" style="margin-right: 0.5rem; border-radius: 20px; padding: 0.5rem 1rem; font-weight: bold; font-size: 0.9rem;">
+            ❌ Cancel
+        </button>
+    {% endif %}
+    {% if session.username == 'admin' %}
+        <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary">← Back to Admin</a>
+    {% else %}
+        <a href="{{ url_for('wallet') }}" class="btn btn-secondary">← Back to Wallet</a>
+    {% endif %}
+</div>
+
+<script>
+let lastMessageCount = {{ messages|length }};
+
+function sendMessage() {
+    const input = document.getElementById('messageInput');
+    const message = input.value.trim();
+    
+    if (!message) return;
+    
+    fetch('/send_withdrawal_message', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            withdrawal_id: {{ withdrawal_id }},
+            message: message
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            input.value = '';
+            checkForNewMessages();
+        }
+    });
+}
+
+function checkForNewMessages() {
+    fetch('/get_withdrawal_messages/{{ withdrawal_id }}')
+        .then(response => response.json())
+        .then(data => {
+            if (data.messages && data.messages.length > lastMessageCount) {
+                // New messages received
+                const newMessageCount = data.messages.length - lastMessageCount;
+                if (newMessageCount > 0) {
+                    showNotification(`💬 ${newMessageCount} new message${newMessageCount > 1 ? 's' : ''} received!`, 'info');
+                    
+                    // Check if it's a payment completion message
+                    const latestMessage = data.messages[data.messages.length - 1];
+                    if (latestMessage.message.includes('PAYMENT COMPLETED')) {
+                        showNotification('🎉 Payment completed! Check your M-Pesa!', 'success');
+                        // Play notification sound if available
+                        if ('Notification' in window && Notification.permission === 'granted') {
+                            new Notification('SkillState - Payment Completed!', {
+                                body: 'Your withdrawal has been processed. Check your M-Pesa.',
+                                icon: '/static/favicon.ico'
+                            });
+                        }
+                    }
+                }
+                lastMessageCount = data.messages.length;
+                location.reload(); // Refresh to show new messages
+            }
+        });
+}
+
+function markAsPaid() {
+    const fileInput = document.getElementById('paymentProof');
+    const file = fileInput.files[0];
+    
+    if (!file) {
+        alert('Please select a payment screenshot first!');
+        return;
+    }
+    
+    if (confirm('Mark this withdrawal as PAID? This action cannot be undone.')) {
+        const formData = new FormData();
+        formData.append('withdrawal_id', {{ withdrawal_id }});
+        formData.append('payment_proof', file);
+        
+        const btn = event.target;
+        btn.innerHTML = '⏳ Processing...';
+        btn.disabled = true;
+        
+        fetch('/admin/mark_withdrawal_paid', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showNotification('✅ Withdrawal marked as paid!', 'success');
+                setTimeout(() => window.location.href = '/admin', 2000);
+            } else {
+                showNotification('❌ Error: ' + data.message, 'error');
+                btn.innerHTML = '✅ Mark as Paid & Upload Proof';
+                btn.disabled = false;
+            }
+        });
+    }
+}
+
+let countdownInterval;
+// Simple 30-minute countdown from page load
+let countdownStartTime = Date.now();
+let thirtyMinutesInMs = 30 * 60 * 1000;
+let totalSecondsRemaining = 30 * 60;
+
+function checkAdminStatus() {
+    fetch('/admin/status')
+        .then(response => response.json())
+        .then(data => {
+            updateCountdownDisplay(data.active);
+        });
+}
+
+function updateCountdownDisplay(adminOnline) {
+    const statusDiv = document.getElementById('adminStatus');
+    const minutes = Math.floor(totalSecondsRemaining / 60);
+    const seconds = totalSecondsRemaining % 60;
+    const timeDisplay = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+    const percentage = ((30 * 60 - totalSecondsRemaining) / (30 * 60)) * 100;
+    
+    if (totalSecondsRemaining > 0) {
+        const statusText = adminOnline ? '✓ Admin Online' : '⏱ Admin Offline';
+        const statusColor = adminOnline ? 'green' : 'orange';
+        const bgGradient = adminOnline ? 'linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%)' : 'linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%)';
+        
+        statusDiv.innerHTML = `
+            <div style="display: flex; align-items: center; justify-content: space-between;">
+                <span style="color: ${statusColor}; font-weight: bold;">${statusText}</span>
+                <div style="background: rgba(0,0,0,0.1); padding: 0.3rem 0.8rem; border-radius: 15px; font-family: monospace; font-weight: bold;">
+                    Auto-refund: ${timeDisplay}
+                </div>
+            </div>
+            <div style="width: 100%; background: rgba(0,0,0,0.1); height: 4px; border-radius: 2px; margin-top: 0.5rem; overflow: hidden;">
+                <div style="width: ${percentage}%; background: linear-gradient(90deg, #28a745, #ffc107, #fd7e14); height: 100%; transition: width 1s ease;"></div>
+            </div>`;
+        statusDiv.style.background = bgGradient;
+    } else {
+        statusDiv.innerHTML = `
+            <div style="text-align: center;">
+                <span style="color: red; font-weight: bold; font-size: 1.1em;">🚨 30 Minutes Elapsed - Get Your Money Back!</span>
+                <br><button onclick="requestRefund()" class="btn btn-warning" style="margin-top: 0.8rem; padding: 0.6rem 1.5rem; font-weight: bold; border-radius: 25px; box-shadow: 0 2px 10px rgba(0,0,0,0.2);">
+                    💰 Return My Money
+                </button>
+            </div>`;
+        statusDiv.style.background = 'linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%)';
+    }
+}
+
+function calculateRemainingTime() {
+    const now = Date.now();
+    const elapsedMs = now - countdownStartTime;
+    const remainingMs = Math.max(0, thirtyMinutesInMs - elapsedMs);
+    totalSecondsRemaining = Math.floor(remainingMs / 1000);
+    return totalSecondsRemaining;
+}
+
+function startRealTimeCountdown() {
+    if (countdownInterval) clearInterval(countdownInterval);
+    
+    // Calculate initial remaining time based on withdrawal creation time
+    calculateRemainingTime();
+    
+    countdownInterval = setInterval(() => {
+        // Always calculate from withdrawal creation time, not local countdown
+        const remaining = calculateRemainingTime();
+        
+        if (remaining > 0) {
+            // Always update display every second to show seconds counting
+            updateCountdownDisplay(false);
+            
+            // Check admin status every 10 seconds to update online/offline indicator
+            if (remaining % 10 === 0) {
+                checkAdminStatus();
+            }
+        } else {
+            // Time's up - show refund button
+            checkAdminStatus();
+        }
+    }, 1000);
+}
+
+function requestRefund() {
+    if (confirm('💰 Get your money back? We already deducted KSh {{ "%.0f"|format((withdrawal[3]|float|abs) + 15) }} from your account. This will return it.')) {
+        const btn = event.target;
+        btn.innerHTML = '⏳ Processing Refund...';
+        btn.disabled = true;
+        
+        fetch('/request_auto_refund', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({withdrawal_id: {{ withdrawal_id }}})
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showNotification('🎉 Money returned! KSh {{ "%.0f"|format((withdrawal[3]|float|abs) + 15) }} added back to your account.', 'success');
+                
+                // Celebration effect
+                document.body.style.background = 'linear-gradient(45deg, #ff6b6b, #4ecdc4, #45b7d1, #96ceb4)';
+                document.body.style.backgroundSize = '400% 400%';
+                document.body.style.animation = 'gradient 2s ease infinite';
+                
+                setTimeout(() => window.location.href = '/wallet', 3000);
+            } else {
+                showNotification('❌ Error: ' + data.message, 'error');
+                btn.innerHTML = '💰 Claim Auto-Refund Now';
+                btn.disabled = false;
+            }
+        });
+    }
+}
+
+document.getElementById('messageInput').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        sendMessage();
+    }
+});
+
+// Add CSS animations
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes gradient {
+        0% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+        100% { background-position: 0% 50%; }
+    }
+    
+    @keyframes pulse {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.05); }
+        100% { transform: scale(1); }
+    }
+    
+    .pulse-animation {
+        animation: pulse 2s infinite;
+    }
+`;
+document.head.appendChild(style);
+
+// Add pulse animation to status when countdown is low
+setInterval(() => {
+    if (totalSecondsRemaining < 300 && totalSecondsRemaining > 0) { // Last 5 minutes
+        document.getElementById('adminStatus').classList.add('pulse-animation');
+    } else {
+        document.getElementById('adminStatus').classList.remove('pulse-animation');
+    }
+}, 1000);
+
+let notificationsEnabled = false;
+
+function cancelWithdrawal() {
+    if (confirm('Cancel withdrawal? Money will be returned to your account.')) {
+        const btn = event.target;
+        btn.innerHTML = '⏳ Cancelling...';
+        btn.disabled = true;
+        
+        fetch('/cancel_withdrawal', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({withdrawal_id: {{ withdrawal_id }}})
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showNotification('✅ Withdrawal cancelled! Money returned.', 'success');
+                setTimeout(() => window.location.href = '/wallet', 2000);
+            } else {
+                showNotification('❌ Error: ' + data.message, 'error');
+                btn.innerHTML = 'Cancel Withdrawal';
+                btn.disabled = false;
+            }
+        });
+    }
+}
+
+function refreshStatus() {
+    const btn = event.target;
+    btn.innerHTML = '🔄 Refreshing...';
+    btn.disabled = true;
+    
+    checkAdminStatus();
+    
+    setTimeout(() => {
+        btn.innerHTML = '🔄 Refresh Status';
+        btn.disabled = false;
+        showNotification('📊 Status updated!', 'info');
+    }, 1000);
+}
+
+function toggleNotifications() {
+    notificationsEnabled = !notificationsEnabled;
+    const btn = document.getElementById('notifyBtn');
+    
+    if (notificationsEnabled) {
+        btn.innerHTML = '🔕 Disable Alerts';
+        btn.className = 'btn btn-warning';
+        showNotification('🔔 Notifications enabled!', 'info');
+        
+        // Request notification permission
+        if ('Notification' in window) {
+            Notification.requestPermission();
+        }
+    } else {
+        btn.innerHTML = '🔔 Enable Alerts';
+        btn.className = 'btn btn-secondary';
+        showNotification('🔕 Notifications disabled', 'info');
+    }
+}
+
+function showNotification(message, type) {
+    const notification = document.createElement('div');
+    notification.style.cssText = `
+        position: fixed; top: 20px; right: 20px; z-index: 9999;
+        padding: 1rem 1.5rem; border-radius: 10px; color: white;
+        font-weight: bold; box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        transform: translateX(400px); transition: transform 0.3s ease;
+    `;
+    
+    const colors = {
+        success: 'linear-gradient(135deg, #28a745, #20c997)',
+        error: 'linear-gradient(135deg, #dc3545, #fd7e14)',
+        info: 'linear-gradient(135deg, #17a2b8, #6f42c1)'
+    };
+    
+    notification.style.background = colors[type] || colors.info;
+    notification.innerHTML = message;
+    
+    document.body.appendChild(notification);
+    
+    setTimeout(() => notification.style.transform = 'translateX(0)', 100);
+    setTimeout(() => {
+        notification.style.transform = 'translateX(400px)';
+        setTimeout(() => document.body.removeChild(notification), 300);
+    }, 3000);
+    
+    // Browser notification if enabled
+    if (notificationsEnabled && 'Notification' in window && Notification.permission === 'granted') {
+        new Notification('SkillState Withdrawal', {
+            body: message.replace(/[🔄📊✅❌🔔🔕⏳💰]/g, ''),
+            icon: '/static/favicon.ico'
+        });
+    }
+}
+
+// Initialize countdown based on withdrawal creation time
+const timeElapsed = Math.floor((new Date() - new Date(withdrawalCreatedAt)) / 1000);
+const minutesElapsed = Math.floor(timeElapsed / 60);
+
+checkAdminStatus();
+startRealTimeCountdown();
+
+// Check for new messages every 5 seconds
+setInterval(checkForNewMessages, 5000);
+
+// Show withdrawal status notification
+if (totalSecondsRemaining > 0) {
+    showNotification(`💳 Withdrawal created ${minutesElapsed}m ago. ${Math.floor(totalSecondsRemaining/60)}m remaining for auto-refund.`, 'info');
+} else {
+    showNotification('⏰ 30 minutes elapsed! Auto-refund is now available.', 'info');
+}
+
+function showPaymentProof(proofData) {
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+        background: rgba(0,0,0,0.8); z-index: 9999; display: flex; 
+        align-items: center; justify-content: center;
+    `;
+    
+    modal.innerHTML = `
+        <div style="background: white; padding: 1rem; border-radius: 8px; max-width: 90%; max-height: 90%;">
+            <h3 style="margin-top: 0;">Admin's Payment Screenshot</h3>
+            <img src="data:image/jpeg;base64,${proofData}" style="max-width: 100%; max-height: 70vh; border-radius: 4px;">
+            <div style="text-align: center; margin-top: 1rem;">
+                <button onclick="document.body.removeChild(this.closest('div').parentElement)" class="btn btn-secondary">Close</button>
+            </div>
+        </div>
+    `;
+    
+    modal.onclick = function(e) {
+        if (e.target === modal) document.body.removeChild(modal);
+    };
+    
+    document.body.appendChild(modal);
+}
+
+// Initialize real-time withdrawal notifications
+const withdrawalNotifications = new WithdrawalNotifications({{ withdrawal_id }});
+
+// Cleanup on page unload
+window.addEventListener('beforeunload', () => {
+    if (withdrawalNotifications) {
+        withdrawalNotifications.destroy();
+    }
+});
+</script>
+<script src="/static/js/withdrawal-notifications.js"></script>
+{% endblock %}

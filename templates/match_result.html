@@ -1,42 +1,262 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="card">
-    <h1>Submit Match Result</h1>
-    <p>Report the outcome of your match</p>
+<div class="card result-header">
+    <h1><img src="https://img.icons8.com/color/32/trophy.png"> Declare Match Winner</h1>
+    <p>Submit your match result with screenshot evidence</p>
+    <div class="honest-system-notice">
+        <img src="https://img.icons8.com/color/20/verified-account.png">
+        <span>100% Fair System: First valid screenshot submission wins automatically!</span>
+    </div>
 </div>
 
-<div class="card">
-    <h2>Match Details</h2>
-    <div class="match-card">
-        <div><strong>Game:</strong> {{ match[1].upper() }}</div>
-        <div><strong>Bet Amount:</strong> KSh {{ "%.0f"|format(match[4]) }}</div>
-        <div><strong>Total Pot:</strong> KSh {{ "%.0f"|format(match[5]) }}</div>
+<div class="card match-summary">
+    <h2><img src="https://img.icons8.com/color/24/battle.png"> Match Summary</h2>
+    <div class="match-info-grid">
+        <div class="info-item">
+            <img src="https://img.icons8.com/color/16/hashtag.png">
+            <span>Match ID: <strong>{{ match_id }}</strong></span>
+        </div>
+        <div class="info-item">
+            <img src="https://img.icons8.com/color/16/clock.png">
+            <span>Status: <span class="status-badge">Awaiting Result</span></span>
+        </div>
+        {% if match %}
+        <div class="info-item game-display">
+            {% if match[1] == 'pubg_mobile' %}
+                <img src="https://images.unsplash.com/photo-1542751371-adc38448a05e?w=50&h=50&fit=crop" class="game-thumb">
+                <span>Game: <strong>PUBG Mobile</strong></span>
+            {% elif match[1] == 'cod_mobile' %}
+                <img src="https://images.unsplash.com/photo-1511512578047-dfb367046420?w=50&h=50&fit=crop" class="game-thumb">
+                <span>Game: <strong>COD Mobile</strong></span>
+            {% elif match[1] == 'fifa_mobile' %}
+                <img src="https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=50&h=50&fit=crop" class="game-thumb">
+                <span>Game: <strong>FIFA Mobile</strong></span>
+            {% elif match[1] == 'efootball' %}
+                <img src="https://images.unsplash.com/photo-1431324155629-1a6deb1dec8d?w=50&h=50&fit=crop" class="game-thumb">
+                <span>Game: <strong>eFootball</strong></span>
+            {% else %}
+                <img src="https://img.icons8.com/color/16/controller.png">
+                <span>Game: <strong>{{ match[1].replace('_', ' ').title() }}</strong></span>
+            {% endif %}
+        </div>
+        <div class="info-item">
+            <img src="https://img.icons8.com/color/16/money.png">
+            <span>Prize: <strong>KSh {{ (match[4] * 1.68)|round|int }}</strong></span>
+        </div>
+        {% endif %}
     </div>
-    
-    <form method="POST" action="{{ url_for('submit_result', match_id=match[0]) }}" enctype="multipart/form-data">
-        <div class="form-group">
-            <label><strong>Did you win this match?</strong></label>
-            <div style="margin: 1rem 0;">
-                <label style="display: block; margin: 0.5rem 0;">
-                    <input type="radio" name="result" value="won" required> Yes, I won
-                </label>
-                <label style="display: block; margin: 0.5rem 0;">
-                    <input type="radio" name="result" value="lost" required> No, I lost
-                </label>
+</div>
+
+<div class="card winner-declaration">
+    <h2><img src="https://img.icons8.com/color/24/crown.png"> Winner Declaration</h2>
+    <form id="resultForm" enctype="multipart/form-data">
+        <input type="hidden" name="match_id" value="{{ match_id }}">
+        
+        <div class="winner-section">
+            <div class="winner-card">
+                <div class="winner-icon">
+                    <img src="https://img.icons8.com/color/48/trophy.png">
+                </div>
+                <h3>Submit Victory Proof First!</h3>
+                <p>First player to submit valid screenshot wins automatically</p>
+                <input type="hidden" name="claimed_result" value="win">
+                <div class="honest-system-info">
+                    <div class="info-point">
+                        <img src="https://img.icons8.com/color/16/clock.png">
+                        <span>Speed Matters</span>
+                    </div>
+                    <div class="info-point">
+                        <img src="https://img.icons8.com/color/16/verified-account.png">
+                        <span>100% Fair</span>
+                    </div>
+                    <div class="info-point">
+                        <img src="https://img.icons8.com/color/16/no-disputes.png">
+                        <span>No Disputes</span>
+                    </div>
+                </div>
             </div>
         </div>
         
-        <div class="form-group">
-            <label><strong>Upload Screenshot Proof (Required)</strong></label>
-            <input type="file" name="screenshot" class="form-control" accept="image/*" required>
-            <small style="color: #ccc;">Upload a screenshot showing the match result</small>
+        <div class="evidence-section">
+            <h3><img src="https://img.icons8.com/color/20/evidence.png"> Submit Victory Screenshot</h3>
+            <div class="speed-indicator">
+                <img src="https://img.icons8.com/color/16/timer.png">
+                <span>Be the first to submit valid proof and win instantly!</span>
+            </div>
+            <div class="upload-zone" id="uploadZone">
+                <div class="upload-content">
+                    <img src="https://img.icons8.com/color/48/camera.png">
+                    <h4>Upload Victory Screenshot</h4>
+                    <p>Drag & drop or click to upload proof of your victory</p>
+                    <small>JPG, PNG, WebP • Max 5MB</small>
+                </div>
+                <input type="file" name="screenshot" id="screenshotFile" accept="image/*" required>
+            </div>
+            
+            <div id="screenshotPreview" class="screenshot-preview">
+                <div class="preview-header">
+                    <span><img src="https://img.icons8.com/color/16/visible.png"> Victory Proof</span>
+                    <button type="button" id="removeScreenshot">
+                        <img src="https://img.icons8.com/color/16/delete.png">
+                    </button>
+                </div>
+                <img id="previewImage">
+                <div class="screenshot-info">
+                    <span id="screenshotName"></span>
+                    <span id="screenshotSize"></span>
+                </div>
+            </div>
         </div>
         
-        <div style="display: flex; gap: 1rem;">
-            <button type="submit" class="btn btn-success">Submit Result</button>
-            <a href="{{ url_for('matches') }}" class="btn btn-secondary">Cancel</a>
+        <div class="notes-section">
+            <h3><img src="https://img.icons8.com/color/20/note.png"> Victory Details (Optional)</h3>
+            <textarea name="notes" placeholder="Describe your victory: final score, key moments, etc..." 
+                      class="victory-notes"></textarea>
         </div>
+        
+        <button type="submit" class="btn-claim-victory" disabled>
+            <img src="https://img.icons8.com/color/24/rocket.png">
+            <span>Submit First & Win Instantly!</span>
+        </button>
     </form>
 </div>
+
+<div class="card quick-actions">
+    <h3><img src="https://img.icons8.com/color/20/lightning-bolt.png"> Quick Actions</h3>
+    <div class="action-buttons">
+        <a href="/match_lobby/{{ match_id }}" class="btn btn-secondary">
+            <img src="https://img.icons8.com/color/20/room.png"> Back to Lobby
+        </a>
+        <a href="/matches" class="btn btn-info">
+            <img src="https://img.icons8.com/color/20/list.png"> All Matches
+        </a>
+        <button type="button" class="btn btn-warning" onclick="reportDispute()">
+            <img src="https://img.icons8.com/color/20/report-card.png"> Report Issue
+        </button>
+    </div>
+</div>
+
+<script>
+const uploadZone = document.getElementById('uploadZone');
+const fileInput = document.getElementById('screenshotFile');
+const preview = document.getElementById('screenshotPreview');
+const claimBtn = document.querySelector('.btn-claim-victory');
+
+// Drag & drop functionality
+uploadZone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    uploadZone.classList.add('dragover');
+});
+
+uploadZone.addEventListener('dragleave', () => {
+    uploadZone.classList.remove('dragover');
+});
+
+uploadZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    uploadZone.classList.remove('dragover');
+    if (e.dataTransfer.files[0]) {
+        handleFile(e.dataTransfer.files[0]);
+    }
+});
+
+fileInput.addEventListener('change', (e) => {
+    if (e.target.files[0]) {
+        handleFile(e.target.files[0]);
+    }
+});
+
+function handleFile(file) {
+    if (file.size > 5 * 1024 * 1024) {
+        showNotification('File too large! Max 5MB allowed.', 'error');
+        return;
+    }
+    
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        document.getElementById('previewImage').src = e.target.result;
+        document.getElementById('screenshotName').textContent = file.name;
+        document.getElementById('screenshotSize').textContent = formatFileSize(file.size);
+        preview.style.display = 'block';
+        claimBtn.disabled = false;
+    };
+    reader.readAsDataURL(file);
+}
+
+document.getElementById('removeScreenshot').addEventListener('click', () => {
+    preview.style.display = 'none';
+    fileInput.value = '';
+    claimBtn.disabled = true;
+});
+
+document.getElementById('resultForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const formData = new FormData(e.target);
+    claimBtn.disabled = true;
+    claimBtn.innerHTML = '<img src="https://img.icons8.com/color/24/loading.gif"> Processing Victory...';
+    
+    try {
+        const response = await fetch('/submit_screenshot', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showNotification('Victory claimed successfully!', 'success');
+            setTimeout(() => window.location.href = '/matches', 2000);
+        } else {
+            showNotification('Error: ' + result.error, 'error');
+            claimBtn.disabled = false;
+            claimBtn.innerHTML = '<img src="https://img.icons8.com/color/24/crown.png"><span>Claim Victory & Prize</span>';
+        }
+    } catch (error) {
+        showNotification('Connection error occurred', 'error');
+        claimBtn.disabled = false;
+        claimBtn.innerHTML = '<img src="https://img.icons8.com/color/24/crown.png"><span>Claim Victory & Prize</span>';
+    }
+});
+
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+function reportDispute() {
+    if (confirm('Report a dispute for this match? This will flag the match for admin review.')) {
+        fetch('/report_dispute', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({match_id: {{ match_id }}})
+        }).then(() => {
+            showNotification('Dispute reported to admin', 'info');
+        });
+    }
+}
+
+function showNotification(message, type) {
+    const notification = document.createElement('div');
+    const colors = {
+        success: 'linear-gradient(135deg, #28a745, #20c997)',
+        error: 'linear-gradient(135deg, #dc3545, #c82333)',
+        info: 'linear-gradient(135deg, #17a2b8, #138496)'
+    };
+    
+    notification.style.cssText = `
+        position: fixed; top: 20px; right: 20px; padding: 1rem 1.5rem;
+        background: ${colors[type]}; color: white; border-radius: 8px;
+        z-index: 1000; animation: slideIn 0.3s ease;
+    `;
+    notification.textContent = message;
+    document.body.appendChild(notification);
+    
+    setTimeout(() => notification.remove(), 3000);
+}
+</script>
 {% endblock %}

@@ -3,6 +3,76 @@
 {% block content %}
 <div class="card">
     <h1>Admin Dashboard</h1>
+    <div id="notifications" style="margin-bottom: 1rem;"></div>
+    
+    {% if unread_alerts > 0 %}
+    <div style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); border: 1px solid #dee2e6; border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.2rem;">
+            <div style="display: flex; align-items: center;">
+                <div style="background: #ffc107; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 1rem;">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
+                        <path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/>
+                    </svg>
+                </div>
+                <div>
+                    <h3 style="margin: 0; color: #495057; font-weight: 600; font-size: 1.2rem;">Deposit Review Requests</h3>
+                    <p style="margin: 0; color: #6c757d; font-size: 0.9rem;">{{ unread_alerts }} user{{ 's' if unread_alerts > 1 else '' }} requesting deposit confirmation</p>
+                </div>
+            </div>
+            <span style="background: #dc3545; color: white; padding: 0.3rem 0.8rem; border-radius: 20px; font-size: 0.8rem; font-weight: bold;">{{ unread_alerts }}</span>
+        </div>
+        
+        <div style="display: grid; gap: 0.8rem;">
+            {% for alert in notifications %}
+            <div style="background: white; padding: 1rem; border-radius: 8px; border: 1px solid #e9ecef; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: all 0.2s ease;">
+                <div style="display: flex; justify-content: space-between; align-items: start;">
+                    <div style="flex: 1;">
+                        <div style="display: flex; align-items: center; margin-bottom: 0.5rem;">
+                            <div style="background: #007bff; color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: bold; margin-right: 0.8rem;">
+                                {{ alert[2][0].upper() }}
+                            </div>
+                            <span style="font-weight: 600; color: #495057; font-size: 1rem;">{{ alert[2] }}</span>
+                        </div>
+                        <div style="margin-left: 2rem; color: #6c757d; font-size: 0.9rem; line-height: 1.4;">
+                            {{ alert[4] }}
+                        </div>
+                        <div style="margin-left: 2rem; color: #adb5bd; font-size: 0.8rem; margin-top: 0.3rem;">
+                            {{ alert[7] }}
+                        </div>
+                    </div>
+                    <button onclick="markAlertRead({{ alert[0] }})" 
+                            style="background: #28a745; color: white; border: none; padding: 0.4rem 1rem; border-radius: 6px; font-size: 0.8rem; font-weight: 500; cursor: pointer; transition: background 0.2s ease;"
+                            onmouseover="this.style.background='#218838'" 
+                            onmouseout="this.style.background='#28a745'">
+                        ✓ Reviewed
+                    </button>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+    <div style="display: flex; gap: 1rem; margin-bottom: 2rem; flex-wrap: wrap;">
+        <a href="{{ url_for('admin_users') }}" class="btn btn-primary">Manage Users</a>
+        <a href="{{ url_for('admin_live_streams_page') }}" class="btn btn-danger">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                <circle cx="12" cy="12" r="8"/>
+            </svg>
+            LIVE
+        </a>
+        <a href="{{ url_for('admin_stream_control') }}" class="btn btn-warning">🎮 Stream Control</a>
+        <a href="{{ url_for('admin_matches') }}" class="btn btn-info">📊 Match History</a>
+        <a href="{{ url_for('admin_transactions') }}" class="btn btn-secondary">💳 Transactions</a>
+        <a href="{{ url_for('admin_support_center') }}" class="btn btn-warning">🎧 Support Center</a>
+        <button onclick="showFakeScreenshotPanel()" class="btn btn-danger">⚠️ Fake Screenshots</button>
+        <button onclick="downloadFinancialStatement()" class="btn btn-success">📄 Download Statement</button>
+    </div>
+    
+    <!-- Live Streams Section -->
+    <div class="card">
+        <h2>📺 Live Streams</h2>
+        <div id="liveStreams"></div>
+    </div>
     <div class="stats-grid">
         <div class="stat-card">
             <div class="stat-number">{{ stats.total_users }}</div>
@@ -23,10 +93,78 @@
     </div>
 </div>
 
+
+
+<!-- How The System Works -->
+<div class="card">
+    <h2>💰 How The Platform Generates Revenue</h2>
+    
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+        <div style="background: rgba(40, 167, 69, 0.1); padding: 1.5rem; border-radius: 8px; border-left: 4px solid #28a745;">
+            <h3 style="color: #28a745; margin-top: 0;">💵 Deposit System</h3>
+            <p><strong>How it works:</strong></p>
+            <ul>
+                <li>User deposits KSh 1000 via M-Pesa</li>
+                <li>Platform charges 3% fee = KSh 30</li>
+                <li>User gets KSh 970 in account</li>
+                <li><span style="color: #28a745;">Platform earns: KSh 30</span></li>
+            </ul>
+        </div>
+        
+        <div style="background: rgba(255, 193, 7, 0.1); padding: 1.5rem; border-radius: 8px; border-left: 4px solid #ffc107;">
+            <h3 style="color: #ffc107; margin-top: 0;">🎮 Match System</h3>
+            <p><strong>How it works:</strong></p>
+            <ul>
+                <li>Player A bets KSh 100</li>
+                <li>Player B bets KSh 100</li>
+                <li>Total pot = KSh 200</li>
+                <li>Winner gets KSh 136 (68%)</li>
+                <li><span style="color: #ffc107;">Platform keeps: KSh 64 (32%)</span></li>
+            </ul>
+        </div>
+        
+        <div style="background: rgba(220, 53, 69, 0.1); padding: 1.5rem; border-radius: 8px; border-left: 4px solid #dc3545;">
+            <h3 style="color: #dc3545; margin-top: 0;">🏧 Withdrawal System</h3>
+            <p><strong>How it works:</strong></p>
+            <ul>
+                <li>User requests KSh 500 withdrawal</li>
+                <li>Platform charges KSh 25 fee</li>
+                <li>User receives KSh 475</li>
+                <li><span style="color: #dc3545;">Platform earns: KSh 25</span></li>
+            </ul>
+        </div>
+    </div>
+    
+    <div style="background: rgba(23, 162, 184, 0.1); padding: 1.5rem; border-radius: 8px; border-left: 4px solid #17a2b8; margin-bottom: 2rem;">
+        <h3 style="color: #17a2b8; margin-top: 0;">📈 Revenue Per User Example</h3>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+            <div style="text-align: center; background: white; padding: 1rem; border-radius: 6px;">
+                <div style="font-size: 1.2rem; font-weight: bold;">User Deposits</div>
+                <div style="color: #28a745;">KSh 1000 → Earn KSh 30</div>
+            </div>
+            <div style="text-align: center; background: white; padding: 1rem; border-radius: 6px;">
+                <div style="font-size: 1.2rem; font-weight: bold;">Plays 5 Matches</div>
+                <div style="color: #ffc107;">KSh 100 each → Earn KSh 160</div>
+            </div>
+            <div style="text-align: center; background: white; padding: 1rem; border-radius: 6px;">
+                <div style="font-size: 1.2rem; font-weight: bold;">Withdraws</div>
+                <div style="color: #dc3545;">KSh 500 → Earn KSh 25</div>
+            </div>
+            <div style="text-align: center; background: white; padding: 1rem; border-radius: 6px; border: 2px solid #28a745;">
+                <div style="font-size: 1.2rem; font-weight: bold; color: #28a745;">Total Earned</div>
+                <div style="color: #28a745; font-size: 1.1rem; font-weight: bold;">KSh 215</div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Detailed Earnings Breakdown -->
 <div class="card">
-    <h2>💰 Earnings Breakdown</h2>
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
+    <h2>📉 Comprehensive Earnings Breakdown</h2>
+    
+    <!-- Revenue Sources -->
+    <h3 style="color: #28a745; margin-bottom: 1rem;">💲 Revenue Sources</h3>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
         <div style="background: rgba(40, 167, 69, 0.1); padding: 1rem; border-radius: 8px; border-left: 4px solid #28a745;">
             <div style="font-size: 1.2rem; font-weight: bold; color: #28a745;">KSh {{ "%.0f"|format(earnings_data.match_commission) }}</div>
             <div style="font-size: 0.9rem; opacity: 0.8;">Match Commission ({{ earnings_data.commission_rate }}%)</div>
@@ -37,28 +175,132 @@
         </div>
         <div style="background: rgba(255, 193, 7, 0.1); padding: 1rem; border-radius: 8px; border-left: 4px solid #ffc107;">
             <div style="font-size: 1.2rem; font-weight: bold; color: #ffc107;">KSh {{ "%.0f"|format(earnings_data.withdrawal_fees) }}</div>
-            <div style="font-size: 0.9rem; opacity: 0.8;">Withdrawal Fees</div>
+            <div style="font-size: 0.9rem; opacity: 0.8;">Withdrawal Fees (KSh 25 each)</div>
+        </div>
+        <div style="background: rgba(102, 16, 242, 0.1); padding: 1rem; border-radius: 8px; border-left: 4px solid #6610f2;">
+            <div style="font-size: 1.2rem; font-weight: bold; color: #6610f2;">KSh {{ "%.0f"|format(earnings_data.tournament_fees) }}</div>
+            <div style="font-size: 0.9rem; opacity: 0.8;">Tournament Fees (15%)</div>
+        </div>
+        <div style="background: rgba(13, 202, 240, 0.1); padding: 1rem; border-radius: 8px; border-left: 4px solid #0dcaf0;">
+            <div style="font-size: 1.2rem; font-weight: bold; color: #0dcaf0;">KSh {{ "%.0f"|format(earnings_data.referral_profits) }}</div>
+            <div style="font-size: 0.9rem; opacity: 0.8;">Referral Profits</div>
         </div>
         <div style="background: rgba(220, 53, 69, 0.1); padding: 1rem; border-radius: 8px; border-left: 4px solid #dc3545;">
-            <div style="font-size: 1.2rem; font-weight: bold; color: #dc3545;">KSh {{ "%.0f"|format(earnings_data.bank_fees) }}</div>
-            <div style="font-size: 0.9rem; opacity: 0.8;">Bank/M-Pesa Fees</div>
+            <div style="font-size: 1.2rem; font-weight: bold; color: #dc3545;">KSh {{ "%.0f"|format(earnings_data.fraud_commissions) }}</div>
+            <div style="font-size: 0.9rem; opacity: 0.8;">Fraud Penalties ({{ earnings_data.fake_ss_matches }} matches)</div>
         </div>
     </div>
-    <div style="text-align: center; padding: 1rem; background: rgba(108, 117, 125, 0.1); border-radius: 8px;">
-        <div style="font-size: 1.5rem; font-weight: bold; color: #28a745;">Total Net Earnings: KSh {{ "%.0f"|format(earnings_data.net_earnings) }}</div>
+    
+    <!-- Operating Costs -->
+    <h3 style="color: #dc3545; margin-bottom: 1rem;">💴 Operating Costs</h3>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+        <div style="background: rgba(220, 53, 69, 0.1); padding: 1rem; border-radius: 8px; border-left: 4px solid #dc3545;">
+            <div style="font-size: 1.2rem; font-weight: bold; color: #dc3545;">-KSh {{ "%.0f"|format(earnings_data.bank_fees) }}</div>
+            <div style="font-size: 0.9rem; opacity: 0.8;">Bank/M-Pesa Processing</div>
+        </div>
+        <div style="background: rgba(220, 53, 69, 0.1); padding: 1rem; border-radius: 8px; border-left: 4px solid #dc3545;">
+            <div style="font-size: 1.2rem; font-weight: bold; color: #dc3545;">-KSh {{ "%.0f"|format(earnings_data.streaming_costs) }}</div>
+            <div style="font-size: 0.9rem; opacity: 0.8;">Streaming Bonuses Paid</div>
+        </div>
+    </div>
+    
+    <!-- Net Profit Summary -->
+    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem;">
+        <div style="text-align: center; padding: 1.5rem; background: rgba(40, 167, 69, 0.1); border-radius: 8px; border: 2px solid #28a745;">
+            <div style="font-size: 1.8rem; font-weight: bold; color: #28a745;">KSh {{ "%.0f"|format(earnings_data.gross_earnings) }}</div>
+            <div style="font-size: 1rem; opacity: 0.8;">Gross Revenue</div>
+        </div>
+        <div style="text-align: center; padding: 1.5rem; background: rgba(220, 53, 69, 0.1); border-radius: 8px; border: 2px solid #dc3545;">
+            <div style="font-size: 1.8rem; font-weight: bold; color: #dc3545;">-KSh {{ "%.0f"|format(earnings_data.bank_fees + earnings_data.streaming_costs) }}</div>
+            <div style="font-size: 1rem; opacity: 0.8;">Total Costs</div>
+        </div>
+        <div style="text-align: center; padding: 1.5rem; background: rgba(255, 193, 7, 0.1); border-radius: 8px; border: 2px solid #ffc107;">
+            <div style="font-size: 2rem; font-weight: bold; color: #ffc107;">KSh {{ "%.0f"|format(earnings_data.net_earnings) }}</div>
+            <div style="font-size: 1rem; opacity: 0.8;">Net Profit</div>
+        </div>
+    </div>
+</div>
+
+<!-- User Information Section -->
+<div class="card">
+    <h2>👥 User Information Center</h2>
+    <div style="background: rgba(23, 162, 184, 0.1); padding: 1.5rem; border-radius: 8px; border-left: 4px solid #17a2b8; margin-bottom: 2rem;">
+        <h3 style="color: #17a2b8; margin-top: 0;">🔎 User Lookup & Analysis</h3>
+        <div style="display: flex; gap: 1rem; align-items: center; margin-bottom: 1rem;">
+            <input type="number" id="userLookupId" placeholder="Enter User ID" style="padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px; width: 150px;">
+            <input type="text" id="userLookupUsername" placeholder="Or Username" style="padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px; width: 150px;">
+            <button onclick="lookupUser()" class="btn btn-primary">🔍 Lookup User</button>
+            <button onclick="showUserStats()" class="btn btn-info">📊 View Stats</button>
+            <button onclick="showUserActivity()" class="btn btn-warning">📅 Activity Log</button>
+        </div>
+        <div id="userInfoDisplay" style="display: none; background: white; padding: 1rem; border-radius: 6px; margin-top: 1rem;"></div>
+    </div>
+    
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+        <div style="background: rgba(40, 167, 69, 0.1); padding: 1rem; border-radius: 8px; border-left: 4px solid #28a745;">
+            <h4 style="color: #28a745; margin-top: 0;">💶 Financial Overview</h4>
+            <div id="userFinancials" style="font-size: 0.9rem;">
+                <div>Total Deposits: <span id="userDeposits">-</span></div>
+                <div>Total Withdrawals: <span id="userWithdrawals">-</span></div>
+                <div>Current Balance: <span id="userBalance">-</span></div>
+                <div>Net P&L: <span id="userPnL">-</span></div>
+            </div>
+        </div>
+        
+        <div style="background: rgba(255, 193, 7, 0.1); padding: 1rem; border-radius: 8px; border-left: 4px solid #ffc107;">
+            <h4 style="color: #ffc107; margin-top: 0;">🎮 Gaming Stats</h4>
+            <div id="userGaming" style="font-size: 0.9rem;">
+                <div>Total Matches: <span id="userMatches">-</span></div>
+                <div>Wins: <span id="userWins">-</span></div>
+                <div>Losses: <span id="userLosses">-</span></div>
+                <div>Win Rate: <span id="userWinRate">-</span></div>
+            </div>
+        </div>
+        
+        <div style="background: rgba(220, 53, 69, 0.1); padding: 1rem; border-radius: 8px; border-left: 4px solid #dc3545;">
+            <h4 style="color: #dc3545; margin-top: 0;">🚩 Account Status</h4>
+            <div id="userStatus" style="font-size: 0.9rem;">
+                <div>Account Status: <span id="userAccountStatus">-</span></div>
+                <div>Fake Screenshots: <span id="userFakeCount">-</span></div>
+                <div>Last Active: <span id="userLastActive">-</span></div>
+                <div>Registration: <span id="userRegistered">-</span></div>
+            </div>
+        </div>
+    </div>
+    
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+        <div style="background: rgba(102, 16, 242, 0.1); padding: 1rem; border-radius: 8px; border-left: 4px solid #6610f2;">
+            <h4 style="color: #6610f2; margin-top: 0;">📜 Recent Transactions</h4>
+            <div id="userTransactions" style="max-height: 200px; overflow-y: auto; font-size: 0.8rem;"></div>
+        </div>
+        
+        <div style="background: rgba(13, 202, 240, 0.1); padding: 1rem; border-radius: 8px; border-left: 4px solid #0dcaf0;">
+            <h4 style="color: #0dcaf0; margin-top: 0;">⚡ Quick Actions</h4>
+            <div id="userActions" style="display: none;">
+                <button onclick="adjustUserBalance()" class="btn btn-success btn-sm" style="margin: 0.2rem;">💱 Adjust Balance</button>
+                <button onclick="resetUserPassword()" class="btn btn-warning btn-sm" style="margin: 0.2rem;">🔐 Reset Password</button>
+                <button onclick="toggleUserBan()" class="btn btn-danger btn-sm" style="margin: 0.2rem;">🔒 Toggle Ban</button>
+                <button onclick="viewUserMatches()" class="btn btn-info btn-sm" style="margin: 0.2rem;">🏆 View Matches</button>
+                <button onclick="sendUserMessage()" class="btn btn-primary btn-sm" style="margin: 0.2rem;">📧 Send Message</button>
+            </div>
+        </div>
     </div>
 </div>
 
 <!-- Pending Deposits -->
 <div class="card">
-    <h2>Pending Deposits ({{ pending_deposits|length }})</h2>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h2>Pending Deposits ({{ pending_deposits|length }})</h2>
+        <a href="{{ url_for('clear_all_deposits') }}" class="btn btn-danger" onclick="return confirm('Clear ALL deposits? This cannot be undone!')">Clear All Deposits</a>
+    </div>
     {% if pending_deposits %}
         {% for deposit in pending_deposits %}
         <div class="match-card" style="margin-bottom: 1rem;">
             <div style="display: flex; justify-content: space-between; align-items: center;">
                 <div>
-                    <strong>{{ deposit[7] }}</strong> ({{ deposit[8] }})<br>
-                    <small>Amount: KSh {{ "%.0f"|format(deposit[3]) }} | Date: {{ deposit[5] }}</small>
+                    <strong>{{ deposit[5] }}</strong> ({{ deposit[6] }})<br>
+                    <small>Amount: KSh {{ "%.0f"|format(deposit[2]) }} | Date: {{ deposit[4] }}</small><br>
+                    <small style="color: #666;">{{ deposit[3] }}</small>
                 </div>
                 <div style="display: flex; gap: 0.5rem;">
                     <button onclick="viewDeposit({{ deposit[0] }})" class="btn btn-secondary">View Details</button>
@@ -89,10 +331,15 @@
                     <small>Date: {{ withdrawal[5] }}</small>
                 </div>
                 <div style="display: flex; gap: 0.5rem;">
-                    <a href="{{ url_for('approve_withdrawal', withdrawal_id=withdrawal[0]) }}" 
-                       class="btn btn-success">Approve & Upload Proof</a>
+                    <a href="{{ url_for('withdrawal_chat', withdrawal_id=withdrawal[0]) }}" class="btn btn-info">
+                        💬 Chat
+                        {% if withdrawal[7] > 0 %}
+                            <span style="background: red; color: white; border-radius: 50%; padding: 2px 6px; font-size: 0.7rem; margin-left: 5px;">{{ withdrawal[7] }}</span>
+                        {% endif %}
+                    </a>
+                    <button onclick="showPaymentForm({{ withdrawal[0] }})" class="btn btn-success">✅ Pay & Upload Proof</button>
                     <a href="{{ url_for('reject_withdrawal', withdrawal_id=withdrawal[0]) }}" 
-                       class="btn btn-danger" onclick="return confirm('Reject and refund?')">Reject</a>
+                       class="btn btn-danger">❌ Reject with Reason</a>
                 </div>
             </div>
         </div>
@@ -112,7 +359,7 @@
                 <strong>{{ dispute[1].upper() }}</strong> - KSh {{ "%.0f"|format(dispute[2]) }} bet<br>
                 <strong>{{ dispute[4] }}</strong> claims: <span style="color: {% if dispute[6] == 'won' %}#28a745{% else %}#dc3545{% endif %};">{{ dispute[6] or 'No result' }}</span> | 
                 <strong>{{ dispute[5] }}</strong> claims: <span style="color: {% if dispute[7] == 'won' %}#28a745{% else %}#dc3545{% endif %};">{{ dispute[7] or 'No result' }}</span><br>
-                <span style="color: #dc3545;">⚠️ Conflicting results - both players claim they won!</span>
+                <span style="color: #dc3545;">WARNING: Conflicting results - both players claim they won!</span>
             </div>
             <div style="display: flex; gap: 1rem; margin-bottom: 1rem;">
                 <div style="flex: 1; text-align: center;">
@@ -158,6 +405,43 @@
     </div>
 </div>
 
+<!-- Payment Proof Modal -->
+<div id="paymentModal" class="modal">
+    <div class="modal-content" style="max-width: 500px;">
+        <span class="close" onclick="closePaymentModal()">&times;</span>
+        <h2>Upload Payment Proof</h2>
+        <form id="paymentForm" enctype="multipart/form-data">
+            <input type="hidden" id="withdrawalId" name="withdrawal_id">
+            <div style="margin-bottom: 1rem;">
+                <label>M-Pesa Payment Screenshot:</label>
+                <input type="file" name="payment_proof" accept="image/*" required class="form-control">
+            </div>
+            <div style="display: flex; gap: 1rem;">
+                <button type="submit" class="btn btn-success" style="flex: 1;">Mark as Paid</button>
+                <button type="button" class="btn btn-secondary" onclick="closePaymentModal()">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Fake Screenshot Management Modal -->
+<div id="fakeScreenshotModal" class="modal">
+    <div class="modal-content" style="max-width: 800px;">
+        <span class="close" onclick="closeFakeScreenshotModal()">&times;</span>
+        <h2>🚨 Fake Screenshot Management</h2>
+        <div id="fakeScreenshotContent">
+            <div style="text-align: center; padding: 2rem;">
+                <div style="font-size: 3rem; margin-bottom: 1rem;">🔎</div>
+                <p>Enter a User ID to view their fake screenshot history:</p>
+                <div style="display: flex; gap: 1rem; justify-content: center; margin-top: 1rem;">
+                    <input type="number" id="userIdInput" placeholder="User ID" style="padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
+                    <button onclick="loadFakeScreenshotHistory()" class="btn btn-primary">View History</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 function viewDeposit(transactionId) {
     fetch(`/admin/view_deposit/${transactionId}`)
@@ -195,11 +479,611 @@ function closeDepositModal() {
     document.getElementById('depositModal').style.display = 'none';
 }
 
+// Load live streams
+function loadLiveStreams() {
+    fetch('/admin/live_streams')
+        .then(response => response.json())
+        .then(data => {
+            const container = document.getElementById('liveStreams');
+            if (data.streams && data.streams.length > 0) {
+                container.innerHTML = data.streams.map(stream => `
+                    <div style="background: rgba(220,53,69,0.1); padding: 1rem; border-radius: 8px; border-left: 4px solid #dc3545;">
+                        <div style="display: flex; justify-content: between; align-items: center; margin-bottom: 0.5rem;">
+                            <strong>📺 ${stream.title}</strong>
+                            <span style="background: #dc3545; color: white; padding: 0.2rem 0.5rem; border-radius: 10px; font-size: 0.8rem;">LIVE</span>
+                        </div>
+                        <div style="font-size: 0.9rem; opacity: 0.8; margin-bottom: 0.5rem;">
+                            Streamer: ${stream.username}<br>
+                            Viewers: ${stream.viewers}<br>
+                            Duration: ${stream.duration} minutes<br>
+                            Game: ${stream.game || 'Unknown'}
+                        </div>
+                        <div style="display: flex; gap: 0.5rem;">
+                            <a href="/watch_stream/${stream.id}" class="btn btn-primary btn-sm">Watch</a>
+                            <button onclick="endStream(${stream.id})" class="btn btn-danger btn-sm">End Stream</button>
+                        </div>
+                    </div>
+                `).join('');
+            } else {
+                container.innerHTML = '<p style="text-align: center; opacity: 0.6;">No live streams currently active</p>';
+            }
+        })
+        .catch(error => {
+            console.error('Error loading streams:', error);
+            document.getElementById('liveStreams').innerHTML = '<p style="color: #dc3545;">Error loading live streams</p>';
+        });
+}
+
+function endStream(streamId) {
+    if (confirm('End this live stream?')) {
+        fetch(`/admin/end_stream/${streamId}`, {method: 'POST'})
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    loadLiveStreams();
+                } else {
+                    alert('Failed to end stream');
+                }
+            });
+    }
+}
+
+// Load notifications
+function loadNotifications() {
+    const pendingDeposits = {{ pending_deposits|length }};
+    const pendingWithdrawals = {{ pending_withdrawals|length }};
+    const totalChats = {{ pending_withdrawals|sum(attribute=7) }};
+    
+    let notifications = [];
+    
+    if (pendingDeposits > 0) {
+        notifications.push(`<span style="background: #28a745; color: white; padding: 0.3rem 0.8rem; border-radius: 15px; margin-right: 0.5rem;">💵 ${pendingDeposits} Pending Deposits</span>`);
+    }
+    
+    if (pendingWithdrawals > 0) {
+        notifications.push(`<span style="background: #dc3545; color: white; padding: 0.3rem 0.8rem; border-radius: 15px; margin-right: 0.5rem;">🏧 ${pendingWithdrawals} Pending Withdrawals</span>`);
+    }
+    
+    if (totalChats > 0) {
+        notifications.push(`<span style="background: #007bff; color: white; padding: 0.3rem 0.8rem; border-radius: 15px; margin-right: 0.5rem;">📨 ${totalChats} Unread Messages</span>`);
+    }
+    
+    document.getElementById('notifications').innerHTML = notifications.join('');
+}
+
+function markAlertRead(alertId) {
+    fetch('/admin/mark_alert_read', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({alert_id: alertId})
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        }
+    });
+}
+
+// Load streams on page load and refresh every 30 seconds
+loadLiveStreams();
+loadNotifications();
+setInterval(loadLiveStreams, 30000);
+setInterval(() => location.reload(), 60000); // Refresh page every minute for notifications
+
+function showPaymentForm(withdrawalId) {
+    document.getElementById('withdrawalId').value = withdrawalId;
+    document.getElementById('paymentModal').style.display = 'block';
+}
+
+function closePaymentModal() {
+    document.getElementById('paymentModal').style.display = 'none';
+}
+
+document.getElementById('paymentForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const formData = new FormData(this);
+    
+    fetch('/admin/process_payment', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Payment processed successfully!');
+            location.reload();
+        } else {
+            alert('Error: ' + data.message);
+        }
+    });
+});
+
+function showFakeScreenshotPanel() {
+    document.getElementById('fakeScreenshotModal').style.display = 'block';
+}
+
+function closeFakeScreenshotModal() {
+    document.getElementById('fakeScreenshotModal').style.display = 'none';
+}
+
+function loadFakeScreenshotHistory() {
+    const userId = document.getElementById('userIdInput').value;
+    if (!userId) {
+        alert('Please enter a User ID');
+        return;
+    }
+    
+    fetch(`/admin/view_fake_screenshot_history/${userId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                displayFakeScreenshotHistory(data);
+            } else {
+                document.getElementById('fakeScreenshotContent').innerHTML = `
+                    <div style="text-align: center; padding: 2rem; color: #dc3545;">
+                        <div style="font-size: 3rem; margin-bottom: 1rem;">🚫</div>
+                        <p>${data.message}</p>
+                        <button onclick="showFakeScreenshotPanel()" class="btn btn-secondary">Try Another User</button>
+                    </div>
+                `;
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error loading fake screenshot history');
+        });
+}
+
+function displayFakeScreenshotHistory(data) {
+    const isBanned = data.history.some(h => h.is_banned === 1);
+    const latestCount = Math.max(...data.history.map(h => h.fake_count));
+    
+    let content = `
+        <div style="background: ${isBanned ? 'rgba(220,53,69,0.1)' : 'rgba(255,193,7,0.1)'}; padding: 1rem; border-radius: 8px; margin-bottom: 1rem; border-left: 4px solid ${isBanned ? '#dc3545' : '#ffc107'};">
+            <h3 style="margin: 0 0 0.5rem 0; color: ${isBanned ? '#dc3545' : '#ffc107'};">👤 User: ${data.username}</h3>
+            <div style="display: flex; gap: 2rem; align-items: center; justify-content: space-between;">
+                <div>
+                    <strong>Status:</strong> ${isBanned ? '🚫 BANNED' : '⚠️ Active'}<br>
+                    <strong>Fake Count:</strong> ${latestCount}/3<br>
+                    <strong>Total Violations:</strong> ${data.history.length}
+                </div>
+                <div style="display: flex; gap: 0.5rem;">
+                    ${isBanned ? `<button onclick="unbanUser(${document.getElementById('userIdInput').value})" class="btn btn-success">✅ Unban User</button>` : ''}
+                    <button onclick="viewUserProfile(${document.getElementById('userIdInput').value})" class="btn btn-info">👤 View Profile</button>
+                </div>
+            </div>
+        </div>
+        
+        <h4>📸 Fake Screenshot History:</h4>
+        <div style="max-height: 400px; overflow-y: auto; border: 1px solid #ddd; border-radius: 8px; background: #f8f9fa;">
+    `;
+    
+    data.history.forEach((record, index) => {
+        content += `
+            <div style="background: white; padding: 1rem; margin: 0.5rem; border-radius: 8px; border: 1px solid #ddd; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                <div style="display: flex; justify-content: space-between; align-items: start;">
+                    <div style="flex: 1;">
+                        <div style="display: flex; gap: 2rem; margin-bottom: 0.5rem;">
+                            <div>
+                                <strong>📋 Match ID:</strong> ${record.match_id}<br>
+                                <strong>🎮 Game:</strong> ${record.game_type.toUpperCase()}<br>
+                                <strong>⚠️ Violation #:</strong> ${record.fake_count}
+                            </div>
+                            <div>
+                                <strong>📅 Date:</strong> ${record.created_at}<br>
+                                <strong>🚨 Status:</strong> <span style="color: ${record.is_banned ? '#dc3545' : '#ffc107'}; font-weight: bold;">${record.is_banned ? 'BANNED' : 'WARNING'}</span>
+                            </div>
+                        </div>
+                        <button onclick="viewFakeScreenshot('${record.screenshot_data}', ${record.match_id}, '${record.game_type}')" 
+                                class="btn btn-warning btn-sm" style="margin-top: 0.5rem;">
+                            🖼️ View Screenshot
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+    
+    content += `</div>`;
+    
+    if (data.penalties && data.penalties.length > 0) {
+        content += `
+            <h4 style="margin-top: 1rem;">💸 Penalty History:</h4>
+            <div style="max-height: 300px; overflow-y: auto; border: 1px solid #ddd; border-radius: 8px; background: #f8f9fa;">
+        `;
+        
+        data.penalties.forEach(penalty => {
+            content += `
+                <div style="background: ${penalty.type === 'admin_unban' ? 'rgba(40,167,69,0.1)' : 'rgba(220,53,69,0.1)'}; padding: 0.8rem; margin: 0.5rem; border-radius: 6px; border-left: 3px solid ${penalty.type === 'admin_unban' ? '#28a745' : '#dc3545'};">
+                    <strong>${penalty.type === 'admin_unban' ? '✅ UNBANNED' : '💴 PENALTY'}:</strong> KSh ${Math.abs(penalty.amount)}<br>
+                    <small>${penalty.description}</small><br>
+                    <small style="color: #666;">📅 ${penalty.created_at}</small>
+                </div>
+            `;
+        });
+        
+        content += `</div>`;
+    }
+    
+    document.getElementById('fakeScreenshotContent').innerHTML = content;
+}
+
+function unbanUser(userId) {
+    if (confirm('Unban this user and reset their fake screenshot counter to 1?')) {
+        fetch('/admin/unban_fake_screenshot_user', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({user_id: userId})
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message);
+                loadFakeScreenshotHistory(); // Reload to show updated status
+            } else {
+                alert('Error: ' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error unbanning user');
+        });
+    }
+}
+
+function viewFakeScreenshot(screenshotData, matchId, gameType) {
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+        background: rgba(0,0,0,0.8); z-index: 10000; display: flex; 
+        align-items: center; justify-content: center;
+    `;
+    
+    modal.innerHTML = `
+        <div style="background: white; padding: 2rem; border-radius: 12px; max-width: 90%; max-height: 90%; overflow: auto;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <h3>⚠️ Fake Screenshot - Match ${matchId} (${gameType.toUpperCase()})</h3>
+                <button onclick="this.closest('div').parentElement.remove()" 
+                        style="background: #dc3545; color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer;">
+                    ✕ Close
+                </button>
+            </div>
+            <div style="text-align: center;">
+                <img src="data:image/jpeg;base64,${screenshotData}" 
+                     style="max-width: 100%; max-height: 70vh; border: 2px solid #dc3545; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.3);">
+            </div>
+            <div style="margin-top: 1rem; padding: 1rem; background: rgba(220,53,69,0.1); border-radius: 8px; border-left: 4px solid #dc3545;">
+                <strong>🚫 This screenshot was flagged as FAKE by our detection system</strong><br>
+                <small>Reasons may include: Wrong game, manipulated image, non-game content, or previously used screenshot</small>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Close on background click
+    modal.addEventListener('click', function(e) {
+        if (e.target === modal) {
+            modal.remove();
+        }
+    });
+}
+
+function viewUserProfile(userId) {
+    // Redirect to user management with user highlighted
+    window.open(`/admin/users?highlight=${userId}`, '_blank');
+}
+
+// User Information Functions
+let currentUserId = null;
+
+function lookupUser() {
+    const userId = document.getElementById('userLookupId').value;
+    const username = document.getElementById('userLookupUsername').value;
+    
+    if (!userId && !username) {
+        alert('Please enter either User ID or Username');
+        return;
+    }
+    
+    const searchParam = userId ? `id=${userId}` : `username=${encodeURIComponent(username)}`;
+    
+    fetch(`/admin/lookup_user?${searchParam}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                displayUserInfo(data.user);
+                currentUserId = data.user.id;
+                document.getElementById('userActions').style.display = 'block';
+            } else {
+                alert(data.message || 'User not found');
+                clearUserInfo();
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error looking up user');
+        });
+}
+
+function displayUserInfo(user) {
+    const display = document.getElementById('userInfoDisplay');
+    display.style.display = 'block';
+    
+    display.innerHTML = `
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+            <div>
+                <strong>👤 User Details</strong><br>
+                <small>ID: ${user.id}</small><br>
+                <small>Username: ${user.username}</small><br>
+                <small>Email: ${user.email}</small><br>
+                <small>Phone: ${user.phone}</small>
+            </div>
+            <div>
+                <strong>📅 Account Info</strong><br>
+                <small>Created: ${user.created_at}</small><br>
+                <small>Status: <span style="color: ${user.banned ? '#dc3545' : '#28a745'}">${user.banned ? 'BANNED' : 'ACTIVE'}</span></small><br>
+                <small>Referral Code: ${user.referral_code || 'N/A'}</small>
+            </div>
+        </div>
+    `;
+    
+    // Update financial info
+    document.getElementById('userDeposits').textContent = `KSh ${user.total_deposits || 0}`;
+    document.getElementById('userWithdrawals').textContent = `KSh ${user.total_withdrawals || 0}`;
+    document.getElementById('userBalance').textContent = `KSh ${user.balance || 0}`;
+    document.getElementById('userPnL').textContent = `KSh ${(user.total_deposits || 0) - (user.total_withdrawals || 0)}`;
+    
+    // Update gaming stats
+    document.getElementById('userMatches').textContent = (user.wins || 0) + (user.losses || 0);
+    document.getElementById('userWins').textContent = user.wins || 0;
+    document.getElementById('userLosses').textContent = user.losses || 0;
+    const winRate = (user.wins || 0) + (user.losses || 0) > 0 ? ((user.wins || 0) / ((user.wins || 0) + (user.losses || 0)) * 100).toFixed(1) : 0;
+    document.getElementById('userWinRate').textContent = `${winRate}%`;
+    
+    // Update status info
+    document.getElementById('userAccountStatus').innerHTML = `<span style="color: ${user.banned ? '#dc3545' : '#28a745'}">${user.banned ? 'BANNED' : 'ACTIVE'}</span>`;
+    document.getElementById('userFakeCount').textContent = user.fake_count || 0;
+    document.getElementById('userLastActive').textContent = user.last_active || 'Unknown';
+    document.getElementById('userRegistered').textContent = user.created_at;
+}
+
+function showUserStats() {
+    if (!currentUserId) {
+        alert('Please lookup a user first');
+        return;
+    }
+    
+    fetch(`/admin/user_detailed_stats/${currentUserId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                displayDetailedStats(data.stats);
+            } else {
+                alert('Error loading user stats');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error loading user stats');
+        });
+}
+
+function showUserActivity() {
+    if (!currentUserId) {
+        alert('Please lookup a user first');
+        return;
+    }
+    
+    fetch(`/admin/user_activity/${currentUserId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                displayUserActivity(data.transactions);
+            } else {
+                alert('Error loading user activity');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error loading user activity');
+        });
+}
+
+function displayDetailedStats(stats) {
+    const transactionsDiv = document.getElementById('userTransactions');
+    transactionsDiv.innerHTML = `
+        <div style="background: #f8f9fa; padding: 0.5rem; border-radius: 4px; margin-bottom: 0.5rem;">
+            <strong>📊 Detailed Statistics</strong><br>
+            <small>Total Earnings: KSh ${stats.total_earnings || 0}</small><br>
+            <small>Match Winnings: KSh ${stats.match_winnings || 0}</small><br>
+            <small>Streaming Earnings: KSh ${stats.streaming_earnings || 0}</small><br>
+            <small>Referral Bonuses: KSh ${stats.referral_bonuses || 0}</small><br>
+            <small>Penalties Paid: KSh ${stats.penalties || 0}</small><br>
+            <small>Avg Match Bet: KSh ${stats.avg_bet || 0}</small>
+        </div>
+    `;
+}
+
+function displayUserActivity(transactions) {
+    const transactionsDiv = document.getElementById('userTransactions');
+    let html = '<div style="max-height: 150px; overflow-y: auto;">';
+    
+    transactions.forEach(tx => {
+        const color = tx.amount > 0 ? '#28a745' : '#dc3545';
+        html += `
+            <div style="border-bottom: 1px solid #eee; padding: 0.3rem 0; font-size: 0.75rem;">
+                <div style="display: flex; justify-content: space-between;">
+                    <span>${tx.type}</span>
+                    <span style="color: ${color}; font-weight: bold;">KSh ${tx.amount}</span>
+                </div>
+                <div style="color: #666; font-size: 0.7rem;">${tx.description}</div>
+                <div style="color: #999; font-size: 0.65rem;">${tx.created_at}</div>
+            </div>
+        `;
+    });
+    
+    html += '</div>';
+    transactionsDiv.innerHTML = html;
+}
+
+function adjustUserBalance() {
+    if (!currentUserId) {
+        alert('Please lookup a user first');
+        return;
+    }
+    
+    const amount = prompt('Enter adjustment amount (positive to add, negative to subtract):');
+    if (amount === null || amount === '') return;
+    
+    const numAmount = parseFloat(amount);
+    if (isNaN(numAmount)) {
+        alert('Invalid amount');
+        return;
+    }
+    
+    if (!confirm(`Adjust balance by KSh ${numAmount}?`)) return;
+    
+    fetch('/admin/adjust_balance_new', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({user_id: currentUserId, amount: numAmount})
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            lookupUser(); // Refresh user info
+        } else {
+            alert('Error: ' + data.message);
+        }
+    });
+}
+
+function resetUserPassword() {
+    if (!currentUserId) {
+        alert('Please lookup a user first');
+        return;
+    }
+    
+    if (!confirm('Reset password to "password123"?')) return;
+    
+    fetch('/admin/reset_password_new', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({user_id: currentUserId})
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+        } else {
+            alert('Error: ' + data.message);
+        }
+    });
+}
+
+function toggleUserBan() {
+    if (!currentUserId) {
+        alert('Please lookup a user first');
+        return;
+    }
+    
+    const action = confirm('Ban this user?') ? 'ban' : (confirm('Unban this user?') ? 'unban' : null);
+    if (!action) return;
+    
+    fetch('/admin/toggle_ban', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({user_id: currentUserId, action: action})
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            lookupUser(); // Refresh user info
+        } else {
+            alert('Error: ' + data.message);
+        }
+    });
+}
+
+function viewUserMatches() {
+    if (!currentUserId) {
+        alert('Please lookup a user first');
+        return;
+    }
+    
+    window.open(`/admin/user_matches/${currentUserId}`, '_blank');
+}
+
+function sendUserMessage() {
+    if (!currentUserId) {
+        alert('Please lookup a user first');
+        return;
+    }
+    
+    const message = prompt('Enter message to send to user:');
+    if (!message) return;
+    
+    fetch('/admin/send_user_message', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({user_id: currentUserId, message: message})
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Message sent successfully!');
+        } else {
+            alert('Error sending message');
+        }
+    });
+}
+
+function clearUserInfo() {
+    document.getElementById('userInfoDisplay').style.display = 'none';
+    document.getElementById('userActions').style.display = 'none';
+    currentUserId = null;
+    
+    // Clear all display fields
+    ['userDeposits', 'userWithdrawals', 'userBalance', 'userPnL', 'userMatches', 'userWins', 'userLosses', 'userWinRate', 'userAccountStatus', 'userFakeCount', 'userLastActive', 'userRegistered'].forEach(id => {
+        document.getElementById(id).textContent = '-';
+    });
+    
+    document.getElementById('userTransactions').innerHTML = '';
+}
+
+// Allow Enter key to trigger lookup
+document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('userLookupId').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') lookupUser();
+    });
+    document.getElementById('userLookupUsername').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') lookupUser();
+    });
+});
+
+function downloadFinancialStatement() {
+    if (confirm('Download comprehensive financial statement as CSV?')) {
+        window.location.href = '/admin/download_financial_statement';
+    }
+}
+
 // Close modal when clicking outside
 window.onclick = function(event) {
-    const modal = document.getElementById('depositModal');
-    if (event.target == modal) {
-        modal.style.display = 'none';
+    const depositModal = document.getElementById('depositModal');
+    const paymentModal = document.getElementById('paymentModal');
+    const fakeScreenshotModal = document.getElementById('fakeScreenshotModal');
+    if (event.target == depositModal) {
+        depositModal.style.display = 'none';
+    }
+    if (event.target == paymentModal) {
+        paymentModal.style.display = 'none';
+    }
+    if (event.target == fakeScreenshotModal) {
+        fakeScreenshotModal.style.display = 'none';
     }
 }
 </script>

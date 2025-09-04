@@ -1,0 +1,180 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card">
+    <h1><svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 2L15.09 8.26L22 9L17 14L18.18 21L12 17.77L5.82 21L7 14L2 9L8.91 8.26L12 2Z" fill="#ffc107"/></svg> Premium Streaming Competition</h1>
+    <p>Compete with other streamers and earn enhanced rewards: KSh 15/hour + KSh 5 per viewer + performance bonuses!</p>
+</div>
+
+<!-- Competition Stats -->
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+    <div class="card" style="background: linear-gradient(135deg, #28a745, #20c997); color: white; text-align: center;">
+        <h3>Your Earnings</h3>
+        <div style="font-size: 2rem; font-weight: bold;">KSh {{ user_earnings }}</div>
+        <small>This competition</small>
+    </div>
+    <div class="card" style="background: linear-gradient(135deg, #dc3545, #fd7e14); color: white; text-align: center;">
+        <h3>Your Losses</h3>
+        <div style="font-size: 2rem; font-weight: bold;">KSh {{ user_losses }}</div>
+        <small>Entry fees paid</small>
+    </div>
+    <div class="card" style="background: linear-gradient(135deg, #6f42c1, #e83e8c); color: white; text-align: center;">
+        <h3>Your Rank</h3>
+        <div style="font-size: 2rem; font-weight: bold;">#{{ user_rank }}</div>
+        <small>Out of {{ total_streamers }}</small>
+    </div>
+    <div class="card" style="background: linear-gradient(135deg, #17a2b8, #6610f2); color: white; text-align: center;">
+        <h3>Prize Pool</h3>
+        <div style="font-size: 2rem; font-weight: bold;">KSh {{ prize_pool }}</div>
+        <small>Total rewards</small>
+    </div>
+</div>
+
+<!-- Active Competitions -->
+<div class="card">
+    <h3><svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/><path d="M12 6L12 12L16 16" stroke="currentColor" stroke-width="2"/></svg> Active Competitions</h3>
+    <div style="display: grid; gap: 1rem;">
+        {% for comp in competitions %}
+        <div style="border: 1px solid #ddd; border-radius: 8px; padding: 1rem; background: rgba(255,255,255,0.05);">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <h4>{{ comp.name }}</h4>
+                    <p style="margin: 0.5rem 0; opacity: 0.8;">{{ comp.description }}</p>
+                    <div style="display: flex; gap: 1rem; font-size: 0.9rem;">
+                        <span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/><path d="M12 6V18M9 9H15M9 15H15" stroke="currentColor" stroke-width="2"/></svg> Entry: KSh {{ comp.entry_fee }}</span>
+                        <span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 2L15.09 8.26L22 9L17 14L18.18 21L12 17.77L5.82 21L7 14L2 9L8.91 8.26L12 2Z" fill="currentColor"/></svg> Prize: KSh {{ comp.prize }}</span>
+                        <span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/><polyline points="12,6 12,12 16,14" stroke="currentColor" stroke-width="2"/></svg> {{ comp.time_left }}</span>
+                    </div>
+                </div>
+                <div style="text-align: center;">
+                    {% if comp.joined %}
+                    <button class="btn btn-success" disabled>Joined</button>
+                    <div style="margin-top: 0.5rem; font-size: 0.8rem;">Rank: #{{ comp.user_rank }}</div>
+                    <a href="{{ url_for('stream_setup', match_id=0) }}?competition=true" class="btn btn-warning" style="margin-top: 0.5rem;">Start Streaming</a>
+                    {% else %}
+                    <button onclick="joinCompetition({{ comp.id }})" class="btn btn-primary">Join - KSh {{ comp.entry_fee }}</button>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Leaderboard -->
+<div class="card">
+    <h3><svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 2L15.09 8.26L22 9L17 14L18.18 21L12 17.77L5.82 21L7 14L2 9L8.91 8.26L12 2Z" fill="#ffc107"/></svg> Competition Leaderboard</h3>
+    <div style="overflow-x: auto;">
+        <table style="width: 100%; border-collapse: collapse;">
+            <thead>
+                <tr style="background: rgba(255,255,255,0.1);">
+                    <th style="padding: 1rem; text-align: left;">Rank</th>
+                    <th style="padding: 1rem; text-align: left;">Streamer</th>
+                    <th style="padding: 1rem; text-align: center;">Viewers</th>
+                    <th style="padding: 1rem; text-align: center;">Stream Time</th>
+                    <th style="padding: 1rem; text-align: center;">Earnings</th>
+                    <th style="padding: 1rem; text-align: center;">Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for streamer in leaderboard %}
+                <tr style="border-bottom: 1px solid rgba(255,255,255,0.1); {% if streamer.username == session.username %}background: rgba(255,193,7,0.2);{% endif %}">
+                    <td style="padding: 1rem;">
+                        {% if loop.index <= 3 %}
+                        <span style="font-size: 1.5rem;">
+                            {% if loop.index == 1 %}<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="10" fill="#ffd700"/><text x="12" y="16" text-anchor="middle" fill="black" font-size="12" font-weight="bold">1</text></svg>{% elif loop.index == 2 %}<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="10" fill="#c0c0c0"/><text x="12" y="16" text-anchor="middle" fill="black" font-size="12" font-weight="bold">2</text></svg>{% else %}<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="10" fill="#cd7f32"/><text x="12" y="16" text-anchor="middle" fill="black" font-size="12" font-weight="bold">3</text></svg>{% endif %}
+                        </span>
+                        {% endif %}
+                        #{{ loop.index }}
+                    </td>
+                    <td style="padding: 1rem;">
+                        <strong>{{ streamer.username }}</strong>
+                        {% if streamer.username == session.username %}<span style="color: #ffc107;">(You)</span>{% endif %}
+                    </td>
+                    <td style="padding: 1rem; text-align: center;">{{ streamer.total_viewers }}</td>
+                    <td style="padding: 1rem; text-align: center;">{{ streamer.stream_time }}h</td>
+                    <td style="padding: 1rem; text-align: center; color: #28a745;">KSh {{ streamer.earnings }}</td>
+                    <td style="padding: 1rem; text-align: center;">
+                        {% if streamer.is_streaming %}
+                        <span style="color: #dc3545;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="10" fill="#dc3545"/><circle cx="12" cy="12" r="3" fill="white"/></svg> LIVE</span>
+                        {% else %}
+                        <span style="opacity: 0.6;">Offline</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Competition Rules -->
+<div class="card">
+    <h3><svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M14 2H6C4.9 2 4 2.9 4 4V20C4 21.1 4.89 22 5.99 22H18C19.1 22 20 21.1 20 20V8L14 2Z" stroke="currentColor" stroke-width="2" fill="none"/><polyline points="14,2 14,8 20,8" stroke="currentColor" stroke-width="2"/></svg> Enhanced Competition Rules</h3>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem;">
+        <div style="background: rgba(40, 167, 69, 0.1); padding: 1rem; border-radius: 8px;">
+            <h4 style="color: #28a745;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="10" stroke="#28a745" stroke-width="2"/><path d="M12 6V18M9 9H15M9 15H15" stroke="#28a745" stroke-width="2"/></svg> Enhanced Earnings System</h4>
+            <ul style="margin: 0; padding-left: 1.5rem;">
+                <li>Base streaming bonus: KSh 15/hour</li>
+                <li>Viewer bonus: KSh 5 per viewer/hour</li>
+                <li>Match win bonus: KSh 100</li>
+                <li>Performance bonus: KSh 50-200</li>
+                <li>Sponsor rewards: KSh 100-500</li>
+                <li>Top 3 daily: KSh 500-2000</li>
+            </ul>
+        </div>
+        <div style="background: rgba(220, 53, 69, 0.1); padding: 1rem; border-radius: 8px;">
+            <h4 style="color: #dc3545;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 9V13M12 17H12.01M21 12C21 16.97 16.97 21 12 21S3 16.97 3 12S7.03 3 12 3S21 7.03 21 12Z" stroke="#dc3545" stroke-width="2"/></svg> Loss Conditions</h4>
+            <ul style="margin: 0; padding-left: 1.5rem;">
+                <li>Entry fee: KSh 50-200</li>
+                <li>Match loss: -KSh 20</li>
+                <li>Stream disconnect: -KSh 10</li>
+                <li>Rule violation: -KSh 100</li>
+            </ul>
+        </div>
+        <div style="background: rgba(23, 162, 184, 0.1); padding: 1rem; border-radius: 8px;">
+            <h4 style="color: #17a2b8;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 2L15.09 8.26L22 9L17 14L18.18 21L12 17.77L5.82 21L7 14L2 9L8.91 8.26L12 2Z" fill="#17a2b8"/></svg> Enhanced Prize Distribution</h4>
+            <ul style="margin: 0; padding-left: 1.5rem;">
+                <li>1st Place: 50% of prize pool</li>
+                <li>2nd Place: 30% of prize pool</li>
+                <li>3rd Place: 20% of prize pool</li>
+                <li>Participation: Entry fee refund</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<script>
+async function joinCompetition(competitionId) {
+    if (!confirm('Join this streaming competition? Entry fee will be deducted from your balance.')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch('/join_streaming_competition', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({competition_id: competitionId})
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert(data.message);
+            location.reload();
+        } else {
+            alert(data.error || 'Failed to join competition');
+        }
+    } catch (error) {
+        alert('Error joining competition');
+    }
+}
+
+// Update leaderboard every 30 seconds
+setInterval(() => {
+    if (document.querySelector('[style*="LIVE"]')) {
+        location.reload();
+    }
+}, 30000);
+</script>
+{% endblock %}

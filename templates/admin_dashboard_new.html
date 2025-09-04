@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div style="background: rgba(0,0,0,0.8); backdrop-filter: blur(10px); border-radius: 15px; padding: 20px; margin-bottom: 20px; border: 1px solid rgba(255,255,255,0.1);">
+    <h1 style="color: white; margin: 0;">🏢 Admin Control Center</h1>
+    <p style="color: #ccc; margin: 5px 0 0 0;">Platform Management & Financial Oversight</p>
+</div>
+
+<!-- Quick Stats -->
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px;">
+    <div style="background: rgba(40,167,69,0.2); backdrop-filter: blur(10px); border-radius: 12px; padding: 15px; border: 1px solid rgba(40,167,69,0.3);">
+        <div style="font-size: 24px; font-weight: bold; color: #28a745;">{{ stats.total_users }}</div>
+        <div style="color: #ccc; font-size: 14px;">Total Users</div>
+    </div>
+    <div style="background: rgba(220,53,69,0.2); backdrop-filter: blur(10px); border-radius: 12px; padding: 15px; border: 1px solid rgba(220,53,69,0.3);">
+        <div style="font-size: 24px; font-weight: bold; color: #dc3545;">{{ pending_deposits|length + pending_withdrawals|length }}</div>
+        <div style="color: #ccc; font-size: 14px;">Pending Actions</div>
+    </div>
+    <div style="background: rgba(255,193,7,0.2); backdrop-filter: blur(10px); border-radius: 12px; padding: 15px; border: 1px solid rgba(255,193,7,0.3);">
+        <div style="font-size: 24px; font-weight: bold; color: #ffc107;">KSh {{ "%.0f"|format(earnings_data.net_earnings) }}</div>
+        <div style="color: #ccc; font-size: 14px;">Net Profit</div>
+    </div>
+    <div style="background: rgba(23,162,184,0.2); backdrop-filter: blur(10px); border-radius: 12px; padding: 15px; border: 1px solid rgba(23,162,184,0.3);">
+        <div style="font-size: 24px; font-weight: bold; color: #17a2b8;" id="liveStreamsCount">0</div>
+        <div style="color: #ccc; font-size: 14px;">Live Streams</div>
+    </div>
+</div>
+
+<!-- Action Buttons -->
+<div style="display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap;">
+    <a href="{{ url_for('admin_users') }}" style="background: rgba(0,123,255,0.8); color: white; padding: 8px 15px; border-radius: 8px; text-decoration: none; font-size: 14px;">👥 Users</a>
+    <a href="{{ url_for('admin_transactions') }}" style="background: rgba(40,167,69,0.8); color: white; padding: 8px 15px; border-radius: 8px; text-decoration: none; font-size: 14px;">💳 Transactions</a>
+    <a href="{{ url_for('admin_matches') }}" style="background: rgba(255,193,7,0.8); color: white; padding: 8px 15px; border-radius: 8px; text-decoration: none; font-size: 14px;">🏆 Matches</a>
+    <button onclick="downloadStatement()" style="background: rgba(102,16,242,0.8); color: white; padding: 8px 15px; border-radius: 8px; border: none; cursor: pointer; font-size: 14px;">📄 Download Report</button>
+</div>
+
+<!-- Revenue Breakdown -->
+<div style="background: rgba(0,0,0,0.6); backdrop-filter: blur(10px); border-radius: 15px; padding: 20px; margin-bottom: 20px; border: 1px solid rgba(255,255,255,0.1);">
+    <h3 style="color: white; margin-top: 0;">💲 Revenue Sources</h3>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px;">
+        <div style="background: rgba(40,167,69,0.2); padding: 12px; border-radius: 8px; border-left: 3px solid #28a745;">
+            <div style="font-size: 18px; font-weight: bold; color: #28a745;">KSh {{ "%.0f"|format(earnings_data.match_commission) }}</div>
+            <div style="color: #ccc; font-size: 12px;">Match Commission</div>
+        </div>
+        <div style="background: rgba(23,162,184,0.2); padding: 12px; border-radius: 8px; border-left: 3px solid #17a2b8;">
+            <div style="font-size: 18px; font-weight: bold; color: #17a2b8;">KSh {{ "%.0f"|format(earnings_data.deposit_fees) }}</div>
+            <div style="color: #ccc; font-size: 12px;">Deposit Fees</div>
+        </div>
+        <div style="background: rgba(255,193,7,0.2); padding: 12px; border-radius: 8px; border-left: 3px solid #ffc107;">
+            <div style="font-size: 18px; font-weight: bold; color: #ffc107;">KSh {{ "%.0f"|format(earnings_data.withdrawal_fees) }}</div>
+            <div style="color: #ccc; font-size: 12px;">Withdrawal Fees</div>
+        </div>
+        <div style="background: rgba(220,53,69,0.2); padding: 12px; border-radius: 8px; border-left: 3px solid #dc3545;">
+            <div style="font-size: 18px; font-weight: bold; color: #dc3545;">KSh {{ "%.0f"|format(earnings_data.gift_commissions) }}</div>
+            <div style="color: #ccc; font-size: 12px;">Gift Commission</div>
+        </div>
+    </div>
+</div>
+
+<!-- Pending Actions -->
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+    <!-- Deposits -->
+    <div style="background: rgba(0,0,0,0.6); backdrop-filter: blur(10px); border-radius: 15px; padding: 20px; border: 1px solid rgba(255,255,255,0.1);">
+        <h3 style="color: white; margin-top: 0;">💵 Pending Deposits ({{ pending_deposits|length }})</h3>
+        {% if pending_deposits %}
+            {% for deposit in pending_deposits[:3] %}
+            <div style="background: rgba(40,167,69,0.1); padding: 12px; border-radius: 8px; margin-bottom: 10px; border-left: 3px solid #28a745;">
+                <div style="color: white; font-weight: bold;">{{ deposit[5] }}</div>
+                <div style="color: #ccc; font-size: 12px;">KSh {{ "%.0f"|format(deposit[2]) }} - {{ deposit[4] }}</div>
+                <div style="margin-top: 8px;">
+                    <a href="{{ url_for('approve_deposit', transaction_id=deposit[0]) }}" style="background: #28a745; color: white; padding: 4px 8px; border-radius: 4px; text-decoration: none; font-size: 12px; margin-right: 5px;">Approve</a>
+                    <a href="{{ url_for('reject_deposit', transaction_id=deposit[0]) }}" style="background: #dc3545; color: white; padding: 4px 8px; border-radius: 4px; text-decoration: none; font-size: 12px;">Reject</a>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <p style="color: #ccc; text-align: center;">No pending deposits</p>
+        {% endif %}
+    </div>
+
+    <!-- Withdrawals -->
+    <div style="background: rgba(0,0,0,0.6); backdrop-filter: blur(10px); border-radius: 15px; padding: 20px; border: 1px solid rgba(255,255,255,0.1);">
+        <h3 style="color: white; margin-top: 0;">🏧 Pending Withdrawals ({{ pending_withdrawals|length }})</h3>
+        {% if pending_withdrawals %}
+            {% for withdrawal in pending_withdrawals[:3] %}
+            <div style="background: rgba(220,53,69,0.1); padding: 12px; border-radius: 8px; margin-bottom: 10px; border-left: 3px solid #dc3545;">
+                <div style="color: white; font-weight: bold;">{{ withdrawal[5] }}</div>
+                <div style="color: #ccc; font-size: 12px;">KSh {{ "%.0f"|format(withdrawal[2]) }}</div>
+                <div style="margin-top: 8px;">
+                    <a href="{{ url_for('withdrawal_chat', withdrawal_id=withdrawal[0]) }}" style="background: #007bff; color: white; padding: 4px 8px; border-radius: 4px; text-decoration: none; font-size: 12px;">Process</a>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <p style="color: #ccc; text-align: center;">No pending withdrawals</p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Live Streams -->
+<div style="background: rgba(0,0,0,0.6); backdrop-filter: blur(10px); border-radius: 15px; padding: 20px; border: 1px solid rgba(255,255,255,0.1);">
+    <h3 style="color: white; margin-top: 0;">📺 Live Streams</h3>
+    <div id="liveStreamsContainer">
+        <p style="color: #ccc; text-align: center;">Loading streams...</p>
+    </div>
+</div>
+
+<script>
+function loadLiveStreams() {
+    fetch('/admin/live_streams')
+        .then(response => response.json())
+        .then(data => {
+            const container = document.getElementById('liveStreamsContainer');
+            const countEl = document.getElementById('liveStreamsCount');
+            
+            if (data.streams && data.streams.length > 0) {
+                countEl.textContent = data.streams.length;
+                container.innerHTML = data.streams.slice(0, 5).map(stream => `
+                    <div style="background: rgba(220,53,69,0.1); padding: 12px; border-radius: 8px; margin-bottom: 10px; border-left: 3px solid #dc3545;">
+                        <div style="color: white; font-weight: bold;">${stream.title}</div>
+                        <div style="color: #ccc; font-size: 12px;">${stream.username} - ${stream.viewers} viewers</div>
+                        <div style="margin-top: 8px;">
+                            <a href="/watch_stream/${stream.id}" style="background: #007bff; color: white; padding: 4px 8px; border-radius: 4px; text-decoration: none; font-size: 12px; margin-right: 5px;">Watch</a>
+                            <button onclick="endStream(${stream.id})" style="background: #dc3545; color: white; padding: 4px 8px; border-radius: 4px; border: none; cursor: pointer; font-size: 12px;">End</button>
+                        </div>
+                    </div>
+                `).join('');
+            } else {
+                countEl.textContent = '0';
+                container.innerHTML = '<p style="color: #ccc; text-align: center;">No active streams</p>';
+            }
+        })
+        .catch(() => {
+            document.getElementById('liveStreamsContainer').innerHTML = '<p style="color: #dc3545; text-align: center;">Error loading streams</p>';
+        });
+}
+
+function endStream(streamId) {
+    if (confirm('End this stream?')) {
+        fetch(`/admin/end_stream/${streamId}`, {method: 'POST'})
+            .then(() => loadLiveStreams());
+    }
+}
+
+function downloadStatement() {
+    window.location.href = '/admin/download_financial_statement';
+}
+
+// Load streams on page load and refresh every 30 seconds
+loadLiveStreams();
+setInterval(loadLiveStreams, 30000);
+</script>
+{% endblock %}

@@ -4,6 +4,11 @@
 <div class="card">
     <h1>👥 User Management</h1>
     <p>Monitor all registered users and their activity</p>
+    {% if total_count %}
+        <div style="background: rgba(255,193,7,0.2); padding: 1rem; border-radius: 8px; margin: 1rem 0;">
+            <strong>🔍 Debug Info:</strong> Total users in database: {{ total_count }} | Currently showing: {{ users|length }} users
+        </div>
+    {% endif %}
 </div>
 
 <div class="card">
@@ -17,21 +22,120 @@
                     <th style="padding: 1rem; text-align: left;">Wins/Losses</th>
                     <th style="padding: 1rem; text-align: left;">Total Earnings</th>
                     <th style="padding: 1rem; text-align: left;">Joined</th>
+                    <th style="padding: 1rem; text-align: left;">Actions</th>
                 </tr>
             </thead>
             <tbody>
                 {% for user in users %}
-                <tr style="border-bottom: 1px solid rgba(255,255,255,0.1);">
-                    <td style="padding: 1rem;"><strong>{{ user[1] }}</strong></td>
-                    <td style="padding: 1rem;">{{ user[2] }}</td>
-                    <td style="padding: 1rem; color: #28a745;">KSh {{ "%.0f"|format(user[4]) }}</td>
-                    <td style="padding: 1rem;">{{ user[5] }}W / {{ user[6] }}L</td>
-                    <td style="padding: 1rem; color: #17a2b8;">KSh {{ "%.0f"|format(user[7]) }}</td>
-                    <td style="padding: 1rem;">{{ user[8] }}</td>
+                <tr style="border-bottom: 1px solid rgba(255,255,255,0.1); {% if user[10] and user[10] != 0 %}background: rgba(220,53,69,0.1);{% endif %}">
+                    <td style="padding: 1rem;">
+                        <strong>{{ user[1] }}</strong><br>
+                        <small>ID: {{ user[0] }}</small>
+                        {% if user[10] and user[10] != 0 %}<br><span style="color: #dc3545; font-weight: bold;">🚫 BANNED</span>{% endif %}
+                    </td>
+                    <td style="padding: 1rem;">{{ user[2] }}<br><small>Phone: {{ user[5] or 'Not set' }}</small></td>
+                    <td style="padding: 1rem; color: #28a745;">KSh {{ "%.0f"|format(user[4]|float or 0) }}</td>
+                    <td style="padding: 1rem;">{{ user[6] or 0 }}W / {{ user[7] or 0 }}L</td>
+                    <td style="padding: 1rem; color: #17a2b8;">KSh {{ "%.0f"|format(user[8]|float or 0) }}</td>
+                    <td style="padding: 1rem;">{{ user[9] or 'Unknown' }}</td>
+                    <td style="padding: 1rem;">
+                        <button class="btn btn-secondary" onclick="adjustBalance('{{ user[1] }}', {{ user[0] }})">Adjust Balance</button>
+                        {% if user[10] and user[10] != 0 %}
+                            <button class="btn btn-success" onclick="unbanUser('{{ user[1] }}', {{ user[0] }})">Unban User</button>
+                        {% else %}
+                            <button class="btn btn-danger" onclick="banUser('{{ user[1] }}', {{ user[0] }})">Ban User</button>
+                        {% endif %}
+                        <button class="btn btn-success" onclick="resetPassword('{{ user[1] }}', {{ user[0] }})">Reset Password</button>
+                    </td>
                 </tr>
                 {% endfor %}
+                {% if users|length == 0 %}
+                <tr>
+                    <td colspan="6" style="padding: 2rem; text-align: center; color: #dc3545;">
+                        ⚠️ No users found! This might be a database issue.
+                    </td>
+                </tr>
+                {% endif %}
             </tbody>
         </table>
     </div>
 </div>
+
+<script>
+function adjustBalance(username, userId) {
+    const amount = prompt(`Adjust balance for ${username}:\nEnter amount (positive to add, negative to subtract):`);
+    if (amount !== null && amount !== '') {
+        fetch('/admin/adjust_balance', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({username: username, amount: parseFloat(amount)})
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(`Balance adjusted for ${username}`);
+                location.reload();
+            } else {
+                alert('Error adjusting balance');
+            }
+        });
+    }
+}
+
+function banUser(username, userId) {
+    if (confirm(`Ban user ${username}? This will disable their account.`)) {
+        fetch('/admin/ban_user', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({username: username, user_id: userId})
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(`User ${username} has been banned`);
+                location.reload();
+            } else {
+                alert('Error banning user');
+            }
+        });
+    }
+}
+
+function resetPassword(username, userId) {
+    if (confirm(`Reset password for ${username}? New password will be 'password123'`)) {
+        fetch('/admin/reset_password', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({username: username, user_id: userId})
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(`Password reset for ${username}. New password: password123`);
+            } else {
+                alert('Error resetting password');
+            }
+        });
+    }
+}
+
+function unbanUser(username, userId) {
+    if (confirm(`Unban user ${username}? This will restore their account access.`)) {
+        fetch('/admin/unban_user', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({username: username, user_id: userId})
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(`User ${username} has been unbanned`);
+                location.reload();
+            } else {
+                alert('Error unbanning user');
+            }
+        });
+    }
+}
+</script>
 {% endblock %}

@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Payment Result - SkillStake</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .result-container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 25px 50px rgba(0,0,0,0.15);
+            max-width: 500px;
+            width: 100%;
+            text-align: center;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        .logo {
+            font-size: 32px;
+            font-weight: bold;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 20px;
+        }
+        .status-icon {
+            font-size: 80px;
+            margin: 20px 0;
+            animation: bounce 1s ease-in-out;
+        }
+        .success { color: #28a745; }
+        .error { color: #dc3545; }
+        .title {
+            font-size: 28px;
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+        .amount {
+            font-size: 36px;
+            font-weight: bold;
+            color: #28a745;
+            margin: 20px 0;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .message {
+            font-size: 16px;
+            color: #666;
+            margin: 20px 0;
+            line-height: 1.5;
+        }
+        .btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 50px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            margin: 10px;
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+            transition: all 0.3s ease;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 25px rgba(102, 126, 234, 0.4);
+        }
+        .btn-secondary {
+            background: linear-gradient(135deg, #6c757d, #495057);
+            box-shadow: 0 8px 20px rgba(108, 117, 125, 0.3);
+        }
+        @keyframes bounce {
+            0%, 20%, 60%, 100% { transform: translateY(0); }
+            40% { transform: translateY(-10px); }
+            80% { transform: translateY(-5px); }
+        }
+        .particles {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            pointer-events: none;
+        }
+        .particle {
+            position: absolute;
+            background: rgba(255,255,255,0.6);
+            border-radius: 50%;
+            animation: float 6s ease-in-out infinite;
+        }
+        @keyframes float {
+            0%, 100% { transform: translateY(0px) rotate(0deg); opacity: 0; }
+            50% { transform: translateY(-100px) rotate(180deg); opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div class="particles">
+        <div class="particle" style="left: 10%; width: 4px; height: 4px; animation-delay: 0s;"></div>
+        <div class="particle" style="left: 20%; width: 6px; height: 6px; animation-delay: 1s;"></div>
+        <div class="particle" style="left: 30%; width: 3px; height: 3px; animation-delay: 2s;"></div>
+        <div class="particle" style="left: 40%; width: 5px; height: 5px; animation-delay: 3s;"></div>
+        <div class="particle" style="left: 50%; width: 4px; height: 4px; animation-delay: 4s;"></div>
+        <div class="particle" style="left: 60%; width: 6px; height: 6px; animation-delay: 5s;"></div>
+        <div class="particle" style="left: 70%; width: 3px; height: 3px; animation-delay: 1.5s;"></div>
+        <div class="particle" style="left: 80%; width: 5px; height: 5px; animation-delay: 2.5s;"></div>
+        <div class="particle" style="left: 90%; width: 4px; height: 4px; animation-delay: 3.5s;"></div>
+    </div>
+
+    <div class="result-container">
+        <div class="logo">🎮 SkillStake</div>
+        
+        {% if success %}
+            <div class="status-icon success">✅</div>
+            <h1 class="title success">Payment Successful!</h1>
+            <div class="amount">KSh {{ "{:,.0f}".format(amount) }}</div>
+            <p class="message">Your deposit has been processed and added to your gaming wallet. You can now use these funds to join matches and tournaments!</p>
+        {% else %}
+            <div class="status-icon error">❌</div>
+            <h1 class="title error">Payment Failed</h1>
+            <p class="message">{{ error or "Something went wrong with your payment. Please try again or contact support." }}</p>
+        {% endif %}
+        
+        <div style="margin-top: 30px;">
+            <a href="/wallet" class="btn">💰 View Wallet</a>
+            <a href="/dashboard" class="btn btn-secondary">🏠 Dashboard</a>
+        </div>
+        
+        {% if success %}
+        <div style="margin-top: 20px; padding: 15px; background: rgba(40, 167, 69, 0.1); border-radius: 10px; border: 1px solid rgba(40, 167, 69, 0.2);">
+            <small style="color: #155724;">
+                🎯 <strong>Ready to play?</strong> Join matches, tournaments, or start streaming to earn more!
+            </small>
+        </div>
+        {% endif %}
+    </div>
+
+    <script>
+        // Auto redirect after success
+        {% if success %}
+        setTimeout(() => {
+            window.location.href = '/wallet';
+        }, 5000);
+        {% endif %}
+    </script>
+</body>
+</html>

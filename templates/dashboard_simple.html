@@ -1,0 +1,16 @@
+{% extends "base_simple.html" %}
+
+{% block content %}
+<div class="card">
+    <h1>Welcome to GameBet Dashboard</h1>
+    <p>You are logged in as: {{ session.username }}</p>
+    <p>Your balance: KSh {{ session.balance }}</p>
+    
+    <div style="margin-top: 2rem;">
+        <h3>Quick Actions</h3>
+        <a href="#" class="btn">Create Match</a>
+        <a href="#" class="btn">Join Match</a>
+        <a href="#" class="btn">Add Funds</a>
+    </div>
+</div>
+{% endblock %}

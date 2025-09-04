@@ -2,11 +2,53 @@
 
 {% block content %}
 <div class="card">
-    <h1>Match Management</h1>
-    <p>Monitor all gaming matches and disputes</p>
+    <h1><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" style="vertical-align: middle; margin-right: 8px;"><path d="M7.5 6.5C7.5 8.981 9.519 11 12 11s4.5-2.019 4.5-4.5S14.481 2 12 2 7.5 4.019 7.5 6.5zM20 21h1v-1c0-3.859-3.141-7-7-7h-4c-3.859 0-7 3.141-7 7v1h1 1 14z"/></svg> Match & Competition Management</h1>
+    <p>View matches and streaming competition data</p>
+</div>
+
+<!-- Competition Stats -->
+{% if competition_data %}
+<div class="card">
+    <h3><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="vertical-align: middle; margin-right: 8px;"><path d="M16 6l2.29 2.29-4.88 4.88-4-4L2 16.59 3.41 18l6-6 4 4 6.3-6.29L22 12V6z"/></svg> Today's Streaming Competition</h3>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem;">
+        <div class="stat-card">
+            <div class="stat-number">{{ competition_data[0] or 0 }}</div>
+            <div class="stat-label">Participants</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number">KSh {{ "%.0f"|format(competition_data[1] or 0) }}</div>
+            <div class="stat-label">Total Earnings</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number">{{ competition_data[2] or 0 }}</div>
+            <div class="stat-label">Live Streams</div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Match Statistics -->
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+    <div class="stat-card">
+        <div class="stat-number">{{ stats.total }}</div>
+        <div class="stat-label">Total Matches</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number">{{ stats.completed }}</div>
+        <div class="stat-label">Completed</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number">{{ stats.active }}</div>
+        <div class="stat-label">Active</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number">{{ stats.disputed }}</div>
+        <div class="stat-label">Disputed</div>
+    </div>
 </div>
 
 <div class="card">
+    <h3>Recent Matches (Last 100)</h3>
     {% if matches %}
         {% for match in matches %}
         <div class="match-card">
@@ -22,10 +64,12 @@
                 <div>
                     <strong>Player 1:</strong><br>
                     {{ match[10] or 'No Player' }}
+                    {% if match[13] %}<br><small>{{ match[13] }}</small>{% endif %}
                 </div>
                 <div>
                     <strong>Player 2:</strong><br>
                     {{ match[11] or 'Waiting...' }}
+                    {% if match[14] %}<br><small>{{ match[14] }}</small>{% endif %}
                 </div>
                 <div>
                     <strong>Winner:</strong><br>
@@ -33,6 +77,31 @@
                         <span style="color: #28a745;">{{ match[12] }}</span>
                     {% else %}
                         <span style="color: #666;">TBD</span>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; margin: 1rem 0; font-size: 0.9rem;">
+                <div>
+                    <strong>Screenshots:</strong> {{ match[15] or 0 }}
+                </div>
+                <div>
+                    <strong>Verification:</strong> 
+                    {% if match[17] == 'streaming' %}
+                        <span style="color: #dc3545;"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="vertical-align: middle; margin-right: 4px;"><circle cx="12" cy="12" r="8"/></svg> Live Stream</span>
+                    {% else %}
+                        <span style="color: #007bff;"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="vertical-align: middle; margin-right: 4px;"><path d="M9 2L7.17 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2h-3.17L15 2H9zm3 15c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5z"/></svg> OCR Screenshot</span>
+                    {% endif %}
+                </div>
+                <div>
+                    {% if match[7] == 'active' %}
+                        <span style="color: #ffc107;"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="vertical-align: middle; margin-right: 4px;"><path d="M15,1H9V3H15M11,14H13V8H11M19.03,7.39L20.45,5.97C20,5.46 19.55,5 19.04,4.56L17.62,6C16.07,4.74 14.12,4 12,4A9,9 0 0,0 3,13A9,9 0 0,0 12,22C17,22 21,17.97 21,13C21,10.88 20.26,8.93 19.03,7.39Z"/></svg> Active Match</span>
+                    {% elif match[7] == 'cancelled_fake_ss' %}
+                        <span style="color: #dc3545;"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="vertical-align: middle; margin-right: 4px;"><path d="M12,2C17.53,2 22,6.47 22,12C22,17.53 17.53,22 12,22C6.47,22 2,17.53 2,12C2,6.47 6.47,2 12,2M15.59,7L12,10.59L8.41,7L7,8.41L10.59,12L7,15.59L8.41,17L12,13.41L15.59,17L17,15.59L13.41,12L17,8.41L15.59,7Z"/></svg> Fake Screenshots</span>
+                    {% elif match[7] == 'pending_review' %}
+                        <span style="color: #ffc107;"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="vertical-align: middle; margin-right: 4px;"><path d="M6,2V8H6V8L10,12L6,16V16H6V22H18V16H18V16L14,12L18,8V8H18V2H6M16,16.5V20H8V16.5L12,12.5L16,16.5M12,11.5L8,7.5V4H16V7.5L12,11.5Z"/></svg> Needs Review</span>
+                    {% elif match[15] > 0 %}
+                        <span style="color: #17a2b8;"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="vertical-align: middle; margin-right: 4px;"><path d="M9 2L7.17 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2h-3.17L15 2H9zm3 15c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5z"/></svg> Has Screenshots</span>
                     {% endif %}
                 </div>
             </div>
@@ -49,7 +118,11 @@
                 <div>
                     <strong>Admin Commission:</strong><br>
                     {% if match[7] == 'completed' %}
-                        <span style="color: #00ff88;">KSh {{ "%.0f"|format((match[5]|float or 0) * 0.16) }}</span>
+                        <span style="color: #00ff88;">KSh {{ "%.0f"|format((match[5]|float or 0) * 0.32) }}</span>
+                    {% elif match[7] == 'cancelled_fake_ss' and match[18] > 0 %}
+                        <span style="color: #dc3545;">KSh {{ "%.0f"|format(match[18]) }} (Fraud Penalties)</span>
+                    {% elif match[7] == 'cancelled_fake_ss' %}
+                        <span style="color: #ffc107;">KSh 0 (No Penalties Applied)</span>
                     {% else %}
                         <span style="color: #666;">Pending</span>
                     {% endif %}
@@ -60,20 +133,175 @@
                 Created: {{ match[9] }}
                 {% if match[7] == 'disputed' %}
                     | <span style="color: #dc3545;">REQUIRES ADMIN REVIEW</span>
+                {% elif match[7] == 'pending_review' %}
+                    | <span style="color: #ffc107;">OCR REVIEW NEEDED</span>
+                {% elif match[7] == 'cancelled_fake_ss' %}
+                    | <span style="color: #dc3545;">CANCELLED - FAKE SCREENSHOTS</span>
                 {% endif %}
             </div>
             
-            {% if match[7] == 'disputed' %}
             <div style="margin-top: 1rem;">
-                <a href="/admin/resolve_dispute/{{ match[0] }}/player1" class="btn btn-success">{{ match[10] }} Wins</a>
-                <a href="/admin/resolve_dispute/{{ match[0] }}/player2" class="btn btn-success">{{ match[11] }} Wins</a>
-                <a href="/admin/resolve_dispute/{{ match[0] }}/draw" class="btn btn-secondary">Refund Both</a>
+                {% if match[15] > 0 %}
+                    <button onclick="viewScreenshots({{ match[0] }})" class="btn btn-info"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="vertical-align: middle; margin-right: 4px;"><path d="M9 2L7.17 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2h-3.17L15 2H9zm3 15c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5z"/></svg> View Screenshots ({{ match[15] }})</button>
+                    {% if match[7] not in ['cancelled_fake_ss', 'completed'] %}
+                        <button onclick="chargeFakeScreenshots({{ match[0] }})" class="btn btn-warning"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="vertical-align: middle; margin-right: 4px;"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg> Charge Fake SS</button>
+                    {% endif %}
+                {% endif %}
+                
+                {% if match[15] == 1 and match[7] in ['active', 'waiting_opponent', 'pending_review'] %}
+                    <button onclick="handleTimeout({{ match[0] }}, 'submitter')" class="btn btn-success"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="vertical-align: middle; margin-right: 4px;"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg> Award to Submitter</button>
+                    <button onclick="handleTimeout({{ match[0] }}, 'refund')" class="btn btn-secondary"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="vertical-align: middle; margin-right: 4px;"><path d="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M12,4A8,8 0 0,1 20,12A8,8 0 0,1 12,20A8,8 0 0,1 4,12A8,8 0 0,1 12,4M12,6A6,6 0 0,0 6,12A6,6 0 0,0 12,18A6,6 0 0,0 18,12A6,6 0 0,0 12,6M12,8A4,4 0 0,1 16,12A4,4 0 0,1 12,16A4,4 0 0,1 8,12A4,4 0 0,1 12,8Z"/></svg> Refund Both</button>
+                    <button onclick="awardRealScreenshot({{ match[0] }})" class="btn btn-primary"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="vertical-align: middle; margin-right: 4px;"><path d="M5,16L3,5H1V3H4L6,14H18.5L19.5,12H21.47L20.47,14H21L19,16H5M6,18A2,2 0 0,1 8,20A2,2 0 0,1 6,22A2,2 0 0,1 4,20A2,2 0 0,1 6,18M16,18A2,2 0 0,1 18,20A2,2 0 0,1 16,22A2,2 0 0,1 14,20A2,2 0 0,1 16,18Z"/></svg> Award Real SS</button>
+                {% endif %}
+                
+                {% if match[7] in ['disputed', 'pending_review'] %}
+                    <a href="/admin/resolve_dispute/{{ match[0] }}/player1" class="btn btn-success">{{ match[10] }} Wins</a>
+                    <a href="/admin/resolve_dispute/{{ match[0] }}/player2" class="btn btn-success">{{ match[11] }} Wins</a>
+                    <a href="/admin/resolve_dispute/{{ match[0] }}/draw" class="btn btn-secondary">Refund Both</a>
+                {% endif %}
             </div>
-            {% endif %}
         </div>
         {% endfor %}
     {% else %}
         <p>No matches found.</p>
     {% endif %}
 </div>
+
+<div id="screenshotModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000;">
+    <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #1a1a1a; padding: 2rem; border-radius: 12px; max-width: 90%; max-height: 90%; overflow-y: auto;">
+        <h3><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="vertical-align: middle; margin-right: 8px;"><path d="M9 2L7.17 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2h-3.17L15 2H9zm3 15c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5z"/></svg> Match Screenshots</h3>
+        <div id="screenshotContent"></div>
+        <button onclick="closeModal()" class="btn btn-secondary" style="margin-top: 1rem;">Close</button>
+    </div>
+</div>
+
+<script>
+function viewScreenshots(matchId) {
+    fetch(`/admin/view_match_screenshots/${matchId}`)
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            let html = `<p><strong>Game:</strong> ${data.match.game} | <strong>Bet:</strong> KSh ${data.match.bet_amount}</p>`;
+            html += `<p><strong>Players:</strong> ${data.match.p1_name || 'Player 1'} vs ${data.match.p2_name || 'Player 2'}</p><hr>`;
+            
+            data.screenshots.forEach(ss => {
+                html += `<div style="margin: 1rem 0; padding: 1rem; border: 1px solid #333; border-radius: 8px;">`;
+                html += `<h4>${ss.username} - Claimed: ${ss.claimed_result.toUpperCase()}</h4>`;
+                
+                // Show OCR analysis if available
+                if (ss.ocr_analysis) {
+                    try {
+                        const analysis = JSON.parse(ss.ocr_analysis);
+                        html += `<div style="background: rgba(0,123,255,0.1); padding: 0.5rem; border-radius: 4px; margin: 0.5rem 0; font-size: 0.9rem;">`;
+                        html += `<strong>OCR Analysis:</strong> ${analysis.validity || 'Unknown'}<br>`;
+                        if (analysis.detection_reason) html += `<strong>Reason:</strong> ${analysis.detection_reason}<br>`;
+                        if (analysis.confidence) html += `<strong>Confidence:</strong> ${(analysis.confidence * 100).toFixed(0)}%`;
+                        html += `</div>`;
+                    } catch(e) {
+                        html += `<div style="background: rgba(255,193,7,0.1); padding: 0.5rem; border-radius: 4px; margin: 0.5rem 0; font-size: 0.9rem;">OCR Analysis: Available but unreadable</div>`;
+                    }
+                }
+                
+                html += `<img src="data:image/jpeg;base64,${ss.screenshot_data}" style="max-width: 100%; height: auto; border-radius: 8px;">`;
+                html += `</div>`;
+            });
+            
+            document.getElementById('screenshotContent').innerHTML = html;
+            document.getElementById('screenshotModal').style.display = 'block';
+        } else {
+            alert('No screenshots found');
+        }
+    });
+}
+
+function closeModal() {
+    document.getElementById('screenshotModal').style.display = 'none';
+}
+
+function chargeFakeScreenshots(matchId) {
+    const winner = prompt('Who sent REAL screenshot? Enter: player1, player2, or both_fake');
+    if (winner && ['player1', 'player2', 'both_fake'].includes(winner)) {
+        fetch(`/admin/charge_fake_screenshots/${matchId}`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({winner: winner})
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message);
+                location.reload();
+            } else {
+                alert('Error: ' + data.message);
+            }
+        });
+    }
+}
+
+function handleTimeout(matchId, action) {
+    let confirmMsg = '';
+    if (action === 'submitter') {
+        confirmMsg = 'Award match to the player who submitted screenshot? They will receive KSh 84.';
+    } else {
+        confirmMsg = 'Refund both players their KSh 50 bet? Match will be cancelled.';
+    }
+    
+    if (confirm(confirmMsg)) {
+        fetch(`/admin/handle_timeout_match/${matchId}/${action}`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'}
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message);
+                location.reload();
+            } else {
+                alert('Error: ' + data.message);
+            }
+        });
+    }
+}
+
+function awardRealScreenshot(matchId) {
+    // First get match details to show player options
+    fetch(`/admin/view_match_screenshots/${matchId}`)
+    .then(response => response.json())
+    .then(data => {
+        if (data.success && data.screenshots.length > 0) {
+            let options = data.screenshots.map((ss, index) => 
+                `${index + 1}. ${ss.username} (${ss.claimed_result})`
+            ).join('\n');
+            
+            let choice = prompt(`Which player has the REAL screenshot?\n${options}\n\nEnter player number (1, 2, etc.):`);
+            
+            if (choice && !isNaN(choice)) {
+                let playerIndex = parseInt(choice) - 1;
+                if (playerIndex >= 0 && playerIndex < data.screenshots.length) {
+                    let userId = data.screenshots[playerIndex].user_id;
+                    let username = data.screenshots[playerIndex].username;
+                    
+                    if (confirm(`Award win to ${username} for real screenshot? They will receive KSh 84.`)) {
+                        fetch(`/admin/award_real_screenshot/${matchId}/${userId}`, {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'}
+                        })
+                        .then(response => response.json())
+                        .then(result => {
+                            if (result.success) {
+                                alert(result.message);
+                                location.reload();
+                            } else {
+                                alert('Error: ' + result.message);
+                            }
+                        });
+                    }
+                }
+            }
+        } else {
+            alert('No screenshots found for this match');
+        }
+    });
+}
+</script>
 {% endblock %}

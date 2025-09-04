@@ -21,10 +21,10 @@
             </div>
             <div style="display: flex; justify-content: space-between; align-items: center;">
                 <div>
-                    <strong>Bet: KSh {{ "%.0f"|format(match[3]) }}</strong>
-                    <span style="margin-left: 1rem;">Total Pot: KSh {{ "%.0f"|format(match[4]) }}</span>
+                    <strong>Bet: KSh {{ "%.0f"|format(match[3] or 0) }}</strong>
+                    <span style="margin-left: 1rem;">Total Pot: KSh {{ "%.0f"|format(match[4] or 0) }}</span>
                 </div>
-                {% if match[3] <= session.balance %}
+                {% if (match[3] or 0) <= (session.balance or 0) %}
                     <a href="{{ url_for('join_match', match_id=match[0]) }}" class="btn btn-success" 
                        onclick="this.style.display='none'; this.innerHTML='Joining...'; return true;">Join Match</a>
                 {% else %}
@@ -44,7 +44,17 @@
         {% for match in my_matches %}
         <div class="match-card">
             <div class="match-header">
-                <div><strong>{{ match[1].upper() }}</strong> - {{ match[8] or 'Standard' }}</div>
+                <div>
+                    <strong>{{ match[1].upper() }}</strong> - {{ match[8] or 'Standard' }}
+                    {% if match[14] == 'ocr' %}
+                        <span style="background: #17a2b8; color: white; padding: 0.2rem 0.5rem; border-radius: 12px; font-size: 0.8rem; margin-left: 0.5rem;">INSTANT</span>
+                    {% else %}
+                        <span style="background: #dc3545; color: white; padding: 0.2rem 0.5rem; border-radius: 12px; font-size: 0.8rem; margin-left: 0.5rem;">BROADCAST</span>
+                    {% endif %}
+                    {% if match[15] == 'friends_only' %}
+                        <span style="background: #ffc107; color: black; padding: 0.2rem 0.5rem; border-radius: 12px; font-size: 0.8rem; margin-left: 0.5rem;">FRIENDS</span>
+                    {% endif %}
+                </div>
                 <span class="status-badge status-{{ match[7] }}">{{ match[7] }}</span>
             </div>
             <div style="margin: 1rem 0;">
@@ -66,8 +76,8 @@
             </div>
             <div style="display: flex; justify-content: space-between; align-items: center;">
                 <div>
-                    <strong>Bet: KSh {{ "%.0f"|format(match[4]) }}</strong>
-                    <span style="margin-left: 1rem;">Total Pot: KSh {{ "%.0f"|format(match[5]) }}</span>
+                    <strong>Bet: KSh {{ "%.0f"|format(match[4] or 0) }}</strong>
+                    <span style="margin-left: 1rem;">Total Pot: KSh {{ "%.0f"|format(match[5] or 0) }}</span>
                 </div>
                 
                 <div style="display: flex; gap: 0.5rem;">
@@ -77,14 +87,19 @@
                                     onclick="return confirm('Cancel match? No penalty since no opponent joined.')">Cancel</button>
                         </form>
                     {% elif match[7] == 'pending' and match[3] %}
-                        <a href="{{ url_for('match_lobby', match_id=match[0]) }}" class="btn btn-primary">Enter Lobby</a>
+                        <a href="{{ url_for('match_lobby', match_id=match[0]) }}" class="btn btn-primary">🏟️ Enter Lobby</a>
                         <form method="POST" action="{{ url_for('cancel_match', match_id=match[0]) }}" style="display: inline;">
                             <button type="submit" class="btn btn-warning" 
                                     onclick="return confirm('Cancel match? 20% PENALTY will be applied!')">Cancel (20% penalty)</button>
                         </form>
                     {% elif match[7] == 'active' %}
-                        <a href="{{ url_for('match_chat', match_id=match[0]) }}" class="btn btn-secondary">Chat</a>
-                        <a href="{{ url_for('match_result', match_id=match[0]) }}" class="btn btn-success">Submit Result</a>
+                        <a href="{{ url_for('match_lobby', match_id=match[0]) }}" class="btn btn-primary">LOBBY</a>
+                        {% if match[14] == 'ocr' %}
+                            <a href="{{ url_for('submit_screenshot_page', match_id=match[0]) }}" class="btn btn-success">SUBMIT SCREENSHOT</a>
+                        {% else %}
+                            <a href="{{ url_for('match_chat', match_id=match[0]) }}" class="btn btn-secondary">Chat</a>
+                            <a href="{{ url_for('match_result', match_id=match[0]) }}" class="btn btn-success">Submit Result</a>
+                        {% endif %}
                         <form method="POST" action="{{ url_for('cancel_match', match_id=match[0]) }}" style="display: inline;">
                             <button type="submit" class="btn btn-danger" 
                                     onclick="return confirm('FORFEIT MATCH? 50% PENALTY + Opponent wins automatically!')">Forfeit (50% penalty)</button>

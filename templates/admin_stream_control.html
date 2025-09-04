@@ -1,0 +1,182 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card">
+    <h1>🎮 Stream Control Panel</h1>
+    <p>Monitor and control all user streams</p>
+</div>
+
+<div class="card">
+    <h3>Quick Actions</h3>
+    <div style="display: flex; gap: 1rem; margin-bottom: 2rem;">
+        <button onclick="cleanAllStreams()" class="btn btn-danger">🧹 Clean All Streams</button>
+        <button onclick="refreshStreams()" class="btn btn-primary">🔄 Refresh</button>
+        <button onclick="viewStreamStats()" class="btn btn-info">📊 Stream Stats</button>
+    </div>
+</div>
+
+<div class="card">
+    <h3>Active Streams</h3>
+    <div id="streamsList">
+        <div style="text-align: center; padding: 2rem;">
+            <p>Loading streams...</p>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <h3>Stream Statistics</h3>
+    <div id="streamStats" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+        <div class="stat-card">
+            <div class="stat-number" id="totalStreams">0</div>
+            <div class="stat-label">Total Streams</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number" id="activeStreams">0</div>
+            <div class="stat-label">Active Streams</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number" id="totalViewers">0</div>
+            <div class="stat-label">Total Viewers</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number" id="avgDuration">0</div>
+            <div class="stat-label">Avg Duration (min)</div>
+        </div>
+    </div>
+</div>
+
+<script>
+function refreshStreams() {
+    fetch('/admin/live_streams')
+        .then(response => response.json())
+        .then(data => {
+            const streamsList = document.getElementById('streamsList');
+            
+            if (data.streams && data.streams.length > 0) {
+                streamsList.innerHTML = data.streams.map(stream => `
+                    <div class="match-card" style="border-left: 4px solid ${stream.status === 'live' ? '#28a745' : '#ffc107'};">
+                        <div class="match-header">
+                            <div>
+                                <strong>${stream.title}</strong>
+                                <small style="display: block; color: #666;">by ${stream.username}</small>
+                            </div>
+                            <span class="status-badge" style="background: ${stream.status === 'live' ? '#28a745' : '#ffc107'};">
+                                ${stream.status.toUpperCase()}
+                            </span>
+                        </div>
+                        <div style="margin: 1rem 0;">
+                            <p><strong>Game:</strong> ${stream.game}</p>
+                            <p><strong>Viewers:</strong> ${stream.viewers} | <strong>Duration:</strong> ${stream.duration} min</p>
+                            <p><strong>Match ID:</strong> ${stream.match_id} | <strong>Tournament:</strong> ${stream.tournament_id}</p>
+                        </div>
+                        <div style="display: flex; gap: 0.5rem;">
+                            <button onclick="viewStream(${stream.id})" class="btn btn-primary btn-sm">👁️ View</button>
+                            <button onclick="endStream(${stream.id})" class="btn btn-warning btn-sm">⏹️ End</button>
+                            <button onclick="forceEndStream(${stream.id})" class="btn btn-danger btn-sm">🚫 Force End</button>
+                        </div>
+                    </div>
+                `).join('');
+                
+                // Update stats
+                document.getElementById('activeStreams').textContent = data.streams.length;
+                document.getElementById('totalViewers').textContent = data.streams.reduce((sum, s) => sum + s.viewers, 0);
+                document.getElementById('avgDuration').textContent = Math.round(data.streams.reduce((sum, s) => sum + s.duration, 0) / data.streams.length) || 0;
+            } else {
+                streamsList.innerHTML = `
+                    <div style="text-align: center; padding: 2rem; background: rgba(40, 167, 69, 0.1); border-radius: 10px;">
+                        <h4 style="color: #28a745;">✅ No Active Streams</h4>
+                        <p>All streams are properly ended. System is clean!</p>
+                    </div>
+                `;
+                
+                // Reset stats
+                document.getElementById('activeStreams').textContent = '0';
+                document.getElementById('totalViewers').textContent = '0';
+                document.getElementById('avgDuration').textContent = '0';
+            }
+        })
+        .catch(err => {
+            document.getElementById('streamsList').innerHTML = `
+                <div style="text-align: center; padding: 2rem; color: #dc3545;">
+                    <p>Error loading streams: ${err.message}</p>
+                </div>
+            `;
+        });
+}
+
+function endStream(streamId) {
+    if (confirm('End this stream normally?')) {
+        fetch(`/admin/end_stream/${streamId}`, { method: 'POST' })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Stream ended successfully');
+                    refreshStreams();
+                } else {
+                    alert('Error ending stream');
+                }
+            });
+    }
+}
+
+function forceEndStream(streamId) {
+    if (confirm('Force end this stream? This will clean up all associated data.')) {
+        fetch(`/admin/force_end_stream/${streamId}`, { method: 'POST' })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert(data.message);
+                    refreshStreams();
+                } else {
+                    alert('Error force ending stream');
+                }
+            });
+    }
+}
+
+function cleanAllStreams() {
+    if (confirm('Clean ALL active streams? This will end all streams and clean up phantom data.')) {
+        fetch('/admin/clean_all_streams', { method: 'POST' })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert(data.message);
+                    refreshStreams();
+                } else {
+                    alert('Error cleaning streams');
+                }
+            });
+    }
+}
+
+function viewStream(streamId) {
+    window.open(`/watch_real_stream/${streamId}`, '_blank');
+}
+
+function viewStreamStats() {
+    // Get total streams from database
+    fetch('/admin/stream_statistics')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById('totalStreams').textContent = data.total_streams;
+                alert(`Stream Statistics:
+Total Streams Ever: ${data.total_streams}
+Completed Streams: ${data.completed_streams}
+Average Stream Duration: ${data.avg_duration} minutes
+Total Stream Earnings Paid: KSh ${data.total_earnings}`);
+            }
+        })
+        .catch(err => {
+            alert('Error loading stream statistics');
+        });
+}
+
+// Auto-refresh every 30 seconds
+setInterval(refreshStreams, 30000);
+
+// Load streams on page load
+document.addEventListener('DOMContentLoaded', refreshStreams);
+</script>
+{% endblock %}

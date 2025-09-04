@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>{% block title %}SkillState{% endblock %}</title>
+    <title>{% block title %}SkillStake{% endblock %}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; z-index: auto; }
         body { 
@@ -308,8 +309,8 @@
 <body>
     <nav class="navbar">
         <a href="{{ url_for('home') }}" class="navbar-brand">
-            <img src="https://images.unsplash.com/photo-1542751371-adc38448a05e?w=50&h=50&fit=crop&crop=center" alt="SkillState" class="logo">
-            SkillState
+            <img src="https://images.unsplash.com/photo-1542751371-adc38448a05e?w=50&h=50&fit=crop&crop=center" alt="SkillStake" class="logo">
+            SkillStake
         </a>
         {% if session.user_id %}
             {% if session.username == 'admin' %}
@@ -318,9 +319,7 @@
                 <a href="{{ url_for('admin_users') }}">Users</a>
                 <a href="{{ url_for('admin_transactions') }}">Transactions</a>
                 <a href="{{ url_for('admin_matches') }}">Matches</a>
-                <a href="{{ url_for('tournaments') }}">Tournaments</a>
-                <a href="{{ url_for('auto_create_tournament') }}">Auto Create Tournament</a>
-                <a href="{{ url_for('referrals') }}">Referrals</a>
+                <a href="{{ url_for('tournaments_new') }}">Streaming Tournaments</a>
                 <a href="{{ url_for('admin_support_center') }}" style="color: #ff6b6b; font-weight: bold;">Support Center</a>
                 <div style="color: #ff6b6b; font-weight: bold; font-size: 0.8rem;">ADMIN</div>
                 <a href="{{ url_for('logout') }}" class="btn btn-secondary">Logout</a>
@@ -333,8 +332,17 @@
                 <div class="dropdown">
                     <button class="dropdown-btn">Menu ▼</button>
                     <div class="dropdown-content">
+                        <a href="{{ url_for('quick_matches') }}">Quick Match</a>
+                        <a href="{{ url_for('live_streams') }}">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                <circle cx="12" cy="12" r="8"/>
+                            </svg>
+                            LIVE
+                        </a>
+                        <a href="{{ url_for('streaming_matches') }}">Stream Match</a>
                         <a href="{{ url_for('matches') }}">My Matches</a>
-                        <a href="{{ url_for('tournaments') }}">Tournaments</a>
+                        <a href="{{ url_for('tournaments_new') }}">Streaming Tournaments</a>
+                        <a href="{{ url_for('user_bonuses_page') }}">New User Bonuses</a>
                         <a href="{{ url_for('referrals') }}">Earn</a>
                         <a href="{{ url_for('friends') }}">Friends</a>
                         <a href="{{ url_for('leaderboard') }}">Rankings</a>
@@ -361,5 +369,6 @@
 
         {% block content %}{% endblock %}
     </div>
+    <script src="{{ url_for('static', filename='button-fixes.js') }}"></script>
 </body>
 </html>

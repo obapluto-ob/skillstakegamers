@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card">
+    <h1>🎮 Match History for {{ user[0] }}</h1>
+    <div style="margin-bottom: 1rem;">
+        <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary">← Back to Dashboard</a>
+        <span style="margin-left: 1rem; color: #666;">User ID: {{ user_id }}</span>
+    </div>
+    
+    {% if matches %}
+        <div style="margin-bottom: 1rem;">
+            <strong>Total Matches: {{ matches|length }}</strong>
+        </div>
+        
+        {% for match in matches %}
+        <div class="match-card" style="margin-bottom: 1rem; border-left: 4px solid 
+            {% if match[7] == 'completed' %}
+                {% if match[6] == user_id %}#28a745{% else %}#dc3545{% endif %}
+            {% elif match[7] == 'active' %}#ffc107
+            {% elif match[7] == 'pending' %}#17a2b8
+            {% else %}#6c757d{% endif %};">
+            
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <strong>Match #{{ match[0] }} - {{ match[1].upper() }}</strong>
+                    <span style="background: 
+                        {% if match[7] == 'completed' %}
+                            {% if match[6] == user_id %}#28a745{% else %}#dc3545{% endif %}
+                        {% elif match[7] == 'active' %}#ffc107
+                        {% elif match[7] == 'pending' %}#17a2b8
+                        {% else %}#6c757d{% endif %}; 
+                        color: white; padding: 0.2rem 0.5rem; border-radius: 10px; font-size: 0.8rem; margin-left: 0.5rem;">
+                        {% if match[7] == 'completed' %}
+                            {% if match[6] == user_id %}WON{% else %}LOST{% endif %}
+                        {% else %}{{ match[7].upper() }}{% endif %}
+                    </span><br>
+                    
+                    <div style="margin-top: 0.5rem;">
+                        <strong>Players:</strong> 
+                        <span style="{% if match[2] == user_id %}font-weight: bold; color: #007bff;{% endif %}">{{ match[10] or 'Unknown' }}</span>
+                        vs 
+                        <span style="{% if match[3] == user_id %}font-weight: bold; color: #007bff;{% endif %}">{{ match[11] or 'Waiting...' }}</span><br>
+                        
+                        <strong>Bet Amount:</strong> KSh {{ "%.0f"|format(match[4]) }} each<br>
+                        <strong>Total Pot:</strong> KSh {{ "%.0f"|format(match[5]) }}<br>
+                        <strong>Game Mode:</strong> {{ match[8] or 'Standard' }}<br>
+                        <strong>Created:</strong> {{ match[9] }}
+                    </div>
+                </div>
+                
+                <div style="text-align: right;">
+                    {% if match[7] == 'completed' and match[6] == user_id %}
+                        <div style="color: #28a745; font-weight: bold; font-size: 1.1rem;">
+                            +KSh {{ "%.0f"|format(match[4] * 1.68) }}
+                        </div>
+                        <small style="color: #28a745;">Victory Earnings</small>
+                    {% elif match[7] == 'completed' and match[6] != user_id %}
+                        <div style="color: #dc3545; font-weight: bold; font-size: 1.1rem;">
+                            -KSh {{ "%.0f"|format(match[4]) }}
+                        </div>
+                        <small style="color: #dc3545;">Match Loss</small>
+                    {% elif match[7] in ['active', 'pending'] %}
+                        <div style="color: #ffc107; font-weight: bold; font-size: 1.1rem;">
+                            KSh {{ "%.0f"|format(match[4]) }}
+                        </div>
+                        <small style="color: #ffc107;">In Escrow</small>
+                    {% endif %}
+                    
+                    <div style="margin-top: 0.5rem;">
+                        <a href="/admin/view_match_screenshots/{{ match[0] }}" class="btn btn-info btn-sm">📸 Screenshots</a>
+                        {% if match[7] == 'disputed' %}
+                            <a href="{{ url_for('resolve_dispute', match_id=match[0], winner='player1') }}" class="btn btn-success btn-sm">Resolve</a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+        
+        <!-- Match Statistics Summary -->
+        <div class="card" style="margin-top: 2rem; background: rgba(23, 162, 184, 0.1); border-left: 4px solid #17a2b8;">
+            <h3 style="color: #17a2b8;">📊 Match Statistics Summary</h3>
+            {% set total_matches = matches|length %}
+            {% set wins = matches|selectattr('6', 'equalto', user_id)|selectattr('7', 'equalto', 'completed')|list|length %}
+            {% set losses = matches|rejectattr('6', 'equalto', user_id)|selectattr('7', 'equalto', 'completed')|list|length %}
+            {% set active_matches = matches|selectattr('7', 'equalto', 'active')|list|length %}
+            {% set pending_matches = matches|selectattr('7', 'equalto', 'pending')|list|length %}
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem;">
+                <div style="text-align: center;">
+                    <div style="font-size: 1.5rem; font-weight: bold; color: #17a2b8;">{{ total_matches }}</div>
+                    <div>Total Matches</div>
+                </div>
+                <div style="text-align: center;">
+                    <div style="font-size: 1.5rem; font-weight: bold; color: #28a745;">{{ wins }}</div>
+                    <div>Wins</div>
+                </div>
+                <div style="text-align: center;">
+                    <div style="font-size: 1.5rem; font-weight: bold; color: #dc3545;">{{ losses }}</div>
+                    <div>Losses</div>
+                </div>
+                <div style="text-align: center;">
+                    <div style="font-size: 1.5rem; font-weight: bold; color: #ffc107;">{{ active_matches }}</div>
+                    <div>Active</div>
+                </div>
+                <div style="text-align: center;">
+                    <div style="font-size: 1.5rem; font-weight: bold; color: #6c757d;">{{ pending_matches }}</div>
+                    <div>Pending</div>
+                </div>
+                <div style="text-align: center;">
+                    {% if wins + losses > 0 %}
+                        <div style="font-size: 1.5rem; font-weight: bold; color: #007bff;">{{ "%.1f"|format((wins / (wins + losses)) * 100) }}%</div>
+                    {% else %}
+                        <div style="font-size: 1.5rem; font-weight: bold; color: #007bff;">0%</div>
+                    {% endif %}
+                    <div>Win Rate</div>
+                </div>
+            </div>
+        </div>
+        
+    {% else %}
+        <div style="text-align: center; padding: 2rem; color: #666;">
+            <div style="font-size: 3rem; margin-bottom: 1rem;">🎮</div>
+            <h3>No Matches Found</h3>
+            <p>This user hasn't played any matches yet.</p>
+        </div>
+    {% endif %}
+</div>
+
+<style>
+.match-card {
+    background: white;
+    padding: 1rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    transition: all 0.2s ease;
+}
+
+.match-card:hover {
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    transform: translateY(-1px);
+}
+
+.btn-sm {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.8rem;
+    margin: 0.1rem;
+}
+</style>
+{% endblock %}

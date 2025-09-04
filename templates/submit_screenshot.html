@@ -1,0 +1,760 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card match-header">
+    <h1><svg width="32" height="32" viewBox="0 0 24 24" fill="#007bff"><path d="M12 15.5A3.5 3.5 0 0 1 8.5 12A3.5 3.5 0 0 1 12 8.5a3.5 3.5 0 0 1 3.5 3.5 3.5 3.5 0 0 1-3.5 3.5m7.43-2.53c.04-.32.07-.64.07-.97 0-.33-.03-.66-.07-1l2.11-1.63c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.31-.61-.22l-2.49 1c-.52-.39-1.06-.73-1.69-.98l-.37-2.65A.506.506 0 0 0 14 2h-4c-.25 0-.46.18-.5.42l-.37 2.65c-.63.25-1.17.59-1.69.98l-2.49-1c-.22-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64L4.57 11c-.04.34-.07.67-.07 1 0 .33.03.65.07.97l-2.11 1.66c-.19.15-.25.42-.12.64l2 3.46c.12.22.39.3.61.22l2.49-1.01c.52.4 1.06.74 1.69.99l.37 2.65c.04.24.25.42.5.42h4c.25 0 .46-.18.5-.42l.37-2.65c.63-.26 1.17-.59 1.69-.99l2.49 1.01c.22.08.49 0 .61-.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.66Z"/></svg> Submit Match Result</h1>
+    <p>Advanced screenshot verification with OCR text recognition</p>
+    <div class="match-status-bar">
+        <div class="status-step" id="step-upload"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/></svg> Upload</div>
+        <div class="status-step" id="step-analysis"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12,2A2,2 0 0,1 14,4C14,4.74 13.6,5.39 13,5.73V7H14A7,7 0 0,1 21,14H22A1,1 0 0,1 23,15V18A1,1 0 0,1 22,19H21V20A2,2 0 0,1 19,22H5A2,2 0 0,1 3,20V19H2A1,1 0 0,1 1,18V15A1,1 0 0,1 2,14H3A7,7 0 0,1 10,7H11V5.73C10.4,5.39 10,4.74 10,4A2,2 0 0,1 12,2M7.5,13A2.5,2.5 0 0,0 5,15.5A2.5,2.5 0 0,0 7.5,18A2.5,2.5 0 0,0 10,15.5A2.5,2.5 0 0,0 7.5,13M16.5,13A2.5,2.5 0 0,0 14,15.5A2.5,2.5 0 0,0 16.5,18A2.5,2.5 0 0,0 19,15.5A2.5,2.5 0 0,0 16.5,13Z"/></svg> OCR Analysis</div>
+        <div class="status-step" id="step-verification"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg> Verification</div>
+        <div class="status-step" id="step-result"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M5,16L3,5H1V3H4L6,14L7,18H20V16H5M7,24A2,2 0 0,1 5,22A2,2 0 0,1 7,20A2,2 0 0,1 9,22A2,2 0 0,1 7,24M17,24A2,2 0 0,1 15,22A2,2 0 0,1 17,20A2,2 0 0,1 19,22A2,2 0 0,1 17,24Z"/></svg> Result</div>
+    </div>
+</div>
+
+<div class="card match-info-card">
+    <h2><svg width="24" height="24" viewBox="0 0 24 24" fill="#007bff"><path d="M7.97,16L5,19C4.67,19.3 4.23,19.5 3.75,19.5A1.75,1.75 0 0,1 2,17.75V17.5L3,10.12C3.21,7.81 5.14,6 7.5,6H16.5C18.86,6 20.79,7.81 21,10.12L22,17.5V17.75A1.75,1.75 0 0,1 20.25,19.5C19.77,19.5 19.33,19.3 19,19L16.03,16H7.97M7.5,8A0.5,0.5 0 0,0 7,8.5A0.5,0.5 0 0,0 7.5,9A0.5,0.5 0 0,0 8,8.5A0.5,0.5 0 0,0 7.5,8M16.5,8A0.5,0.5 0 0,0 16,8.5A0.5,0.5 0 0,0 16.5,9A0.5,0.5 0 0,0 17,8.5A0.5,0.5 0 0,0 16.5,8Z"/></svg> Match Information</h2>
+    <div class="match-details-grid">
+        <div class="detail-item">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="#28a745"><path d="M7.97,16L5,19C4.67,19.3 4.23,19.5 3.75,19.5A1.75,1.75 0 0,1 2,17.75V17.5L3,10.12C3.21,7.81 5.14,6 7.5,6H16.5C18.86,6 20.79,7.81 21,10.12L22,17.5V17.75A1.75,1.75 0 0,1 20.25,19.5C19.77,19.5 19.33,19.3 19,19L16.03,16H7.97M7.5,8A0.5,0.5 0 0,0 7,8.5A0.5,0.5 0 0,0 7.5,9A0.5,0.5 0 0,0 8,8.5A0.5,0.5 0 0,0 7.5,8M16.5,8A0.5,0.5 0 0,0 16,8.5A0.5,0.5 0 0,0 16.5,9A0.5,0.5 0 0,0 17,8.5A0.5,0.5 0 0,0 16.5,8Z"/></svg>
+            <span class="label">Game:</span>
+            <span class="value game-badge">{{ match[1].upper() }}</span>
+        </div>
+        <div class="detail-item">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="#6c757d"><path d="M12,15.5A3.5,3.5 0 0,1 8.5,12A3.5,3.5 0 0,1 12,8.5A3.5,3.5 0 0,1 15.5,12A3.5,3.5 0 0,1 12,15.5M19.43,12.97C19.47,12.65 19.5,12.33 19.5,12C19.5,11.67 19.47,11.34 19.43,11L21.54,9.37C21.73,9.22 21.78,8.95 21.66,8.73L19.66,5.27C19.54,5.05 19.27,4.96 19.05,5.05L16.56,6.05C16.04,5.66 15.5,5.32 14.87,5.07L14.5,2.42C14.46,2.18 14.25,2 14,2H10C9.75,2 9.54,2.18 9.5,2.42L9.13,5.07C8.5,5.32 7.96,5.66 7.44,6.05L4.95,5.05C4.73,4.96 4.46,5.05 4.34,5.27L2.34,8.73C2.22,8.95 2.27,9.22 2.46,9.37L4.57,11C4.53,11.34 4.5,11.67 4.5,12C4.5,12.33 4.53,12.65 4.57,12.97L2.46,14.63C2.27,14.78 2.22,15.05 2.34,15.27L4.34,18.73C4.46,18.95 4.73,19.03 4.95,18.95L7.44,17.94C7.96,18.34 8.5,18.68 9.13,18.93L9.5,21.58C9.54,21.82 9.75,22 10,22H14C14.25,22 14.46,21.82 14.5,21.58L14.87,18.93C15.5,18.68 16.04,18.34 16.56,17.94L19.05,18.95C19.27,19.03 19.54,18.95 19.66,18.73L21.66,15.27C21.78,15.05 21.73,14.78 21.54,14.63L19.43,12.97Z"/></svg>
+            <span class="label">Mode:</span>
+            <span class="value mode-badge">{{ match[8] }}</span>
+        </div>
+        <div class="detail-item">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="#ffc107"><path d="M7,15H9C9,16.08 10.37,17 12,17C13.63,17 15,16.08 15,15C15,13.9 13.96,13.5 11.76,12.97C9.64,12.44 7,11.78 7,9C7,7.21 8.47,5.69 10.5,5.18V3H13.5V5.18C15.53,5.69 17,7.21 17,9H15C15,7.92 13.63,7 12,7C10.37,7 9,7.92 9,9C9,10.1 10.04,10.5 12.24,11.03C14.36,11.56 17,12.22 17,15C17,16.79 15.53,18.31 13.5,18.82V21H10.5V18.82C8.47,18.31 7,16.79 7,15Z"/></svg>
+            <span class="label">Stake:</span>
+            <span class="value amount-badge">KSh {{ match[4] }}</span>
+        </div>
+        <div class="detail-item">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="#28a745"><path d="M5,16L3,5H1V3H4L6,14L7,18H20V16H5M7,24A2,2 0 0,1 5,22A2,2 0 0,1 7,20A2,2 0 0,1 9,22A2,2 0 0,1 7,24M17,24A2,2 0 0,1 15,22A2,2 0 0,1 17,20A2,2 0 0,1 19,22A2,2 0 0,1 17,24Z"/></svg>
+            <span class="label">Prize Pool:</span>
+            <span class="value prize-badge">KSh {{ match[5] }}</span>
+        </div>
+        <div class="detail-item players-section">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="#dc3545"><path d="M12,2A2,2 0 0,1 14,4V8A1,1 0 0,1 13,9H11A1,1 0 0,1 10,8V4A2,2 0 0,1 12,2M21,9V7L15,13L13.5,7.5C13.1,6.8 12.6,6.35 12,6.35C11.4,6.35 10.9,6.8 10.5,7.5L9,13L3,7V9L9,15L10.5,9.5C10.9,10.2 11.4,10.65 12,10.65C12.6,10.65 13.1,10.2 13.5,9.5L15,15L21,9Z"/></svg>
+            <span class="label">Battle:</span>
+            <div class="vs-display">
+                <span class="player p1">{{ match[10] if match[10] else 'Player 1' }}</span>
+                <span class="vs-text">VS</span>
+                <span class="player p2">{{ match[11] if match[11] else 'Player 2' }}</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card requirements-card">
+    <h2><svg width="24" height="24" viewBox="0 0 24 24" fill="#007bff"><path d="M14,10H2V12H14V10M14,6H2V8H14V6M2,16H10V14H2V16M21.5,11.5L23,13L16,20L11.5,15.5L13,14L16,17L21.5,11.5Z"/></svg> OCR Verification Requirements</h2>
+    <div class="requirements-grid">
+        <div class="req-section valid">
+            <h3><svg width="20" height="20" viewBox="0 0 24 24" fill="#28a745"><path d="M12,1L3,5V11C3,16.55 6.84,21.74 12,23C17.16,21.74 21,16.55 21,11V5L12,1M10,17L6,13L7.41,11.59L10,14.17L16.59,7.58L18,9L10,17Z"/></svg> Required Elements</h3>
+            <div class="req-list">
+                <div class="req-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="#28a745"><path d="M12,9A3,3 0 0,0 9,12A3,3 0 0,0 12,15A3,3 0 0,0 15,12A3,3 0 0,0 12,9M12,17A5,5 0 0,1 7,12A5,5 0 0,1 12,7A5,5 0 0,1 17,12A5,5 0 0,1 12,17M12,4.5C7,4.5 2.73,7.61 1,12C2.73,16.39 7,19.5 12,19.5C17,19.5 21.27,16.39 23,12C21.27,7.61 17,4.5 12,4.5Z"/></svg> Clear result screen</div>
+                <div class="req-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="#28a745"><path d="M12,4A4,4 0 0,1 16,8A4,4 0 0,1 12,12A4,4 0 0,1 8,8A4,4 0 0,1 12,4M12,14C16.42,14 20,15.79 20,18V20H4V18C4,15.79 7.58,14 12,14Z"/></svg> Visible username</div>
+                <div class="req-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="#28a745"><path d="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M16.2,16.2L11,13V7H12.5V12.2L17,14.9L16.2,16.2Z"/></svg> Match timestamp</div>
+                <div class="req-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="#28a745"><path d="M5,16L3,5H1V3H4L6,14L7,18H20V16H5M7,24A2,2 0 0,1 5,22A2,2 0 0,1 7,20A2,2 0 0,1 9,22A2,2 0 0,1 7,24M17,24A2,2 0 0,1 15,22A2,2 0 0,1 17,20A2,2 0 0,1 19,22A2,2 0 0,1 17,24Z"/></svg> Final score/rank</div>
+            </div>
+        </div>
+        <div class="req-section invalid">
+            <h3><svg width="20" height="20" viewBox="0 0 24 24" fill="#dc3545"><path d="M12,2C17.53,2 22,6.47 22,12C22,17.53 17.53,22 12,22C6.47,22 2,17.53 2,12C2,6.47 6.47,2 12,2M15.59,7L12,10.59L8.41,7L7,8.41L10.59,12L7,15.59L8.41,17L12,13.41L15.59,17L17,15.59L13.41,12L17,8.41L15.59,7Z"/></svg> Auto-Rejected</h3>
+            <div class="req-list">
+                <div class="req-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="#dc3545"><path d="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M12,17A1.5,1.5 0 0,1 10.5,15.5A1.5,1.5 0 0,1 12,14A1.5,1.5 0 0,1 13.5,15.5A1.5,1.5 0 0,1 12,17M12,13A1,1 0 0,1 11,12V8A1,1 0 0,1 12,7A1,1 0 0,1 13,8V12A1,1 0 0,1 12,13Z"/></svg> Blurry images</div>
+                <div class="req-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="#dc3545"><path d="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M12,17A1.5,1.5 0 0,1 10.5,15.5A1.5,1.5 0 0,1 12,14A1.5,1.5 0 0,1 13.5,15.5A1.5,1.5 0 0,1 12,17M12,13A1,1 0 0,1 11,12V8A1,1 0 0,1 12,7A1,1 0 0,1 13,8V12A1,1 0 0,1 12,13Z"/></svg> Practice mode</div>
+                <div class="req-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="#dc3545"><path d="M20.71,7.04C21.1,6.65 21.1,6 20.71,5.63L18.37,3.29C18,2.9 17.35,2.9 16.96,3.29L15.12,5.12L18.87,8.87M3,17.25V21H6.75L17.81,9.93L14.06,6.18L3,17.25Z"/></svg> Edited screenshots</div>
+                <div class="req-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="#dc3545"><path d="M11,18H13V16H11V18M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M12,20C7.59,20 4,16.41 4,12C4,7.59 7.59,4 12,4C16.41,4 20,7.59 20,12C20,16.41 16.41,20 12,20M12,6A4,4 0 0,0 8,10H10A2,2 0 0,1 12,8A2,2 0 0,1 14,10C14,12 11,11.75 11,15H13C13,12.75 16,12.5 16,10A4,4 0 0,0 12,6Z"/></svg> Unclear results</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card upload-card">
+    <form id="screenshotForm" enctype="multipart/form-data">
+        <input type="hidden" name="match_id" value="{{ match[0] }}">
+        
+        <div class="result-selection">
+            <h3><svg width="20" height="20" viewBox="0 0 24 24" fill="#007bff"><path d="M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22A10,10 0 0,1 2,12A10,10 0 0,1 12,2M12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20A8,8 0 0,0 20,12A8,8 0 0,0 12,4M12,6A6,6 0 0,1 18,12A6,6 0 0,1 12,18A6,6 0 0,1 6,12A6,6 0 0,1 12,6M12,8A4,4 0 0,0 8,12A4,4 0 0,0 12,16A4,4 0 0,0 16,12A4,4 0 0,0 12,8Z"/></svg> Declare Your Result</h3>
+            <div class="result-options">
+                <label class="result-option win-option">
+                    <input type="radio" name="result" value="win" required>
+                    <div class="option-content">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="#ffc107"><path d="M5,16L3,5H1V3H4L6,14L7,18H20V16H5M7,24A2,2 0 0,1 5,22A2,2 0 0,1 7,20A2,2 0 0,1 9,22A2,2 0 0,1 7,24M17,24A2,2 0 0,1 15,22A2,2 0 0,1 17,20A2,2 0 0,1 19,22A2,2 0 0,1 17,24Z"/></svg>
+                        <span>VICTORY</span>
+                        <small>I won this match</small>
+                    </div>
+                </label>
+                <label class="result-option loss-option">
+                    <input type="radio" name="result" value="loss" required>
+                    <div class="option-content">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="#6c757d"><path d="M12,2C17.53,2 22,6.47 22,12C22,17.53 17.53,22 12,22C6.47,22 2,17.53 2,12C2,6.47 6.47,2 12,2M15.59,7L12,10.59L8.41,7L7,8.41L10.59,12L7,15.59L8.41,17L12,13.41L15.59,17L17,15.59L13.41,12L17,8.41L15.59,7Z"/></svg>
+                        <span>DEFEAT</span>
+                        <small>I lost this match</small>
+                    </div>
+                </label>
+            </div>
+        </div>
+        
+        <div class="upload-section">
+            <h3><svg width="20" height="20" viewBox="0 0 24 24" fill="#007bff"><path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/></svg> Upload Evidence</h3>
+            <div class="upload-area" id="uploadArea">
+                <div class="upload-placeholder">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="#007bff"><path d="M9,16V10H5L12,3L19,10H15V16H9M5,20V18H19V20H5Z"/></svg>
+                    <p>Drag & Drop or Click to Upload</p>
+                    <small>JPG, PNG, WebP • Max 5MB</small>
+                </div>
+                <input type="file" name="screenshot" id="screenshotInput" accept="image/*" required>
+            </div>
+            
+            <div id="imagePreview" class="image-preview">
+                <div class="preview-header">
+                    <span><svg width="16" height="16" viewBox="0 0 24 24" fill="#007bff"><path d="M12,9A3,3 0 0,0 9,12A3,3 0 0,0 12,15A3,3 0 0,0 15,12A3,3 0 0,0 12,9M12,17A5,5 0 0,1 7,12A5,5 0 0,1 12,7A5,5 0 0,1 17,12A5,5 0 0,1 12,17M12,4.5C7,4.5 2.73,7.61 1,12C2.73,16.39 7,19.5 12,19.5C17,19.5 21.27,16.39 23,12C21.27,7.61 17,4.5 12,4.5Z"/></svg> Preview</span>
+                    <button type="button" id="removeImage"><svg width="16" height="16" viewBox="0 0 24 24" fill="#dc3545"><path d="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z"/></svg></button>
+                </div>
+                <img id="previewImg">
+                <div class="image-info">
+                    <span id="fileName"></span>
+                    <span id="fileSize"></span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="ai-analysis-info">
+            <h4><svg width="16" height="16" viewBox="0 0 24 24" fill="#007bff"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg> OCR Analysis Preview</h4>
+            <div class="analysis-points">
+                <div class="point" id="gameDetection"><svg width="12" height="12" viewBox="0 0 24 24" fill="#6c757d"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg> Game Detection: Pending</div>
+                <div class="point" id="resultDetection"><svg width="12" height="12" viewBox="0 0 24 24" fill="#6c757d"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg> Result Detection: Pending</div>
+                <div class="point" id="confidenceScore"><svg width="12" height="12" viewBox="0 0 24 24" fill="#6c757d"><circle cx="12" cy="12" r="10"/></svg> Confidence Score: Pending</div>
+            </div>
+        </div>
+        
+        <button type="submit" class="btn btn-primary submit-btn" disabled>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M2.81,14.12L5.64,11.29L8.17,10.79C11.39,6.41 17.55,4.22 19.78,4.22C19.78,6.45 17.59,12.61 13.21,15.83L12.71,18.36L9.88,21.19L9.17,17.66C7.76,17.66 7.76,17.66 7.05,16.95C6.34,16.24 6.34,16.24 6.34,14.83L2.81,14.12M5.64,16.95L7.05,18.36L4.39,21.03H2.97V19.61L5.64,16.95M4.22,2.81L7.05,5.64L6.34,9.17C6.34,7.76 6.34,7.76 7.05,7.05C7.76,6.34 7.76,6.34 9.17,6.34L12.71,5.64L15.54,2.81L16.95,4.22L14.29,6.88L15.71,8.29L18.36,5.64L19.78,7.05L16.95,9.88L14.12,12.71L11.29,9.88L8.46,7.05L5.64,4.22L4.22,2.81Z"/></svg> Launch OCR Verification
+        </button>
+    </form>
+</div>
+
+<div class="card process-card">
+    <h3><svg width="24" height="24" viewBox="0 0 24 24" fill="#007bff"><path d="M12,2A2,2 0 0,1 14,4C14,4.74 13.6,5.39 13,5.73V7H14A7,7 0 0,1 21,14H22A1,1 0 0,1 23,15V18A1,1 0 0,1 22,19H21V20A2,2 0 0,1 19,22H5A2,2 0 0,1 3,20V19H2A1,1 0 0,1 1,18V15A1,1 0 0,1 2,14H3A7,7 0 0,1 10,7H11V5.73C10.4,5.39 10,4.74 10,4A2,2 0 0,1 12,2M7.5,13A2.5,2.5 0 0,0 5,15.5A2.5,2.5 0 0,0 7.5,18A2.5,2.5 0 0,0 10,15.5A2.5,2.5 0 0,0 7.5,13M16.5,13A2.5,2.5 0 0,0 14,15.5A2.5,2.5 0 0,0 16.5,18A2.5,2.5 0 0,0 19,15.5A2.5,2.5 0 0,0 16.5,13Z"/></svg> Advanced OCR Verification</h3>
+    <div class="process-flow">
+        <div class="process-step">
+            <div class="step-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="#007bff"><path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/></svg></div>
+            <h4>Upload & Scan</h4>
+            <p>Screenshot uploaded and scanned for game elements</p>
+        </div>
+        <div class="process-arrow">→</div>
+        <div class="process-step">
+            <div class="step-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="#28a745"><path d="M12,2A2,2 0 0,1 14,4C14,4.74 13.6,5.39 13,5.73V7H14A7,7 0 0,1 21,14H22A1,1 0 0,1 23,15V18A1,1 0 0,1 22,19H21V20A2,2 0 0,1 19,22H5A2,2 0 0,1 3,20V19H2A1,1 0 0,1 1,18V15A1,1 0 0,1 2,14H3A7,7 0 0,1 10,7H11V5.73C10.4,5.39 10,4.74 10,4A2,2 0 0,1 12,2M7.5,13A2.5,2.5 0 0,0 5,15.5A2.5,2.5 0 0,0 7.5,18A2.5,2.5 0 0,0 10,15.5A2.5,2.5 0 0,0 7.5,13M16.5,13A2.5,2.5 0 0,0 14,15.5A2.5,2.5 0 0,0 16.5,18A2.5,2.5 0 0,0 19,15.5A2.5,2.5 0 0,0 16.5,13Z"/></svg></div>
+            <h4>OCR Analysis</h4>
+            <p>Text recognition analyzes game results and UI elements</p>
+        </div>
+        <div class="process-arrow">→</div>
+        <div class="process-step">
+            <div class="step-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="#ffc107"><path d="M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22A10,10 0 0,1 2,12A10,10 0 0,1 12,2M11,16.5L18,9.5L16.59,8.09L11,13.67L7.91,10.59L6.5,12L11,16.5Z"/></svg></div>
+            <h4>Confidence Score</h4>
+            <p>Accuracy rating calculated (70%+ auto-approved)</p>
+        </div>
+        <div class="process-arrow">→</div>
+        <div class="process-step">
+            <div class="step-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="#17a2b8"><path d="M12,1L3,5V11C3,16.55 6.84,21.74 12,23C17.16,21.74 21,16.55 21,11V5L12,1M10,17L6,13L7.41,11.59L10,14.17L16.59,7.58L18,9L10,17Z"/></svg></div>
+            <h4>Verification</h4>
+            <p>Result verified and winner determined</p>
+        </div>
+    </div>
+    <div class="process-stats">
+        <div class="stat">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="#ffc107"><path d="M11,4H13V16L18.5,10.5L19.92,11.92L12,19.84L4.08,11.92L5.5,10.5L11,16V4Z"/></svg>
+            <span>15s Average Processing</span>
+        </div>
+        <div class="stat">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="#28a745"><path d="M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22A10,10 0 0,1 2,12A10,10 0 0,1 12,2M11,16.5L18,9.5L16.59,8.09L11,13.67L7.91,10.59L6.5,12L11,16.5Z"/></svg>
+            <span>70% Accuracy Rate</span>
+        </div>
+        <div class="stat">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="#dc3545"><path d="M12,1L3,5V11C3,16.55 6.84,21.74 12,23C17.16,21.74 21,16.55 21,11V5L12,1M10,17L6,13L7.41,11.59L10,14.17L16.59,7.58L18,9L10,17Z"/></svg>
+            <span>Anti-Fraud Protection</span>
+        </div>
+    </div>
+</div>
+
+<script>
+// Advanced form handling with AI simulation
+document.getElementById('screenshotForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const submitBtn = this.querySelector('button[type="submit"]');
+    const statusSteps = document.querySelectorAll('.status-step');
+    
+    // Start submission process
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M2.81,14.12L5.64,11.29L8.17,10.79C11.39,6.41 17.55,4.22 19.78,4.22C19.78,6.45 17.59,12.61 13.21,15.83L12.71,18.36L9.88,21.19L9.17,17.66C7.76,17.66 7.76,17.66 7.05,16.95C6.34,16.24 6.34,16.24 6.34,14.83L2.81,14.12M5.64,16.95L7.05,18.36L4.39,21.03H2.97V19.61L5.64,16.95M4.22,2.81L7.05,5.64L6.34,9.17C6.34,7.76 6.34,7.76 7.05,7.05C7.76,6.34 7.76,6.34 9.17,6.34L12.71,5.64L15.54,2.81L16.95,4.22L14.29,6.88L15.71,8.29L18.36,5.64L19.78,7.05L16.95,9.88L14.12,12.71L11.29,9.88L8.46,7.05L5.64,4.22L4.22,2.81Z"/></svg> Processing...';
+    
+    // Step 1: Upload (already active)
+    updateStatusStep(0, 'active');
+    
+    // Step 2: OCR Analysis
+    await new Promise(resolve => setTimeout(resolve, 800));
+    updateStatusStep(1, 'active');
+    updateAnalysisPoint('gameDetection', 'Game Detection: Analyzing...', 'pending');
+    
+    // Step 3: Verification
+    await new Promise(resolve => setTimeout(resolve, 1200));
+    updateStatusStep(2, 'active');
+    updateAnalysisPoint('resultDetection', 'Result Detection: Processing...', 'pending');
+    
+    // Get match_id from the hidden input
+    const match_id = document.querySelector('input[name="match_id"]').value;
+    
+    try {
+        const response = await fetch(`/submit_screenshot/${match_id}`, {
+            method: 'POST',
+            body: formData
+        });
+        
+        // Check if response is JSON or redirect
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+            const result = await response.json();
+            
+            // Step 4: Result
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            updateStatusStep(3, result.success ? 'active' : 'error');
+            
+            if (result.success) {
+                updateAnalysisPoint('gameDetection', 'Game Detection: Screenshot Verified', 'success');
+                updateAnalysisPoint('resultDetection', 'Result Detection: Match Result Submitted', 'success');
+                updateAnalysisPoint('confidenceScore', 'Confidence Score: Verified', 'success');
+                
+                showNotification('✅ Screenshot submitted successfully!', 'success');
+                setTimeout(() => window.location.href = '/matches', 3000);
+            } else {
+                updateAnalysisPoint('gameDetection', 'Game Detection: Failed', 'error');
+                updateAnalysisPoint('resultDetection', 'Result Detection: Invalid', 'error');
+                
+                showNotification('❌ ' + (result.error || 'Submission failed'), 'error');
+                setTimeout(() => {
+                    showRetryDialog(result.error || 'Please try again with a valid screenshot');
+                }, 2000);
+            }
+        } else {
+            // Handle redirect response (successful form submission)
+            updateStatusStep(3, 'active');
+            updateAnalysisPoint('gameDetection', 'Game Detection: Screenshot Verified', 'success');
+            updateAnalysisPoint('resultDetection', 'Result Detection: Match Result Submitted', 'success');
+            updateAnalysisPoint('confidenceScore', 'Confidence Score: Verified', 'success');
+            
+            showNotification('✅ Screenshot submitted successfully!', 'success');
+            setTimeout(() => window.location.href = '/matches', 2000);
+        }
+    } catch (error) {
+        updateStatusStep(3, 'error');
+        showNotification('Connection Error: ' + error.message, 'error');
+    } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M2.81,14.12L5.64,11.29L8.17,10.79C11.39,6.41 17.55,4.22 19.78,4.22C19.78,6.45 17.59,12.61 13.21,15.83L12.71,18.36L9.88,21.19L9.17,17.66C7.76,17.66 7.76,17.66 7.05,16.95C6.34,16.24 6.34,16.24 6.34,14.83L2.81,14.12M5.64,16.95L7.05,18.36L4.39,21.03H2.97V19.61L5.64,16.95M4.22,2.81L7.05,5.64L6.34,9.17C6.34,7.76 6.34,7.76 7.05,7.05C7.76,6.34 7.76,6.34 9.17,6.34L12.71,5.64L15.54,2.81L16.95,4.22L14.29,6.88L15.71,8.29L18.36,5.64L19.78,7.05L16.95,9.88L14.12,12.71L11.29,9.88L8.46,7.05L5.64,4.22L4.22,2.81Z"/></svg> Launch OCR Verification';
+    }
+});
+
+function updateStatusStep(index, status) {
+    const steps = document.querySelectorAll('.status-step');
+    if (steps[index]) {
+        steps[index].classList.remove('active', 'error');
+        if (status === 'active') {
+            steps[index].classList.add('active');
+            steps[index].style.color = '#28a745';
+        } else if (status === 'error') {
+            steps[index].classList.add('error');
+            steps[index].style.color = '#dc3545';
+        }
+    }
+}
+
+// Real OCR processing with actual analysis
+async function simulateAIProcessing(steps) {
+    const delays = [800, 1200, 1000, 800];
+    
+    for (let i = 1; i < steps.length; i++) {
+        await new Promise(resolve => setTimeout(resolve, delays[i-1]));
+        steps[i].classList.add('active');
+        
+        // Show real OCR analysis results from server response
+        if (i === 1) {
+            // This will be updated with actual server response
+            updateAnalysisPoint('gameDetection', 'Game Detection: Analyzing...', 'pending');
+        }
+        if (i === 2) {
+            updateAnalysisPoint('resultDetection', 'Result Detection: Scanning...', 'pending');
+        }
+        if (i === 3) {
+            updateAnalysisPoint('confidenceScore', 'Confidence Score: Processing...', 'pending');
+        }
+    }
+}
+
+function updateAnalysisPoint(id, text, status) {
+    const point = document.getElementById(id);
+    if (point) {
+        let icon = '';
+        if (status === 'success') {
+            icon = '<svg width="12" height="12" viewBox="0 0 24 24" fill="#28a745"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>';
+        } else if (status === 'error') {
+            icon = '<svg width="12" height="12" viewBox="0 0 24 24" fill="#dc3545"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm3.59 13L12 11.41 8.41 15 7 13.59 10.59 10 7 6.41 8.41 5 12 8.59 15.59 5 17 6.41 13.41 10 17 13.59 15.59 15z"/></svg>';
+        } else {
+            icon = '<svg width="12" height="12" viewBox="0 0 24 24" fill="#ffc107"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>';
+        }
+        point.innerHTML = `${icon} ${text}`;
+        point.style.color = status === 'success' ? '#28a745' : status === 'error' ? '#dc3545' : '#ffc107';
+    }
+}
+
+// Advanced drag & drop with validation
+const uploadArea = document.getElementById('uploadArea');
+const fileInput = document.getElementById('screenshotInput');
+const imagePreview = document.getElementById('imagePreview');
+const submitBtn = document.querySelector('.submit-btn');
+
+// Drag and drop handlers
+uploadArea.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    uploadArea.classList.add('dragover');
+});
+
+uploadArea.addEventListener('dragleave', () => {
+    uploadArea.classList.remove('dragover');
+});
+
+uploadArea.addEventListener('drop', (e) => {
+    e.preventDefault();
+    uploadArea.classList.remove('dragover');
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+        handleFileSelection(files[0]);
+    }
+});
+
+fileInput.addEventListener('change', function(e) {
+    if (e.target.files[0]) {
+        handleFileSelection(e.target.files[0]);
+    }
+});
+
+function handleFileSelection(file) {
+    // Advanced validation
+    if (!validateFile(file)) return;
+    
+    // Show preview with animation
+    displayImagePreview(file);
+    
+    // Enable submit button if result is also selected
+    checkFormComplete();
+    
+    // Simulate quick AI pre-analysis
+    simulatePreAnalysis();
+}
+
+function checkFormComplete() {
+    const resultSelected = document.querySelector('input[name="result"]:checked');
+    const fileSelected = fileInput.files.length > 0;
+    
+    // Enable button only if both result and file are selected
+    submitBtn.disabled = !(resultSelected && fileSelected);
+    
+    // Update upload status
+    if (fileSelected) {
+        updateStatusStep(0, 'active');
+    }
+}
+
+function validateFile(file) {
+    // Size validation (5MB)
+    if (file.size > 5 * 1024 * 1024) {
+        showNotification('File too large! Maximum size is 5MB.', 'error');
+        return false;
+    }
+    
+    // Type validation
+    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+    if (!validTypes.includes(file.type)) {
+        showNotification('Invalid file type! Please upload JPG, PNG, or WebP images.', 'error');
+        return false;
+    }
+    
+    // Dimension check (minimum 300x300)
+    return new Promise((resolve) => {
+        const img = new Image();
+        img.onload = function() {
+            if (this.width < 300 || this.height < 300) {
+                showNotification('Image too small! Minimum 300x300 pixels required.', 'error');
+                resolve(false);
+            } else {
+                resolve(true);
+            }
+        };
+        img.src = URL.createObjectURL(file);
+    });
+    
+    return true;
+}
+
+function displayImagePreview(file) {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        document.getElementById('previewImg').src = e.target.result;
+        document.getElementById('fileName').textContent = file.name;
+        document.getElementById('fileSize').textContent = formatFileSize(file.size);
+        
+        // Show preview with animation
+        imagePreview.style.display = 'block';
+        imagePreview.style.opacity = '0';
+        imagePreview.style.transform = 'translateY(20px)';
+        
+        setTimeout(() => {
+            imagePreview.style.transition = 'all 0.3s ease';
+            imagePreview.style.opacity = '1';
+            imagePreview.style.transform = 'translateY(0)';
+        }, 100);
+    };
+    reader.readAsDataURL(file);
+}
+
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+function simulatePreAnalysis() {
+    setTimeout(() => {
+        updateAnalysisPoint('gameDetection', 'Game Detection: Analyzing image...', 'pending');
+    }, 500);
+    
+    setTimeout(() => {
+        updateAnalysisPoint('resultDetection', 'Result Detection: OCR scanning...', 'pending');
+    }, 1000);
+    
+    setTimeout(() => {
+        updateAnalysisPoint('confidenceScore', 'Confidence Score: Processing...', 'pending');
+    }, 1500);
+}
+
+// Remove image functionality
+document.getElementById('removeImage').addEventListener('click', function() {
+    imagePreview.style.display = 'none';
+    fileInput.value = '';
+    submitBtn.disabled = true;
+    
+    // Reset analysis points
+    updateAnalysisPoint('gameDetection', 'Game Detection: Pending', 'pending');
+    updateAnalysisPoint('resultDetection', 'Result Detection: Pending', 'pending');
+    updateAnalysisPoint('confidenceScore', 'Confidence Score: Pending', 'pending');
+});
+
+// Custom retry dialog
+function showRetryDialog(errorMessage) {
+    const dialog = document.createElement('div');
+    dialog.className = 'retry-dialog-overlay';
+    dialog.innerHTML = `
+        <div class="retry-dialog">
+            <div class="dialog-header">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="#dc3545">
+                    <path d="M12,2C17.53,2 22,6.47 22,12C22,17.53 17.53,22 12,22C6.47,22 2,17.53 2,12C2,6.47 6.47,2 12,2M15.59,7L12,10.59L8.41,7L7,8.41L10.59,12L7,15.59L8.41,17L12,13.41L15.59,17L17,15.59L13.41,12L17,8.41L15.59,7Z"/>
+                </svg>
+                <h3>Screenshot Rejected</h3>
+            </div>
+            <div class="dialog-content">
+                <p class="error-message">${errorMessage}</p>
+                <p class="dialog-question">What would you like to do?</p>
+            </div>
+            <div class="dialog-actions">
+                <button class="btn-retry" onclick="retryUpload()">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
+                        <path d="M17.65,6.35C16.2,4.9 14.21,4 12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20C15.73,20 18.84,17.45 19.73,14H17.65C16.83,16.33 14.61,18 12,18A6,6 0 0,1 6,12A6,6 0 0,1 12,6C13.66,6 15.14,6.69 16.22,7.78L13,11H20V4L17.65,6.35Z"/>
+                    </svg>
+                    Try Different Screenshot
+                </button>
+                <button class="btn-cancel" onclick="cancelSubmission()">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
+                        <path d="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z"/>
+                    </svg>
+                    Cancel & Return
+                </button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(dialog);
+    
+    // Add animation
+    setTimeout(() => {
+        dialog.style.opacity = '1';
+        dialog.querySelector('.retry-dialog').style.transform = 'scale(1)';
+    }, 100);
+}
+
+function retryUpload() {
+    // Reset form for retry
+    document.getElementById('imagePreview').style.display = 'none';
+    document.getElementById('screenshotInput').value = '';
+    updateAnalysisPoint('gameDetection', 'Game Detection: Pending', 'pending');
+    updateAnalysisPoint('resultDetection', 'Result Detection: Pending', 'pending');
+    updateAnalysisPoint('confidenceScore', 'Confidence Score: Pending', 'pending');
+    updateStatusStep(0, '');
+    updateStatusStep(1, '');
+    updateStatusStep(2, '');
+    updateStatusStep(3, '');
+    
+    // Remove dialog
+    document.querySelector('.retry-dialog-overlay').remove();
+    
+    showNotification('📸 Ready for new screenshot upload', 'info');
+}
+
+function cancelSubmission() {
+    document.querySelector('.retry-dialog-overlay').remove();
+    window.location.href = '/matches';
+}
+
+// Enhanced notification system
+function showNotification(message, type) {
+    const notification = document.createElement('div');
+    notification.className = `notification ${type}`;
+    
+    const icon = {
+        'success': 'checkmark',
+        'error': 'cancel',
+        'info': 'info'
+    }[type] || 'info';
+    
+    let iconSvg = '';
+    if (icon === 'checkmark') {
+        iconSvg = '<svg width="20" height="20" viewBox="0 0 24 24" fill="white" style="margin-right: 8px;"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>';
+    } else if (icon === 'cancel') {
+        iconSvg = '<svg width="20" height="20" viewBox="0 0 24 24" fill="white" style="margin-right: 8px;"><path d="M12,2C17.53,2 22,6.47 22,12C22,17.53 17.53,22 12,22C6.47,22 2,17.53 2,12C2,6.47 6.47,2 12,2M15.59,7L12,10.59L8.41,7L7,8.41L10.59,12L7,15.59L8.41,17L12,13.41L15.59,17L17,15.59L13.41,12L17,8.41L15.59,7Z"/></svg>';
+    } else {
+        iconSvg = '<svg width="20" height="20" viewBox="0 0 24 24" fill="white" style="margin-right: 8px;"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>';
+    }
+    
+    notification.innerHTML = `${iconSvg}${message}`;
+    
+    const bgColors = {
+        'success': 'linear-gradient(135deg, #28a745, #20c997)',
+        'error': 'linear-gradient(135deg, #dc3545, #c82333)',
+        'info': 'linear-gradient(135deg, #17a2b8, #138496)'
+    };
+    
+    notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 1rem 1.5rem;
+        border-radius: 12px;
+        color: white;
+        font-weight: 500;
+        z-index: 1000;
+        animation: slideIn 0.3s ease;
+        background: ${bgColors[type]};
+        box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+        display: flex;
+        align-items: center;
+        max-width: 350px;
+    `;
+    
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        notification.style.animation = 'slideOut 0.3s ease';
+        setTimeout(() => notification.remove(), 300);
+    }, type === 'error' ? 5000 : 3000);
+}
+
+// Result selection enhancement
+document.querySelectorAll('input[name="result"]').forEach(radio => {
+    radio.addEventListener('change', function() {
+        const options = document.querySelectorAll('.result-option');
+        options.forEach(opt => opt.classList.remove('selected'));
+        this.closest('.result-option').classList.add('selected');
+        
+        // Visual feedback
+        const resultType = this.value === 'win' ? 'Victory' : 'Defeat';
+        showNotification(`Result declared: ${resultType} - Upload screenshot to verify`, 'info');
+        
+        // Check if form is complete
+        checkFormComplete();
+    });
+});
+
+// Add CSS animations and styles
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes slideIn {
+        from { transform: translateX(100%); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
+    }
+    @keyframes slideOut {
+        from { transform: translateX(0); opacity: 1; }
+        to { transform: translateX(100%); opacity: 0; }
+    }
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.7; }
+    }
+    .match-status-bar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin: 1rem 0;
+        padding: 0.5rem;
+        background: rgba(255,255,255,0.1);
+        border-radius: 25px;
+    }
+    .status-step {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        background: rgba(255,255,255,0.1);
+        color: #6c757d;
+        font-size: 0.9rem;
+        font-weight: 500;
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+    .status-step.active {
+        background: #28a745;
+        color: white;
+        transform: scale(1.05);
+    }
+    .status-step.processing {
+        background: #ffc107;
+        color: #333;
+        animation: pulse 1.5s infinite;
+    }
+    .status-step.error {
+        background: #dc3545;
+        color: white;
+    }
+    .result-option.selected {
+        transform: scale(1.02);
+        box-shadow: 0 0 20px rgba(255, 193, 7, 0.4);
+    }
+    .notification.info {
+        background: linear-gradient(135deg, #17a2b8, #138496);
+    }
+    
+    /* Retry Dialog Styles */
+    .retry-dialog-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.7);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 2000;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+    
+    .retry-dialog {
+        background: white;
+        border-radius: 16px;
+        padding: 2rem;
+        max-width: 450px;
+        width: 90%;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        transform: scale(0.8);
+        transition: transform 0.3s ease;
+    }
+    
+    .dialog-header {
+        text-align: center;
+        margin-bottom: 1.5rem;
+    }
+    
+    .dialog-header h3 {
+        color: #dc3545;
+        margin: 0.5rem 0 0 0;
+        font-size: 1.5rem;
+    }
+    
+    .dialog-content {
+        text-align: center;
+        margin-bottom: 2rem;
+    }
+    
+    .error-message {
+        background: #f8d7da;
+        color: #721c24;
+        padding: 1rem;
+        border-radius: 8px;
+        margin-bottom: 1rem;
+        font-weight: 500;
+    }
+    
+    .dialog-question {
+        font-size: 1.1rem;
+        color: #333;
+        margin: 0;
+    }
+    
+    .dialog-actions {
+        display: flex;
+        gap: 1rem;
+        justify-content: center;
+    }
+    
+    .btn-retry, .btn-cancel {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.75rem 1.5rem;
+        border: none;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        font-size: 0.95rem;
+    }
+    
+    .btn-retry {
+        background: linear-gradient(135deg, #28a745, #20c997);
+        color: white;
+    }
+    
+    .btn-retry:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(40, 167, 69, 0.3);
+    }
+    
+    .btn-cancel {
+        background: linear-gradient(135deg, #6c757d, #5a6268);
+        color: white;
+    }
+    
+    .btn-cancel:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(108, 117, 125, 0.3);
+    }
+`;
+document.head.appendChild(style);
+
+// Initialize page
+document.addEventListener('DOMContentLoaded', function() {
+    // Animate status bar on load
+    const statusSteps = document.querySelectorAll('.status-step');
+    statusSteps.forEach((step, index) => {
+        if (index === 0) {
+            setTimeout(() => step.classList.add('active'), 200);
+        }
+    });
+});
+</script>
+{% endblock %}

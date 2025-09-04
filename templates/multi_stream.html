@@ -1,0 +1,278 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card">
+    <h1>🏆 {{ tournament[1] }} - Multi-Stream View</h1>
+    <p>Watch multiple players streaming live from the same tournament!</p>
+    <div style="display: flex; gap: 1rem; align-items: center;">
+        <span style="color: #ffc107;">👥 {{ streams|length }} streamers live</span>
+        <button onclick="toggleLayout()" class="btn btn-secondary" id="layoutBtn">Grid View</button>
+        <button onclick="toggleAutoSwitch()" class="btn btn-secondary" id="autoBtn">Auto Switch: OFF</button>
+    </div>
+</div>
+
+{% if streams %}
+<!-- Multi-Stream Grid -->
+<div class="card">
+    <div id="streamGrid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 1rem;">
+        {% for stream in streams %}
+        <div class="stream-tile" data-stream-id="{{ stream[0] }}" onclick="focusStream({{ stream[0] }})" 
+             style="position: relative; background: #000; border-radius: 8px; overflow: hidden; cursor: pointer; transition: transform 0.3s;">
+            
+            <!-- Stream Video Area -->
+            <div style="aspect-ratio: 16/9; display: flex; align-items: center; justify-content: center; color: white; background: linear-gradient(45deg, #1a1a1a, #2d2d2d);">
+                <div style="text-align: center;">
+                    <div style="font-size: 2rem; margin-bottom: 0.5rem;">🎮</div>
+                    <h4>{{ stream[10] }}</h4>
+                    <p style="opacity: 0.8;">{{ stream[4] }}</p>
+                    <button onclick="connectToStream({{ stream[0] }}, event)" class="btn btn-success btn-sm">
+                        📺 Connect
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Stream Info Overlay -->
+            <div style="position: absolute; top: 10px; left: 10px; right: 10px; display: flex; justify-content: space-between; align-items: center;">
+                <div style="background: #dc3545; color: white; padding: 0.3rem 0.6rem; border-radius: 15px; font-size: 0.8rem; font-weight: bold;">
+                    🔴 LIVE
+                </div>
+                <div style="background: rgba(0,0,0,0.7); color: white; padding: 0.3rem 0.6rem; border-radius: 15px; font-size: 0.8rem;">
+                    👥 {{ stream[5] }}
+                </div>
+            </div>
+            
+            <!-- Stream Controls -->
+            <div style="position: absolute; bottom: 10px; left: 10px; right: 10px; display: flex; justify-content: space-between; align-items: center;">
+                <div style="background: rgba(0,0,0,0.8); color: white; padding: 0.3rem 0.6rem; border-radius: 15px; font-size: 0.8rem;">
+                    {{ stream[10] }}
+                </div>
+                <div style="display: flex; gap: 0.5rem;">
+                    <button onclick="muteStream({{ stream[0] }}, event)" class="btn btn-secondary btn-sm" style="padding: 0.2rem 0.4rem;">🔊</button>
+                    <button onclick="fullscreenStream({{ stream[0] }}, event)" class="btn btn-secondary btn-sm" style="padding: 0.2rem 0.4rem;">⛶</button>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Featured Stream (Main View) -->
+<div class="card" id="featuredStream" style="display: none;">
+    <h3>🎯 Featured Stream</h3>
+    <div id="mainStreamPlayer" style="background: #000; aspect-ratio: 16/9; border-radius: 12px; position: relative;">
+        <div style="display: flex; align-items: center; justify-content: center; height: 100%; color: white;">
+            <div style="text-align: center;">
+                <div style="font-size: 4rem; margin-bottom: 1rem;">📺</div>
+                <h2>Select a stream to watch</h2>
+            </div>
+        </div>
+    </div>
+    
+    <div style="margin-top: 1rem; display: flex; gap: 1rem; justify-content: center;">
+        <button onclick="previousStream()" class="btn btn-secondary">⬅️ Previous</button>
+        <button onclick="togglePictureInPicture()" class="btn btn-secondary">📱 PiP Mode</button>
+        <button onclick="nextStream()" class="btn btn-secondary">Next ➡️</button>
+    </div>
+</div>
+
+<!-- Tournament Leaderboard -->
+<div class="card">
+    <h3>🏆 Live Tournament Status</h3>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+        {% for stream in streams %}
+        <div style="background: rgba(255,255,255,0.05); padding: 1rem; border-radius: 8px; text-align: center;">
+            <div style="font-size: 1.5rem; margin-bottom: 0.5rem;">🎮</div>
+            <h4>{{ stream[10] }}</h4>
+            <p style="color: #ffc107;">👥 {{ stream[5] }} viewers</p>
+            <div style="display: flex; gap: 0.5rem; justify-content: center; margin-top: 0.5rem;">
+                <button onclick="watchStream({{ stream[0] }})" class="btn btn-primary btn-sm">Watch</button>
+                <button onclick="tipStreamer({{ stream[0] }}, '{{ stream[10] }}')" class="btn btn-success btn-sm">💰 Tip</button>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+{% else %}
+<div class="card">
+    <div style="text-align: center; padding: 2rem;">
+        <h3>No Live Streams</h3>
+        <p>No players are currently streaming from this tournament.</p>
+        <a href="{{ url_for('tournaments') }}" class="btn btn-primary">Back to Tournaments</a>
+    </div>
+</div>
+{% endif %}
+
+<script>
+let currentLayout = 'grid';
+let autoSwitch = false;
+let currentStreamIndex = 0;
+let streams = {{ streams|tojson }};
+let autoSwitchInterval;
+
+function toggleLayout() {
+    const grid = document.getElementById('streamGrid');
+    const featured = document.getElementById('featuredStream');
+    const btn = document.getElementById('layoutBtn');
+    
+    if (currentLayout === 'grid') {
+        grid.style.display = 'none';
+        featured.style.display = 'block';
+        btn.textContent = 'Grid View';
+        currentLayout = 'featured';
+    } else {
+        grid.style.display = 'grid';
+        featured.style.display = 'none';
+        btn.textContent = 'Featured View';
+        currentLayout = 'grid';
+    }
+}
+
+function toggleAutoSwitch() {
+    const btn = document.getElementById('autoBtn');
+    autoSwitch = !autoSwitch;
+    
+    if (autoSwitch) {
+        btn.textContent = 'Auto Switch: ON';
+        btn.style.background = '#28a745';
+        startAutoSwitch();
+    } else {
+        btn.textContent = 'Auto Switch: OFF';
+        btn.style.background = '';
+        stopAutoSwitch();
+    }
+}
+
+function startAutoSwitch() {
+    autoSwitchInterval = setInterval(() => {
+        if (currentLayout === 'featured') {
+            nextStream();
+        }
+    }, 10000); // Switch every 10 seconds
+}
+
+function stopAutoSwitch() {
+    if (autoSwitchInterval) {
+        clearInterval(autoSwitchInterval);
+    }
+}
+
+function focusStream(streamId) {
+    if (currentLayout === 'grid') {
+        toggleLayout();
+    }
+    
+    const stream = streams.find(s => s[0] === streamId);
+    if (stream) {
+        document.getElementById('mainStreamPlayer').innerHTML = `
+            <div style="display: flex; align-items: center; justify-content: center; height: 100%; color: white; background: linear-gradient(45deg, #667eea, #764ba2);">
+                <div style="text-align: center;">
+                    <div style="font-size: 3rem; margin-bottom: 1rem;">🎮</div>
+                    <h2>${stream[10]}'s Stream</h2>
+                    <p>${stream[4]}</p>
+                    <div style="margin-top: 1rem;">
+                        <div style="display: inline-block; width: 12px; height: 12px; background: #dc3545; border-radius: 50%; margin-right: 0.5rem; animation: pulse 1s infinite;"></div>
+                        LIVE - ${stream[5]} viewers
+                    </div>
+                </div>
+            </div>
+            <div style="position: absolute; top: 20px; left: 20px; background: #dc3545; color: white; padding: 0.5rem 1rem; border-radius: 20px; font-weight: bold;">
+                🔴 LIVE
+            </div>
+            <div style="position: absolute; top: 20px; right: 20px; background: rgba(0,0,0,0.7); color: white; padding: 0.5rem 1rem; border-radius: 20px;">
+                👥 ${stream[5]} watching
+            </div>
+        `;
+        currentStreamIndex = streams.findIndex(s => s[0] === streamId);
+    }
+}
+
+function previousStream() {
+    currentStreamIndex = (currentStreamIndex - 1 + streams.length) % streams.length;
+    focusStream(streams[currentStreamIndex][0]);
+}
+
+function nextStream() {
+    currentStreamIndex = (currentStreamIndex + 1) % streams.length;
+    focusStream(streams[currentStreamIndex][0]);
+}
+
+function connectToStream(streamId, event) {
+    event.stopPropagation();
+    const tile = document.querySelector(`[data-stream-id="${streamId}"]`);
+    const stream = streams.find(s => s[0] === streamId);
+    
+    tile.innerHTML = `
+        <div style="aspect-ratio: 16/9; position: relative; background: linear-gradient(45deg, #1a1a1a, #2d2d2d);">
+            <div style="display: flex; align-items: center; justify-content: center; height: 100%; color: white;">
+                <div style="text-align: center;">
+                    <div style="font-size: 2rem; margin-bottom: 0.5rem;">🎮</div>
+                    <h4>${stream[10]} - CONNECTED</h4>
+                    <p style="opacity: 0.8;">${stream[4]}</p>
+                    <div style="margin-top: 1rem;">
+                        <div style="display: inline-block; width: 8px; height: 8px; background: #28a745; border-radius: 50%; margin-right: 0.5rem; animation: pulse 1s infinite;"></div>
+                        STREAMING
+                    </div>
+                </div>
+            </div>
+            <div style="position: absolute; top: 10px; left: 10px; background: #28a745; color: white; padding: 0.3rem 0.6rem; border-radius: 15px; font-size: 0.8rem;">
+                📺 CONNECTED
+            </div>
+            <div style="position: absolute; top: 10px; right: 10px; background: rgba(0,0,0,0.7); color: white; padding: 0.3rem 0.6rem; border-radius: 15px; font-size: 0.8rem;">
+                👥 ${stream[5]}
+            </div>
+        </div>
+    `;
+}
+
+function muteStream(streamId, event) {
+    event.stopPropagation();
+    const btn = event.target;
+    btn.textContent = btn.textContent === '🔊' ? '🔇' : '🔊';
+}
+
+function fullscreenStream(streamId, event) {
+    event.stopPropagation();
+    window.open(`/watch_stream/${streamId}`, '_blank');
+}
+
+function watchStream(streamId) {
+    window.open(`/watch_stream/${streamId}`, '_blank');
+}
+
+function tipStreamer(streamId, streamerName) {
+    const amount = prompt(`Enter tip amount for ${streamerName} (KSh):`, '10');
+    if (amount && !isNaN(amount) && amount > 0) {
+        alert(`Tip of KSh ${amount} sent to ${streamerName}!`);
+    }
+}
+
+function togglePictureInPicture() {
+    alert('Picture-in-Picture mode activated for multi-stream view!');
+}
+
+// Add hover effects
+document.addEventListener('DOMContentLoaded', function() {
+    const tiles = document.querySelectorAll('.stream-tile');
+    tiles.forEach(tile => {
+        tile.addEventListener('mouseenter', function() {
+            this.style.transform = 'scale(1.05)';
+            this.style.zIndex = '10';
+        });
+        tile.addEventListener('mouseleave', function() {
+            this.style.transform = 'scale(1)';
+            this.style.zIndex = '1';
+        });
+    });
+});
+
+// Auto-focus first stream if in featured mode
+if (streams.length > 0) {
+    setTimeout(() => {
+        if (currentLayout === 'featured') {
+            focusStream(streams[0][0]);
+        }
+    }, 1000);
+}
+</script>
+{% endblock %}

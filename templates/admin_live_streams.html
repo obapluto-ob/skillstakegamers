@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card">
+    <h1><svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="2" y="3" width="20" height="14" rx="2" fill="#17a2b8"/><path d="M8 21L16 21" stroke="#17a2b8" stroke-width="2"/><path d="M12 17L12 21" stroke="#17a2b8" stroke-width="2"/></svg> Live Streams Management</h1>
+    <p>Monitor and manage all ongoing streams</p>
+</div>
+
+<div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h3>Active Streams (<span id="streamCount">0</span>)</h3>
+        <button onclick="refreshStreams()" class="btn btn-primary">Refresh</button>
+    </div>
+    
+    <div id="streamsContainer">
+        <!-- Streams will be loaded here -->
+    </div>
+</div>
+
+<script>
+function loadStreams() {
+    fetch('/admin/live_streams')
+        .then(response => response.json())
+        .then(data => {
+            const container = document.getElementById('streamsContainer');
+            const countElement = document.getElementById('streamCount');
+            
+            if (data.streams && data.streams.length > 0) {
+                countElement.textContent = data.streams.length;
+                container.innerHTML = data.streams.map(stream => `
+                    <div class="match-card" style="margin-bottom: 1rem; border-left: 4px solid ${stream.status === 'live' ? '#dc3545' : '#666'};">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <h4>${stream.title}</h4>
+                                <div style="margin: 0.5rem 0;">
+                                    <strong>Streamer:</strong> ${stream.username}<br>
+                                    <strong>Game:</strong> ${stream.game}<br>
+                                    <strong>Viewers:</strong> ${stream.viewers}<br>
+                                    <strong>Duration:</strong> ${stream.duration} minutes<br>
+                                    <strong>Match ID:</strong> ${stream.match_id}<br>
+                                    <strong>Tournament ID:</strong> ${stream.tournament_id}
+                                </div>
+                                <div style="background: ${stream.status === 'live' ? '#dc3545' : '#666'}; color: white; padding: 0.3rem 0.6rem; border-radius: 15px; display: inline-block; font-size: 0.8rem;">
+                                    ${stream.status.toUpperCase()}
+                                </div>
+                            </div>
+                            <div style="display: flex; gap: 0.5rem; flex-direction: column;">
+                                <button onclick="watchStream(${stream.id})" class="btn btn-primary">Watch Stream</button>
+                                <button onclick="endStream(${stream.id})" class="btn btn-danger">End Stream</button>
+                                <button onclick="viewStreamDetails(${stream.id})" class="btn btn-secondary">Details</button>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            } else {
+                countElement.textContent = '0';
+                container.innerHTML = '<div style="text-align: center; padding: 2rem; opacity: 0.6;"><h3>No Streams Found</h3><p>No streams in database. Users need to start streaming first.</p></div>';
+            }
+        })
+        .catch(error => {
+            console.error('Error loading streams:', error);
+            document.getElementById('streamsContainer').innerHTML = `<div style="color: #dc3545; text-align: center; padding: 2rem;">Error loading streams: ${error.message}</div>`;
+        });
+}
+
+function refreshStreams() {
+    loadStreams();
+}
+
+function endStream(streamId) {
+    if (confirm('End this live stream? This will stop the stream for all viewers.')) {
+        fetch(`/admin/end_stream/${streamId}`, {method: 'POST'})
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    loadStreams();
+                    alert('Stream ended successfully');
+                } else {
+                    alert('Failed to end stream');
+                }
+            })
+            .catch(error => {
+                alert('Error ending stream');
+            });
+    }
+}
+
+function viewStreamDetails(streamId) {
+    fetch(`/admin/stream_details/${streamId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const details = data.stream;
+                alert(`Stream Details:
+                
+Title: ${details.title}
+Streamer: ${details.username}
+Started: ${details.created_at}
+Viewers: ${details.viewers}
+Match ID: ${details.match_id || 'N/A'}
+Tournament ID: ${details.tournament_id || 'N/A'}`);
+            }
+        })
+        .catch(error => {
+            alert('Error loading stream details');
+        });
+}
+
+function watchStream(streamId) {
+    // Redirect to actual user stream page
+    window.open(`/watch_stream/${streamId}`, '_blank');
+}
+
+
+
+// Load streams on page load and auto-refresh every 30 seconds
+loadStreams();
+setInterval(loadStreams, 30000);
+</script>
+{% endblock %}

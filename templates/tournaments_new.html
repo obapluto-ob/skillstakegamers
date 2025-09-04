@@ -1,0 +1,433 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card">
+    <h1>Streaming Tournaments</h1>
+    <p>Rotating entry fees: KSh 200 → KSh 500 → KSh 700 → KSh 1000 (4-week cycle) - <strong>Streaming Required</strong></p>
+    <div style="margin-top: 1rem;">
+        <a href="/quick_matches" class="btn btn-secondary">Quick Matches</a>
+        <a href="/quick_match" class="btn btn-success">Quick Match</a>
+        <span style="margin-left: 1rem; color: #666;">Instant 1v1 matches • No streaming required</span>
+    </div>
+</div>
+
+<div class="card">
+    <h3>Current Tournament</h3>
+    <div id="tournamentInfo">
+        <div class="loading">Loading tournament details...</div>
+    </div>
+</div>
+
+<div class="card" id="groupStageCard" style="display: none;">
+    <h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" stroke="currentColor" stroke-width="2" fill="none"/><line x1="9" y1="9" x2="15" y2="9" stroke="currentColor" stroke-width="2"/><line x1="9" y1="15" x2="15" y2="15" stroke="currentColor" stroke-width="2"/></svg> Group Stage Tables</h3>
+    <div id="groupTables">
+        <div class="loading">Loading group tables...</div>
+    </div>
+</div>
+
+<div class="card">
+    <h3>Tournament Structure</h3>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem;">
+        <div style="background: rgba(40, 167, 69, 0.1); padding: 1rem; border-radius: 8px;">
+            <h4 style="color: #28a745;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="10" stroke="#28a745" stroke-width="2" fill="none"/><polyline points="12,6 12,12 16,14" stroke="#28a745" stroke-width="2"/></svg> Phase 1: Group Stage</h4>
+            <ul style="margin: 0; padding-left: 1.5rem;">
+                <li>8 groups of 8 players each</li>
+                <li>Each player plays 7 matches</li>
+                <li>Top 2 from each group advance</li>
+                <li>Duration: 3 days</li>
+            </ul>
+        </div>
+        <div style="background: rgba(23, 162, 184, 0.1); padding: 1rem; border-radius: 8px;">
+            <h4 style="color: #17a2b8;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 12L11 14L15 10" stroke="#17a2b8" stroke-width="2" fill="none"/><circle cx="12" cy="12" r="10" stroke="#17a2b8" stroke-width="2" fill="none"/></svg> Phase 2-4: Knockout</h4>
+            <ul style="margin: 0; padding-left: 1.5rem;">
+                <li>Round of 16 → Quarter-Finals</li>
+                <li>Semi-Finals → Finals</li>
+                <li>Single elimination</li>
+                <li>Duration: 4 days total</li>
+            </ul>
+        </div>
+        <div style="background: rgba(255, 193, 7, 0.1); padding: 1rem; border-radius: 8px;">
+            <h4 style="color: #ffc107;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="8" r="6" stroke="#ffc107" stroke-width="2" fill="none"/><path d="M12 14V22M8 18H16" stroke="#ffc107" stroke-width="2"/></svg> Prize Distribution</h4>
+            <ul style="margin: 0; padding-left: 1.5rem;">
+                <li>Champion: 44% of prize pool</li>
+                <li>Runner-up: 25% of prize pool</li>
+                <li>Semi-finalists: Badges + discounts</li>
+                <li>All participants: Tournament rewards</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <h3>Multi-Currency Support</h3>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; text-align: center;">
+        <div style="padding: 1rem; background: rgba(0,0,0,0.1); border-radius: 8px;">
+            <strong><img src="https://flagcdn.com/w20/ke.png" width="20" height="15" alt="Kenya"> Kenya</strong><br>
+            <span id="kesRate">Loading...</span>
+        </div>
+        <div style="padding: 1rem; background: rgba(0,0,0,0.1); border-radius: 8px;">
+            <strong><img src="https://flagcdn.com/w20/ng.png" width="20" height="15" alt="Nigeria"> Nigeria</strong><br>
+            <span id="ngnRate">Loading...</span>
+        </div>
+        <div style="padding: 1rem; background: rgba(0,0,0,0.1); border-radius: 8px;">
+            <strong><img src="https://flagcdn.com/w20/za.png" width="20" height="15" alt="South Africa"> South Africa</strong><br>
+            <span id="zarRate">Loading...</span>
+        </div>
+        <div style="padding: 1rem; background: rgba(0,0,0,0.1); border-radius: 8px;">
+            <strong><img src="https://flagcdn.com/w20/gh.png" width="20" height="15" alt="Ghana"> Ghana</strong><br>
+            <span id="ghsRate">Loading...</span>
+        </div>
+        <div style="padding: 1rem; background: rgba(0,0,0,0.1); border-radius: 8px;">
+            <strong><img src="https://flagcdn.com/w20/ug.png" width="20" height="15" alt="Uganda"> Uganda</strong><br>
+            <span id="ugxRate">Loading...</span>
+        </div>
+        <div style="padding: 1rem; background: rgba(0,0,0,0.1); border-radius: 8px;">
+            <strong><svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" fill="none"/><path d="M2 12H22M12 2A15.3 15.3 0 0 1 16 12A15.3 15.3 0 0 1 12 22A15.3 15.3 0 0 0 8 12A15.3 15.3 0 0 0 12 2Z" stroke="currentColor" stroke-width="2" fill="none"/></svg> International</strong><br>
+            <span id="usdRate">$2-10 USD</span>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <h3>Tournament Betting</h3>
+    <p>Bet on specific match events (not win/lose to prevent cheating):</p>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+        <div style="background: rgba(40, 167, 69, 0.1); padding: 1rem; border-radius: 8px;">
+            <h5 style="color: #28a745;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="10" stroke="#28a745" stroke-width="2" fill="none"/><path d="M8 12L10.5 14.5L16 9" stroke="#28a745" stroke-width="2" fill="none"/></svg> FIFA Bets</h5>
+            <ul style="font-size: 0.9rem; margin: 0; padding-left: 1.5rem;">
+                <li>First goal before 15th minute</li>
+                <li>Match has 2+ yellow cards</li>
+                <li>Penalty kick awarded</li>
+                <li>Player scores hat-trick</li>
+            </ul>
+        </div>
+        <div style="background: rgba(220, 53, 69, 0.1); padding: 1rem; border-radius: 8px;">
+            <h5 style="color: #dc3545;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="#dc3545" stroke-width="2" fill="none"/><path d="M2 17L12 22L22 17" stroke="#dc3545" stroke-width="2" fill="none"/><path d="M2 12L12 17L22 12" stroke="#dc3545" stroke-width="2" fill="none"/></svg> FPS Bets</h5>
+            <ul style="font-size: 0.9rem; margin: 0; padding-left: 1.5rem;">
+                <li>Player gets 15+ kills</li>
+                <li>First blood within 2 minutes</li>
+                <li>Dies to fall damage</li>
+                <li>Grenade kill achieved</li>
+            </ul>
+        </div>
+        <div style="background: rgba(255, 193, 7, 0.1); padding: 1rem; border-radius: 8px;">
+            <h5 style="color: #ffc107;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="5" y="2" width="14" height="20" rx="2" ry="2" stroke="#ffc107" stroke-width="2" fill="none"/><line x1="12" y1="18" x2="12.01" y2="18" stroke="#ffc107" stroke-width="2"/></svg> Mobile Game Bets</h5>
+            <ul style="font-size: 0.9rem; margin: 0; padding-left: 1.5rem;">
+                <li>Reaches level 10+ in match</li>
+                <li>Dies within first 3 minutes</li>
+                <li>Uses power-up 5+ times</li>
+                <li>Game lags/freezes</li>
+            </ul>
+        </div>
+    </div>
+    <div style="text-align: center; margin-top: 1rem;">
+        <button onclick="viewTournamentBetting()" class="btn btn-primary">View Active Betting Markets</button>
+    </div>
+</div>
+
+<script>
+let currentTournament = null;
+
+async function loadTournamentInfo() {
+    try {
+        const response = await fetch('/api/tournaments');
+        const data = await response.json();
+        
+        if (data.success) {
+            currentTournament = data.tournament;
+            displayTournamentInfo(data.tournament, data.user_joined, data.currency_rates);
+        } else {
+            document.getElementById('tournamentInfo').innerHTML = '<div class="error">Failed to load tournament</div>';
+        }
+    } catch (error) {
+        document.getElementById('tournamentInfo').innerHTML = '<div class="error">Error loading tournament</div>';
+    }
+}
+
+function displayTournamentInfo(tournament, userJoined, rates) {
+    const regEnd = new Date(tournament.registration_end);
+    const tournamentStart = new Date(tournament.tournament_start);
+    const now = new Date();
+    
+    let statusText = '';
+    let actionButton = '';
+    
+    if (now < regEnd) {
+        statusText = `<span style="color: #28a745;">Registration Open</span> - Ends ${regEnd.toLocaleDateString()}`;
+        if (!userJoined) {
+            actionButton = `
+                <div style="margin-top: 1rem;">
+                    <label for="currency">Currency:</label>
+                    <select id="currency" style="margin: 0 1rem; padding: 0.5rem;">
+                        <option value="KES" selected>🇰🇪 Kenyan Shilling (KES)</option>
+                        <option value="NGN">🇳🇬 Nigerian Naira (NGN)</option>
+                        <option value="ZAR">🇿🇦 South African Rand (ZAR)</option>
+                        <option value="GHS">🇬🇭 Ghanaian Cedi (GHS)</option>
+                        <option value="UGX">🇺🇬 Ugandan Shilling (UGX)</option>
+                        <option value="USD">🌍 US Dollar (USD)</option>
+                    </select>
+                    <button onclick="joinTournament()" class="btn btn-success">Join Tournament</button>
+                </div>
+            `;
+        } else {
+            actionButton = '<div style="margin-top: 1rem; color: #28a745;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 12L11 14L15 10" stroke="#28a745" stroke-width="2" fill="none"/><circle cx="12" cy="12" r="10" stroke="#28a745" stroke-width="2" fill="none"/></svg> You are registered for this tournament!</div>';
+        }
+    } else if (now < tournamentStart) {
+        statusText = `<span style="color: #ffc107;">Registration Closed</span> - Tournament starts ${tournamentStart.toLocaleDateString()}`;
+        loadGroupTables(tournament.id);
+    } else {
+        statusText = `<span style="color: #dc3545;">Tournament Active</span> - Started ${tournamentStart.toLocaleDateString()}`;
+        loadGroupTables(tournament.id);
+    }
+    
+    const entryFeeUSD = tournament.entry_fee_usd;
+    
+    document.getElementById('tournamentInfo').innerHTML = `
+        <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 2rem;">
+            <div>
+                <h4>${tournament.name}</h4>
+                <p><strong>Entry Fee:</strong> $${entryFeeUSD} USD</p>
+                <p><strong>Players:</strong> ${tournament.current_players}/${tournament.max_players}</p>
+                <div id="liveRegistration" style="margin-top: 1rem;"></div>
+                <p><strong>Status:</strong> ${statusText}</p>
+                <p><strong>Phase:</strong> ${tournament.phase.replace('_', ' ').toUpperCase()}</p>
+                ${actionButton}
+            </div>
+            <div style="text-align: center; padding: 1rem; background: rgba(0,255,136,0.1); border-radius: 10px;">
+                <h5>Prize Pool</h5>
+                <div style="font-size: 2rem; font-weight: bold; color: #00ff88;">
+                    $${(tournament.current_players * entryFeeUSD * 0.69).toFixed(0)}
+                </div>
+                <small>69% of entry fees</small>
+            </div>
+        </div>
+    `;
+    
+    // Update currency rates display
+    document.getElementById('kesRate').textContent = `KSh ${entryFeeUSD * rates.KES}`;
+    document.getElementById('ngnRate').textContent = `₦${entryFeeUSD * rates.NGN}`;
+    document.getElementById('zarRate').textContent = `R${entryFeeUSD * rates.ZAR}`;
+    document.getElementById('ghsRate').textContent = `₵${entryFeeUSD * rates.GHS}`;
+    document.getElementById('ugxRate').textContent = `USh ${entryFeeUSD * rates.UGX}`;
+    
+    // Load live registration table
+    loadLiveRegistration(tournament.id);
+}
+
+async function joinTournament() {
+    if (!currentTournament) return;
+    
+    const currency = document.getElementById('currency').value;
+    const button = event.target;
+    
+    button.disabled = true;
+    button.textContent = 'Joining...';
+    
+    try {
+        const response = await fetch('/api/join_tournament', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                tournament_id: currentTournament.id,
+                currency: currency
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert(data.message);
+            // Update balance display
+            if (data.new_balance !== undefined) {
+                document.querySelector('.balance, [class*="balance"]').textContent = `KSh ${data.new_balance}`;
+            }
+            // Redirect to group tables after joining
+            setTimeout(() => {
+                loadTournamentInfo(); // Refresh tournament info
+                loadGroupTables(currentTournament.id); // Show group tables
+            }, 1000);
+        } else {
+            alert('Error: ' + data.error);
+            button.disabled = false;
+            button.textContent = 'Join Tournament';
+        }
+    } catch (error) {
+        alert('Failed to join tournament');
+        button.disabled = false;
+        button.textContent = 'Join Tournament';
+    }
+}
+
+function viewTournamentBetting() {
+    if (currentTournament) {
+        window.location.href = `/tournament_betting/${currentTournament.id}`;
+    } else {
+        alert('Please wait for tournament to load');
+    }
+}
+
+// Load tournament info on page load
+document.addEventListener('DOMContentLoaded', loadTournamentInfo);
+
+async function loadGroupTables(tournamentId) {
+    // Show group stage card
+    document.getElementById('groupStageCard').style.display = 'block';
+    
+    try {
+        const response = await fetch(`/api/tournament_groups/${tournamentId}`);
+        const data = await response.json();
+        
+        if (data.success) {
+            displayGroupTables(data.groups);
+        } else {
+            document.getElementById('groupTables').innerHTML = '<div style="text-align: center; padding: 2rem; color: #666;">Group tables will be available once tournament starts.</div>';
+        }
+    } catch (error) {
+        // Generate mock group tables for demonstration
+        generateMockGroupTables();
+    }
+}
+
+function generateMockGroupTables() {
+    const mockGroups = [];
+    const playerNames = ['Player1', 'Player2', 'Player3', 'Player4', 'Player5', 'Player6', 'Player7', 'Player8'];
+    
+    for (let i = 0; i < 8; i++) {
+        const group = {
+            name: `Group ${String.fromCharCode(65 + i)}`,
+            players: []
+        };
+        
+        for (let j = 0; j < 8; j++) {
+            group.players.push({
+                name: `${playerNames[j]}${i + 1}`,
+                wins: Math.floor(Math.random() * 8),
+                losses: Math.floor(Math.random() * 8),
+                points: Math.floor(Math.random() * 21)
+            });
+        }
+        
+        // Sort by points descending
+        group.players.sort((a, b) => b.points - a.points);
+        mockGroups.push(group);
+    }
+    
+    displayGroupTables(mockGroups);
+}
+
+function displayGroupTables(groups) {
+    let html = '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem;">';
+    
+    groups.forEach(group => {
+        html += `
+            <div style="border: 1px solid rgba(255,255,255,0.2); border-radius: 10px; padding: 1rem; background: rgba(255,255,255,0.05);">
+                <h4 style="text-align: center; margin-bottom: 1rem; color: #ffc107;">${group.name}</h4>
+                <div style="overflow-x: auto;">
+                    <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
+                        <thead>
+                            <tr style="border-bottom: 1px solid rgba(255,255,255,0.2);">
+                                <th style="padding: 0.5rem; text-align: left;">Pos</th>
+                                <th style="padding: 0.5rem; text-align: left;">Player</th>
+                                <th style="padding: 0.5rem; text-align: center;">W</th>
+                                <th style="padding: 0.5rem; text-align: center;">L</th>
+                                <th style="padding: 0.5rem; text-align: center;">Pts</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+        `;
+        
+        group.players.forEach((player, index) => {
+            const isQualified = index < 2;
+            const rowStyle = isQualified ? 'background: rgba(40, 167, 69, 0.1); border-left: 3px solid #28a745;' : '';
+            
+            html += `
+                <tr style="${rowStyle}">
+                    <td style="padding: 0.5rem; font-weight: bold;">${index + 1}</td>
+                    <td style="padding: 0.5rem;">${player.name}</td>
+                    <td style="padding: 0.5rem; text-align: center; color: #28a745;">${player.wins}</td>
+                    <td style="padding: 0.5rem; text-align: center; color: #dc3545;">${player.losses}</td>
+                    <td style="padding: 0.5rem; text-align: center; font-weight: bold;">${player.points}</td>
+                </tr>
+            `;
+        });
+        
+        html += `
+                        </tbody>
+                    </table>
+                </div>
+                <div style="margin-top: 0.5rem; font-size: 0.8rem; color: #28a745; text-align: center;">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 12L11 14L15 10" stroke="#28a745" stroke-width="2" fill="none"/></svg>
+                    Top 2 advance to knockout stage
+                </div>
+            </div>
+        `;
+    });
+    
+    html += '</div>';
+    document.getElementById('groupTables').innerHTML = html;
+}
+
+async function loadLiveRegistration(tournamentId) {
+    try {
+        const response = await fetch(`/api/tournament_players/${tournamentId}`);
+        const data = await response.json();
+        
+        if (data.success) {
+            displayLiveRegistration(data.players);
+        }
+    } catch (error) {
+        // Show mock data if API not available
+        displayLiveRegistration([{username: 'You', group: 'A', joined_at: new Date().toISOString()}]);
+    }
+}
+
+function displayLiveRegistration(players) {
+    if (players.length === 0) {
+        document.getElementById('liveRegistration').innerHTML = '<p style="color: #666;">No players registered yet. Be the first!</p>';
+        return;
+    }
+    
+    // Group players by group
+    const groups = {};
+    players.forEach(player => {
+        const group = player.group || assignGroup(players.indexOf(player));
+        if (!groups[group]) groups[group] = [];
+        groups[group].push(player);
+    });
+    
+    let html = '<div style="margin-top: 1rem;"><h5>Live Registration</h5><div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.5rem; font-size: 0.8rem;">';
+    
+    ['A', 'B', 'C', 'D'].forEach(groupName => {
+        html += `<div style="border: 1px solid rgba(255,255,255,0.2); padding: 0.5rem; border-radius: 5px;">`;
+        html += `<strong>Group ${groupName}</strong><br>`;
+        
+        const groupPlayers = groups[groupName] || [];
+        groupPlayers.forEach(player => {
+            html += `<div style="color: #28a745; margin: 2px 0;">• ${player.username}</div>`;
+        });
+        
+        // Show empty slots
+        for (let i = groupPlayers.length; i < 16; i++) {
+            html += '<div style="color: #666; margin: 2px 0;">• Empty</div>';
+        }
+        
+        html += '</div>';
+    });
+    
+    html += '</div></div>';
+    document.getElementById('liveRegistration').innerHTML = html;
+}
+
+function assignGroup(playerIndex) {
+    return String.fromCharCode(65 + (playerIndex % 4)); // A, B, C, D
+}
+
+// Refresh tournament info every 30 seconds
+setInterval(() => {
+    loadTournamentInfo();
+    if (currentTournament) {
+        loadLiveRegistration(currentTournament.id);
+    }
+}, 10000); // Every 10 seconds for live updates
+</script>
+{% endblock %}

@@ -1,0 +1,122 @@
+
+# Add these API endpoints to app.py before the final if __name__ == "__main__":
+
+@app.route('/api/user_balance')
+@login_required
+def api_user_balance():
+    """API endpoint to get current user balance"""
+    if 'user_id' not in session:
+        return jsonify({'error': 'Not logged in'}), 401
+    
+    try:
+        with sqlite3.connect("gamebet.db") as conn:
+            c = conn.cursor()
+            c.execute('SELECT balance FROM users WHERE id = ?', (session['user_id'],))
+            result = c.fetchone()
+            
+            if result:
+                balance = result[0]
+                session['balance'] = balance  # Update session
+                return jsonify({'success': True, 'balance': f'{balance:.0f}'})
+            else:
+                return jsonify({'error': 'User not found'}), 404
+                
+    except Exception as e:
+        return jsonify({'error': 'Database error'}), 500
+
+@app.route('/api/user_stats')
+@login_required  
+def api_user_stats():
+    """API endpoint to get current user stats"""
+    if 'user_id' not in session:
+        return jsonify({'error': 'Not logged in'}), 401
+    
+    try:
+        with sqlite3.connect("gamebet.db") as conn:
+            c = conn.cursor()
+            user_id = session['user_id']
+            
+            # Get updated user data
+            c.execute('SELECT balance, wins, losses, total_earnings FROM users WHERE id = ?', (user_id,))
+            user_data = c.fetchone()
+            
+            if not user_data:
+                return jsonify({'error': 'User not found'}), 404
+            
+            balance, wins, losses, earnings = user_data
+            
+            # Get additional stats
+            c.execute('SELECT COALESCE(SUM(amount), 0) FROM transactions WHERE user_id = ? AND type = "refund"', (user_id,))
+            refunds = c.fetchone()[0] or 0
+            
+            c.execute('SELECT COALESCE(SUM(ABS(amount)), 0) FROM transactions WHERE user_id = ? AND type = "rejected_withdrawal"', (user_id,))
+            rejected_withdrawals = c.fetchone()[0] or 0
+            
+            c.execute('SELECT COALESCE(SUM(amount), 0) FROM transactions WHERE user_id = ? AND type IN ("deposit", "paypal_deposit", "crypto_deposit")', (user_id,))
+            topups = c.fetchone()[0] or 0
+            
+            c.execute('SELECT COALESCE(SUM(ABS(amount)), 0) FROM transactions WHERE user_id = ? AND type = "withdrawal"', (user_id,))
+            accepted_withdrawals = c.fetchone()[0] or 0
+            
+            stats = {
+                'balance': balance or 0,
+                'wins': wins or 0,
+                'losses': losses or 0,
+                'earnings': earnings or 0,
+                'refunds': refunds,
+                'rejected_withdrawals': rejected_withdrawals,
+                'topups': topups,
+                'accepted_withdrawals': accepted_withdrawals
+            }
+            
+            return jsonify({'success': True, 'stats': stats})
+            
+    except Exception as e:
+        return jsonify({'error': 'Database error'}), 500
+
+@app.route('/api/refresh_dashboard')
+@login_required
+def api_refresh_dashboard():
+    """API endpoint to refresh dashboard data"""
+    if 'user_id' not in session:
+        return jsonify({'error': 'Not logged in'}), 401
+    
+    try:
+        with sqlite3.connect("gamebet.db") as conn:
+            c = conn.cursor()
+            user_id = session['user_id']
+            
+            # Recalculate and update user stats
+            c.execute('SELECT COUNT(*) FROM matches WHERE winner_id = ? AND status = "completed"', (user_id,))
+            wins = c.fetchone()[0] or 0
+            
+            c.execute('SELECT COUNT(*) FROM matches WHERE (player1_id = ? OR player2_id = ?) AND winner_id != ? AND status = "completed"', (user_id, user_id, user_id))
+            losses = c.fetchone()[0] or 0
+            
+            c.execute('SELECT COALESCE(SUM(amount), 0) FROM transactions WHERE user_id = ? AND amount > 0 AND type IN ("match_win", "streaming_earnings", "tournament_prize", "referral_bonus")', (user_id,))
+            earnings = c.fetchone()[0] or 0
+            
+            # Update user record
+            c.execute('UPDATE users SET wins = ?, losses = ?, total_earnings = ? WHERE id = ?', 
+                     (wins, losses, earnings, user_id))
+            
+            # Get current balance
+            c.execute('SELECT balance FROM users WHERE id = ?', (user_id,))
+            balance = c.fetchone()[0] or 0
+            
+            session['balance'] = balance
+            conn.commit()
+            
+            return jsonify({
+                'success': True, 
+                'message': 'Dashboard refreshed',
+                'stats': {
+                    'balance': balance,
+                    'wins': wins,
+                    'losses': losses,
+                    'earnings': earnings
+                }
+            })
+            
+    except Exception as e:
+        return jsonify({'error': 'Refresh failed'}), 500

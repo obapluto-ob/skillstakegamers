@@ -1,0 +1,222 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card">
+    <h1>⚙️ System Settings & Commission Control</h1>
+    <p>Configure platform fees, commissions, and system parameters</p>
+</div>
+
+<!-- Fee Configuration -->
+<div class="card">
+    <h2>💰 Fee & Commission Settings</h2>
+    <form id="feeSettingsForm">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+            <div style="background: rgba(40, 167, 69, 0.1); padding: 1rem; border-radius: 8px; border-left: 4px solid #28a745;">
+                <label><strong>Deposit Fee (%)</strong></label>
+                <input type="number" id="depositFee" step="0.1" min="0" max="10" value="{{ settings.deposit_fee or 3 }}" 
+                       style="width: 100%; padding: 0.5rem; margin-top: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
+                <small>Current: {{ settings.deposit_fee or 3 }}% - Applied to all deposits</small>
+            </div>
+            
+            <div style="background: rgba(220, 53, 69, 0.1); padding: 1rem; border-radius: 8px; border-left: 4px solid #dc3545;">
+                <label><strong>Withdrawal Fee (KSh)</strong></label>
+                <input type="number" id="withdrawalFee" min="0" max="100" value="{{ settings.withdrawal_fee or 25 }}" 
+                       style="width: 100%; padding: 0.5rem; margin-top: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
+                <small>Current: KSh {{ settings.withdrawal_fee or 25 }} - Fixed fee per withdrawal</small>
+            </div>
+            
+            <div style="background: rgba(255, 193, 7, 0.1); padding: 1rem; border-radius: 8px; border-left: 4px solid #ffc107;">
+                <label><strong>Match Commission (%)</strong></label>
+                <input type="number" id="matchCommission" step="0.1" min="0" max="50" value="{{ settings.match_commission or 32 }}" 
+                       style="width: 100%; padding: 0.5rem; margin-top: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
+                <small>Current: {{ settings.match_commission or 32 }}% - Taken from match pot</small>
+            </div>
+        </div>
+        
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+            <div style="background: rgba(102, 16, 242, 0.1); padding: 1rem; border-radius: 8px; border-left: 4px solid #6610f2;">
+                <label><strong>Tournament Fee (%)</strong></label>
+                <input type="number" id="tournamentFee" step="0.1" min="0" max="30" value="{{ settings.tournament_fee or 15 }}" 
+                       style="width: 100%; padding: 0.5rem; margin-top: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
+                <small>Current: {{ settings.tournament_fee or 15 }}% - Taken from prize pool</small>
+            </div>
+            
+            <div style="background: rgba(13, 202, 240, 0.1); padding: 1rem; border-radius: 8px; border-left: 4px solid #0dcaf0;">
+                <label><strong>Referral Bonus (KSh)</strong></label>
+                <input type="number" id="referralBonus" min="0" max="100" value="{{ settings.referral_bonus or 30 }}" 
+                       style="width: 100%; padding: 0.5rem; margin-top: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
+                <small>Current: KSh {{ settings.referral_bonus or 30 }} - Paid to referrer</small>
+            </div>
+            
+            <div style="background: rgba(220, 53, 69, 0.1); padding: 1rem; border-radius: 8px; border-left: 4px solid #dc3545;">
+                <label><strong>Fraud Penalty (KSh)</strong></label>
+                <input type="number" id="fraudPenalty" min="0" max="200" value="{{ settings.fraud_penalty or 50 }}" 
+                       style="width: 100%; padding: 0.5rem; margin-top: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
+                <small>Current: KSh {{ settings.fraud_penalty or 50 }} - Penalty for fake screenshots</small>
+            </div>
+        </div>
+        
+        <button type="submit" class="btn btn-success" style="padding: 1rem 2rem; font-size: 1.1rem;">
+            💾 Save Settings
+        </button>
+    </form>
+</div>
+
+<!-- How System Works -->
+<div class="card">
+    <h2>📋 How The System Works</h2>
+    
+    <div style="display: grid; gap: 1rem;">
+        <!-- User Flow -->
+        <div style="background: rgba(23, 162, 184, 0.1); padding: 1.5rem; border-radius: 8px; border-left: 4px solid #17a2b8;">
+            <h3 style="color: #17a2b8; margin-top: 0;">👤 User Journey & Revenue Flow</h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem;">
+                <div>
+                    <strong>1. Registration & Deposits</strong>
+                    <ul style="margin: 0.5rem 0;">
+                        <li>User registers with M-Pesa number</li>
+                        <li>Deposits via M-Pesa/PayPal/Crypto</li>
+                        <li><span style="color: #28a745;">Revenue: {{ settings.deposit_fee or 3 }}% fee</span></li>
+                    </ul>
+                </div>
+                <div>
+                    <strong>2. Gaming & Matches</strong>
+                    <ul style="margin: 0.5rem 0;">
+                        <li>Creates/joins matches with bet amount</li>
+                        <li>Money held in escrow during match</li>
+                        <li><span style="color: #28a745;">Revenue: {{ settings.match_commission or 32 }}% of pot</span></li>
+                    </ul>
+                </div>
+                <div>
+                    <strong>3. Withdrawals</strong>
+                    <ul style="margin: 0.5rem 0;">
+                        <li>Requests withdrawal to M-Pesa</li>
+                        <li>Admin processes payment</li>
+                        <li><span style="color: #28a745;">Revenue: KSh {{ settings.withdrawal_fee or 25 }} fee</span></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Match System -->
+        <div style="background: rgba(40, 167, 69, 0.1); padding: 1.5rem; border-radius: 8px; border-left: 4px solid #28a745;">
+            <h3 style="color: #28a745; margin-top: 0;">🎮 Match System & Commission</h3>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+                <div>
+                    <strong>Match Flow:</strong>
+                    <ol style="margin: 0.5rem 0;">
+                        <li>Player 1 creates match (KSh 100 bet)</li>
+                        <li>Player 2 joins match (KSh 100 bet)</li>
+                        <li>Total pot = KSh 200</li>
+                        <li>Winner gets KSh 136 (68%)</li>
+                        <li><span style="color: #dc3545;">Platform keeps KSh 64 (32%)</span></li>
+                    </ol>
+                </div>
+                <div>
+                    <strong>Revenue Calculation:</strong>
+                    <div style="background: white; padding: 1rem; border-radius: 6px; margin-top: 0.5rem;">
+                        <div>Total Pot: KSh 200</div>
+                        <div>Commission ({{ settings.match_commission or 32 }}%): <span style="color: #dc3545;">KSh {{ (200 * (settings.match_commission or 32) / 100)|round }}</span></div>
+                        <div>Winner Gets: <span style="color: #28a745;">KSh {{ (200 * (100 - (settings.match_commission or 32)) / 100)|round }}</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Revenue Streams -->
+        <div style="background: rgba(255, 193, 7, 0.1); padding: 1.5rem; border-radius: 8px; border-left: 4px solid #ffc107;">
+            <h3 style="color: #ffc107; margin-top: 0;">💰 Revenue Streams</h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+                <div style="text-align: center; background: white; padding: 1rem; border-radius: 6px;">
+                    <div style="font-size: 1.5rem; color: #28a745;">{{ settings.deposit_fee or 3 }}%</div>
+                    <div>Deposit Fees</div>
+                </div>
+                <div style="text-align: center; background: white; padding: 1rem; border-radius: 6px;">
+                    <div style="font-size: 1.5rem; color: #dc3545;">{{ settings.match_commission or 32 }}%</div>
+                    <div>Match Commission</div>
+                </div>
+                <div style="text-align: center; background: white; padding: 1rem; border-radius: 6px;">
+                    <div style="font-size: 1.5rem; color: #ffc107;">KSh {{ settings.withdrawal_fee or 25 }}</div>
+                    <div>Withdrawal Fees</div>
+                </div>
+                <div style="text-align: center; background: white; padding: 1rem; border-radius: 6px;">
+                    <div style="font-size: 1.5rem; color: #6610f2;">{{ settings.tournament_fee or 15 }}%</div>
+                    <div>Tournament Fees</div>
+                </div>
+                <div style="text-align: center; background: white; padding: 1rem; border-radius: 6px;">
+                    <div style="font-size: 1.5rem; color: #dc3545;">KSh {{ settings.fraud_penalty or 50 }}</div>
+                    <div>Fraud Penalties</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Daily Stats Download -->
+<div class="card">
+    <h2>📊 Financial Reports & Downloads</h2>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem;">
+        <button onclick="downloadDailyReport()" class="btn btn-primary" style="padding: 1rem;">
+            📅 Download Daily Report
+        </button>
+        <button onclick="downloadWeeklyReport()" class="btn btn-info" style="padding: 1rem;">
+            📈 Download Weekly Report
+        </button>
+        <button onclick="downloadMonthlyReport()" class="btn btn-success" style="padding: 1rem;">
+            📊 Download Monthly Report
+        </button>
+        <button onclick="downloadFullStatement()" class="btn btn-warning" style="padding: 1rem;">
+            📋 Download Full Statement
+        </button>
+    </div>
+</div>
+
+<script>
+document.getElementById('feeSettingsForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const settings = {
+        deposit_fee: parseFloat(document.getElementById('depositFee').value),
+        withdrawal_fee: parseInt(document.getElementById('withdrawalFee').value),
+        match_commission: parseFloat(document.getElementById('matchCommission').value),
+        tournament_fee: parseFloat(document.getElementById('tournamentFee').value),
+        referral_bonus: parseInt(document.getElementById('referralBonus').value),
+        fraud_penalty: parseInt(document.getElementById('fraudPenalty').value)
+    };
+    
+    fetch('/admin/update_settings', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(settings)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Settings updated successfully!');
+            location.reload();
+        } else {
+            alert('Error: ' + data.error);
+        }
+    })
+    .catch(error => {
+        alert('Network error: ' + error);
+    });
+});
+
+function downloadDailyReport() {
+    window.open('/admin/download_report/daily', '_blank');
+}
+
+function downloadWeeklyReport() {
+    window.open('/admin/download_report/weekly', '_blank');
+}
+
+function downloadMonthlyReport() {
+    window.open('/admin/download_report/monthly', '_blank');
+}
+
+function downloadFullStatement() {
+    window.open('/admin/download_report/full', '_blank');
+}
+</script>
+{% endblock %}

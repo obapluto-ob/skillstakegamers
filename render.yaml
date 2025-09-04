@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: skillstake-gaming
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn --bind 0.0.0.0:$PORT app:app
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: ADMIN_PASSWORD
+        value: your-secure-admin-password-here
+      - key: NOWPAYMENTS_API_KEY
+        value: your-nowpayments-api-key
+      - key: PAYPAL_CLIENT_ID
+        value: your-paypal-client-id
+      - key: PAYPAL_CLIENT_SECRET
+        value: your-paypal-client-secret

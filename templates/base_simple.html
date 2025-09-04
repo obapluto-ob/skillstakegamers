@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}GameBet{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: 'Segoe UI', sans-serif; 
+            background: linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.4)), url('https://images.unsplash.com/photo-1542751371-adc38448a05e?w=1920&h=1080&fit=crop&crop=center');
+            background-size: cover;
+            background-attachment: fixed;
+            min-height: 100vh;
+            color: white;
+        }
+        .navbar { 
+            background: rgba(255,255,255,0.1); 
+            backdrop-filter: blur(15px);
+            padding: 1rem 2rem; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center;
+        }
+        .navbar-brand { font-size: 1.5rem; font-weight: bold; color: white; text-decoration: none; }
+        .nav-links { display: flex; gap: 1.5rem; align-items: center; }
+        .nav-links a { text-decoration: none; color: white; font-weight: 500; padding: 0.5rem 1rem; border-radius: 6px; }
+        .nav-links a:hover { color: #00ff88; background: rgba(255,255,255,0.1); }
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        .card { 
+            background: rgba(255, 255, 255, 0.05); 
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 15px; 
+            padding: 2rem; 
+            margin: 2rem 0;
+            color: white;
+        }
+        .btn { 
+            padding: 0.75rem 1.5rem; 
+            border: none; 
+            border-radius: 8px; 
+            font-weight: 600; 
+            cursor: pointer;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-decoration: none;
+            display: inline-block;
+            margin: 0.5rem;
+        }
+        .btn:hover { transform: translateY(-2px); }
+        .form-control { 
+            width: 100%; 
+            padding: 0.75rem; 
+            border: 2px solid rgba(255, 255, 255, 0.3); 
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+        .alert { padding: 1rem; border-radius: 8px; margin: 1rem 0; }
+        .alert-success { background: #d4edda; color: #155724; }
+        .alert-error { background: #f8d7da; color: #721c24; }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <a href="{{ url_for('home') }}" class="navbar-brand">GameBet</a>
+        {% if session.user_id %}
+        <div class="nav-links">
+            <a href="{{ url_for('dashboard') }}">Dashboard</a>
+            <a href="{{ url_for('logout') }}">Logout</a>
+        </div>
+        {% else %}
+        <div class="nav-links">
+            <a href="{{ url_for('login') }}">Login</a>
+            <a href="{{ url_for('register') }}">Register</a>
+        </div>
+        {% endif %}
+    </nav>
+
+    <div class="container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+    </div>
+</body>
+</html>

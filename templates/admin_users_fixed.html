@@ -1,0 +1,730 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="admin-header">
+    <h1><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg> User Management</h1>
+    <p>Manage all registered users and their accounts</p>
+</div>
+    
+    <!-- User Activity Alerts -->
+    <div id="userActivityAlerts" style="margin-bottom: 1rem;"></div>
+    
+    <div class="stats-grid">
+        <div class="stat-card success">
+            <div class="stat-value">{{ users|length }}</div>
+            <div class="stat-label">Total Users</div>
+        </div>
+        <div class="stat-card danger">
+            <div class="stat-value">{{ users|selectattr('10', 'equalto', 1)|list|length or 0 }}</div>
+            <div class="stat-label">Banned Users</div>
+        </div>
+        <div class="stat-card warning">
+            <div class="stat-value">{{ users|map(attribute='4')|map('float')|sum|round|int or 0 }}</div>
+            <div class="stat-label">Total Balance (KSh)</div>
+        </div>
+        <div class="stat-card info">
+            <div class="stat-value">{{ users|map(attribute='6')|map('int')|sum or 0 }}</div>
+            <div class="stat-label">Total Wins</div>
+        </div>
+    </div>
+</div>
+
+<div class="users-table-container">
+    <div class="table-wrapper">
+        <table class="users-table">
+            <thead>
+                <tr>
+                    <th>User Info</th>
+                    <th>Contact</th>
+                    <th>Balance</th>
+                    <th>Stats</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for user in users %}
+                <tr id="user-row-{{ user[0] }}">
+                    <td>
+                        <div class="user-info">
+                            <strong>{{ user[1] }}</strong>
+                            <small>ID: {{ user[0] }}</small>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="contact-info">
+                            <div>M-Pesa: {{ user[5] if user[5] and user[5] != '1' else 'Not provided' }}</div>
+                            <div class="join-date">Joined: {{ user[2].split('@')[0] if '@gamebet.local' in user[2] else 'N/A' }}</div>
+                        </div>
+                    </td>
+                    <td>
+                        <span class="balance">KSh {{ "%.0f"|format(user[4]|float or 0) }}</span>
+                    </td>
+                    <td>
+                        <div class="stats" id="stats-{{ user[0] }}">
+                            <div class="loading-stats">Loading...</div>
+                        </div>
+                    </td>
+                    <td>
+                        <span id="status-{{ user[0] }}" class="status-badge {% if user|length > 10 and user[10] == 1 %}banned{% else %}active{% endif %}">
+                            {% if user|length > 10 and user[10] == 1 %}
+                                BANNED
+                            {% else %}
+                                ACTIVE
+                            {% endif %}
+                        </span>
+                    </td>
+                    <td>
+                        <div class="action-buttons">
+                            <div class="dropdown">
+                                <button class="btn-actions" onclick="toggleUserActions({{ user[0] }})" id="userActionsBtn-{{ user[0] }}">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>
+                                    Actions
+                                </button>
+                                <div id="userActions-{{ user[0] }}" class="dropdown-menu">
+                                    <button onclick="adjustBalance({{ user[0] }}, '{{ user[1] }}')">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z"/></svg>
+                                        Adjust Balance
+                                    </button>
+                                    <button onclick="viewUserActivity({{ user[0] }}, '{{ user[1] }}')">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M16 6l2.29 2.29-4.88 4.88-4-4L2 16.59 3.41 18l6-6 4 4 6.3-6.29L22 12V6z"/></svg>
+                                        View Activity
+                                    </button>
+                                    <button onclick="viewUserMatches({{ user[0] }}, '{{ user[1] }}')">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M21,6V8H3V6H21M7,10V12H5V10H7M19,10V12H17V10H19M11,10V12H9V10H11M15,10V12H13V10H15M7,14V16H5V14H7M19,14V16H17V14H19M11,14V16H9V14H11M15,14V16H13V14H15M7,18V20H5V18H7M19,18V20H17V18H19M11,18V20H9V18H11M15,18V20H13V18H15Z"/></svg>
+                                        Match History
+                                    </button>
+                                    <button onclick="viewUserTransactions({{ user[0] }}, '{{ user[1] }}')">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M20,8H4V6H20M20,18H4V12H20M20,4H4C2.89,4 2,4.89 2,6V18A2,2 0 0,0 4,20H20A2,2 0 0,0 22,18V6C22,4.89 21.1,4 20,4Z"/></svg>
+                                        Transactions
+                                    </button>
+                                    <button onclick="checkFakeScreenshots({{ user[0] }}, '{{ user[1] }}')" class="danger">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M13,13H11V7H13M13,17H11V15H13M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z"/></svg>
+                                        Fake Screenshots
+                                    </button>
+                                    <hr>
+                                    <button onclick="resetPassword({{ user[0] }}, '{{ user[1] }}')" class="warning">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12,17A2,2 0 0,0 14,15C14,13.89 13.1,13 12,13A2,2 0 0,0 10,15A2,2 0 0,0 12,17M18,8A2,2 0 0,1 20,10V20A2,2 0 0,1 18,22H6A2,2 0 0,1 4,20V10C4,8.89 4.9,8 6,8H7V6A5,5 0 0,1 12,1A5,5 0 0,1 17,6V8H18M12,3A3,3 0 0,0 9,6V8H15V6A3,3 0 0,0 12,3Z"/></svg>
+                                        Reset Password
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <button id="ban-btn-{{ user[0] }}" class="btn-ban {% if user|length > 10 and user[10] == 1 %}unban{% else %}ban{% endif %}" 
+                                    onclick="toggleBan({{ user[0] }}, '{{ user[1] }}')">
+                                {% if user|length > 10 and user[10] == 1 %}
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M9,20.42L2.79,14.21L5.62,11.38L9,14.77L18.88,4.88L21.71,7.71L9,20.42Z"/></svg>
+                                    Unban
+                                {% else %}
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12,2C17.53,2 22,6.47 22,12C22,17.53 17.53,22 12,22C6.47,22 2,17.53 2,12C2,6.47 6.47,2 12,2M15.59,7L12,10.59L8.41,7L7,8.41L10.59,12L7,15.59L8.41,17L12,13.41L15.59,17L17,15.59L13.41,12L17,8.41L15.59,7Z"/></svg>
+                                    Ban
+                                {% endif %}
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<style>
+.admin-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 2rem;
+    border-radius: 12px;
+    margin-bottom: 2rem;
+}
+.admin-header h1 {
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+.admin-header p {
+    margin: 0.5rem 0 0 0;
+    opacity: 0.9;
+}
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+.stat-card {
+    background: linear-gradient(135deg, #2d3748 0%, #4a5568 100%);
+    color: white;
+    padding: 1.5rem;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+    border-left: 4px solid;
+}
+.stat-card.success { border-left-color: #48bb78; }
+.stat-card.danger { border-left-color: #f56565; }
+.stat-card.warning { border-left-color: #ed8936; }
+.stat-card.info { border-left-color: #4299e1; }
+.stat-value {
+    font-size: 2rem;
+    font-weight: bold;
+    margin-bottom: 0.5rem;
+    color: white;
+}
+.stat-label {
+    color: #cbd5e0;
+    font-size: 0.9rem;
+}
+.users-table-container {
+    background: linear-gradient(135deg, #2d3748 0%, #4a5568 100%);
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    overflow: visible;
+    position: relative;
+    border: 1px solid #4a5568;
+}
+.table-wrapper {
+    overflow-x: auto;
+    position: relative;
+}
+.users-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: transparent;
+}
+.users-table th {
+    background: linear-gradient(135deg, #1a202c 0%, #2d3748 100%);
+    padding: 1rem;
+    text-align: left;
+    font-weight: 600;
+    color: #e2e8f0;
+    border-bottom: 2px solid #4a5568;
+}
+.users-table td {
+    padding: 1rem;
+    border-bottom: 1px solid #4a5568;
+    vertical-align: middle;
+    position: relative;
+    background: rgba(45, 55, 72, 0.8);
+    color: #e2e8f0;
+}
+.users-table tr:hover td {
+    background: rgba(74, 85, 104, 0.9);
+}
+.user-info strong {
+    display: block;
+    margin-bottom: 0.25rem;
+    color: #f7fafc;
+}
+.user-info small {
+    color: #cbd5e0;
+    font-size: 0.8rem;
+}
+.contact-info div {
+    font-size: 0.9rem;
+    margin-bottom: 0.25rem;
+    color: #e2e8f0;
+}
+.join-date {
+    color: #a0aec0;
+}
+.balance {
+    color: #48bb78;
+    font-weight: 600;
+}
+.stats div {
+    margin-bottom: 0.25rem;
+    color: #e2e8f0;
+}
+.stats small {
+    color: #a0aec0;
+}
+.status-badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+.status-badge.active {
+    background: #48bb78;
+    color: white;
+}
+.status-badge.banned {
+    background: #f56565;
+    color: white;
+}
+.action-buttons {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+.dropdown {
+    position: relative;
+}
+.btn-actions {
+    background: #4a5568;
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+}
+.btn-actions:hover {
+    background: #2d3748;
+}
+.dropdown-menu {
+    display: none;
+    position: absolute;
+    right: 0;
+    background: #2d3748;
+    color: white;
+    min-width: 200px;
+    box-shadow: 0 8px 16px rgba(0,0,0,0.3);
+    border-radius: 8px;
+    padding: 0.5rem;
+    z-index: 9999;
+    border: 1px solid #4a5568;
+    max-height: 300px;
+    overflow-y: auto;
+}
+.dropdown-menu.show-above {
+    bottom: 100%;
+    top: auto;
+}
+.dropdown-menu.show-below {
+    top: 100%;
+    bottom: auto;
+}
+.dropdown-menu button {
+    width: 100%;
+    text-align: left;
+    padding: 0.75rem;
+    border: none;
+    background: none;
+    cursor: pointer;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+    color: #e2e8f0;
+}
+.dropdown-menu button:hover {
+    background: #4a5568;
+}
+.dropdown-menu button.danger {
+    color: #f56565;
+}
+.dropdown-menu button.warning {
+    color: #ed8936;
+}
+.dropdown-menu hr {
+    margin: 0.5rem 0;
+    border: none;
+    border-top: 1px solid #4a5568;
+}
+.btn-ban {
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+.btn-ban.ban {
+    background: #f56565;
+    color: white;
+}
+.btn-ban.ban:hover {
+    background: #e53e3e;
+}
+.btn-ban.unban {
+    background: #48bb78;
+    color: white;
+}
+.btn-ban.unban:hover {
+    background: #38a169;
+}
+</style>
+
+<script>
+// Load user activity alerts and stats on page load
+window.addEventListener('DOMContentLoaded', function() {
+    loadUserActivityAlerts();
+    loadAllUserStats();
+    setInterval(loadUserActivityAlerts, 30000);
+});
+
+function loadAllUserStats() {
+    const userRows = document.querySelectorAll('[id^="user-row-"]');
+    userRows.forEach(row => {
+        const userId = row.id.split('-')[2];
+        loadUserStats(userId);
+    });
+}
+
+function loadUserStats(userId) {
+    fetch(`/admin/user_stats/${userId}`)
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            const statsDiv = document.getElementById(`stats-${userId}`);
+            if (statsDiv) {
+                statsDiv.innerHTML = `
+                    <div>${data.wins}W / ${data.losses}L</div>
+                    <small>Earned: KSh ${data.earnings}</small>
+                    <small>Deposits: KSh ${data.deposits}</small>
+                    <small>Withdrawals: KSh ${data.withdrawals}</small>
+                `;
+            }
+        }
+    })
+    .catch(() => {
+        const statsDiv = document.getElementById(`stats-${userId}`);
+        if (statsDiv) {
+            statsDiv.innerHTML = '<div class="text-danger">Error loading stats</div>';
+        }
+    });
+}
+
+function loadUserActivityAlerts() {
+    fetch('/admin/user_activity_alerts')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.alerts.length > 0) {
+                displayActivityAlerts(data.alerts);
+            }
+        })
+        .catch(error => console.error('Error loading alerts:', error));
+}
+
+function displayActivityAlerts(alerts) {
+    const alertsContainer = document.getElementById('userActivityAlerts');
+    let alertsHtml = '<div style="background: linear-gradient(135deg, #2d3748 0%, #4a5568 100%); border: 1px solid #ed8936; border-radius: 8px; padding: 1rem; margin-bottom: 1rem; color: white;"><h4 style="margin: 0 0 1rem 0; color: #ed8936;">🚨 Recent User Activities</h4>';
+    
+    alerts.forEach(alert => {
+        const alertColor = alert.type === 'warning' ? '#ed8936' : alert.type === 'danger' ? '#f56565' : '#4299e1';
+        alertsHtml += `
+            <div style="background: rgba(74, 85, 104, 0.5); padding: 0.8rem; margin-bottom: 0.5rem; border-radius: 6px; border-left: 4px solid ${alertColor}; display: flex; justify-content: space-between; align-items: center; color: #e2e8f0;">
+                <div>
+                    <strong style="color: ${alertColor};">${alert.icon} ${alert.title}</strong><br>
+                    <small style="color: #cbd5e0;">${alert.message}</small><br>
+                    <small style="color: #a0aec0;">📅 ${alert.time}</small>
+                </div>
+                <button onclick="viewUserDetails(${alert.user_id}, '${alert.username}')" style="background: #4299e1; color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer;">👁️ View</button>
+            </div>
+        `;
+    });
+    
+    alertsHtml += '</div>';
+    alertsContainer.innerHTML = alertsHtml;
+}
+
+function toggleUserActions(userId) {
+    const dropdown = document.getElementById(`userActions-${userId}`);
+    const button = document.getElementById(`userActionsBtn-${userId}`);
+    
+    // Close all other dropdowns first
+    document.querySelectorAll('.dropdown-menu').forEach(d => {
+        if (d.id !== `userActions-${userId}`) {
+            d.style.display = 'none';
+            d.classList.remove('show-above', 'show-below');
+        }
+    });
+    
+    if (dropdown.style.display === 'block') {
+        dropdown.style.display = 'none';
+        dropdown.classList.remove('show-above', 'show-below');
+        return;
+    }
+    
+    // Show dropdown temporarily to measure
+    dropdown.style.display = 'block';
+    dropdown.style.visibility = 'hidden';
+    
+    // Calculate positions
+    const buttonRect = button.getBoundingClientRect();
+    const dropdownRect = dropdown.getBoundingClientRect();
+    const viewportHeight = window.innerHeight;
+    
+    // Check if there's enough space below
+    const spaceBelow = viewportHeight - buttonRect.bottom;
+    const spaceAbove = buttonRect.top;
+    
+    // Reset classes
+    dropdown.classList.remove('show-above', 'show-below');
+    
+    // Position dropdown
+    if (spaceBelow >= dropdownRect.height || spaceBelow >= spaceAbove) {
+        dropdown.classList.add('show-below');
+    } else {
+        dropdown.classList.add('show-above');
+    }
+    
+    // Make visible
+    dropdown.style.visibility = 'visible';
+}
+
+// Close dropdowns when clicking outside
+document.addEventListener('click', function(event) {
+    if (!event.target.closest('.dropdown')) {
+        document.querySelectorAll('.dropdown-menu').forEach(d => {
+            d.style.display = 'none';
+            d.classList.remove('show-above', 'show-below');
+        });
+    }
+});
+
+function adjustBalance(userId, username) {
+    const amount = prompt(`Adjust balance for ${username}:\nEnter amount (+ to add, - to subtract):`);
+    if (amount !== null && amount !== '') {
+        fetch('/admin/adjust_balance_new', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({user_id: userId, amount: parseFloat(amount)})
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(`Balance adjusted for ${username}`);
+                location.reload();
+            } else {
+                alert('Error: ' + (data.error || 'Unknown error'));
+            }
+        })
+        .catch(error => {
+            alert('Network error: ' + error);
+        });
+    }
+    // Close dropdown
+    document.getElementById(`userActions-${userId}`).style.display = 'none';
+}
+
+function toggleBan(userId, username) {
+    const banBtn = document.getElementById(`ban-btn-${userId}`);
+    const currentlyBanned = banBtn.textContent.includes('Unban');
+    
+    const action = currentlyBanned ? 'unban' : 'ban';
+    const message = currentlyBanned ? 
+        `Unban ${username}? This will restore their account.` : 
+        `Ban ${username}? This will disable their account.`;
+    
+    if (confirm(message)) {
+        fetch('/admin/toggle_ban', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({user_id: userId, action: action})
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Update UI immediately
+                const statusSpan = document.getElementById(`status-${userId}`);
+                const banButton = document.getElementById(`ban-btn-${userId}`);
+                
+                if (action === 'ban') {
+                    statusSpan.className = 'status-badge banned';
+                statusSpan.textContent = 'BANNED';
+                    banButton.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M9,20.42L2.79,14.21L5.62,11.38L9,14.77L18.88,4.88L21.71,7.71L9,20.42Z"/></svg>Unban';
+                    banButton.className = 'btn-ban unban';
+
+                } else {
+                    statusSpan.className = 'status-badge active';
+                    statusSpan.textContent = 'ACTIVE';
+                    banButton.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12,2C17.53,2 22,6.47 22,12C22,17.53 17.53,22 12,22C6.47,22 2,17.53 2,12C2,6.47 6.47,2 12,2M15.59,7L12,10.59L8.41,7L7,8.41L10.59,12L7,15.59L8.41,17L12,13.41L15.59,17L17,15.59L13.41,12L17,8.41L15.59,7Z"/></svg>Ban';
+                    banButton.className = 'btn-ban ban';
+
+                }
+                
+                alert(`User ${username} has been ${action}ned successfully!`);
+            } else {
+                alert('Error: ' + (data.error || 'Unknown error'));
+            }
+        })
+        .catch(error => {
+            alert('Network error: ' + error);
+        });
+    }
+}
+
+function viewUserActivity(userId, username) {
+    // Create modal for user activity
+    const modal = document.createElement('div');
+    modal.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 10000; display: flex; align-items: center; justify-content: center;';
+    
+    modal.innerHTML = `
+        <div style="background: linear-gradient(135deg, #2d3748 0%, #4a5568 100%); color: white; padding: 2rem; border-radius: 12px; max-width: 80%; max-height: 80%; overflow: auto; border: 1px solid #4a5568;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <h3 style="color: white; margin: 0;">📊 ${username} - Recent Activity</h3>
+                <button onclick="this.closest('div').parentElement.remove()" style="background: #f56565; color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer;">✕ Close</button>
+            </div>
+            <div id="userActivityContent" style="color: #e2e8f0;">🔄 Loading...</div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Load user activity data
+    fetch(`/admin/user_activity/${userId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                displayUserActivityData(data.transactions);
+            } else {
+                document.getElementById('userActivityContent').innerHTML = '⚠️ No activity data available';
+            }
+        })
+        .catch(error => {
+            document.getElementById('userActivityContent').innerHTML = '❌ Error loading activity data';
+        });
+    
+    document.getElementById(`userActions-${userId}`).style.display = 'none';
+}
+
+function displayUserActivityData(transactions) {
+    let content = '<div style="max-height: 400px; overflow-y: auto;">';
+    
+    if (transactions.length === 0) {
+        content += '<p style="text-align: center; color: #a0aec0;">No recent transactions</p>';
+    } else {
+        transactions.forEach(tx => {
+            const color = tx.amount > 0 ? '#48bb78' : '#f56565';
+            const icon = tx.type.includes('deposit') ? '💰' : 
+                        tx.type.includes('withdrawal') ? '💸' : 
+                        tx.type.includes('match') ? '🎮' : 
+                        tx.type.includes('gift') ? '🎁' : '📊';
+            
+            content += `
+                <div style="background: rgba(74, 85, 104, 0.3); padding: 1rem; margin-bottom: 0.5rem; border-radius: 8px; border-left: 4px solid ${color}; color: #e2e8f0;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <strong style="color: ${color};">${icon} ${tx.type.replace('_', ' ').toUpperCase()}</strong><br>
+                            <small style="color: #cbd5e0;">${tx.description}</small>
+                        </div>
+                        <div style="text-align: right;">
+                            <strong style="color: ${color};">KSh ${tx.amount}</strong><br>
+                            <small style="color: #a0aec0;">${tx.created_at}</small>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+    }
+    
+    content += '</div>';
+    document.getElementById('userActivityContent').innerHTML = content;
+}
+
+function displayUserActivity(activities) {
+    let content = '<div style="max-height: 400px; overflow-y: auto;">';
+    
+    activities.forEach(activity => {
+        const iconMap = {
+            'login': '🔑',
+            'match': '🎮',
+            'deposit': '💰',
+            'withdrawal': '💸',
+            'fake_screenshot': '🚨',
+            'ban': '🚫',
+            'unban': '✅'
+        };
+        
+        const icon = iconMap[activity.type] || '📊';
+        const color = activity.type === 'fake_screenshot' || activity.type === 'ban' ? '#f56565' : 
+                     activity.type === 'deposit' || activity.type === 'unban' ? '#48bb78' : '#4299e1';
+        
+        content += `
+            <div style="background: rgba(74, 85, 104, 0.3); padding: 1rem; margin-bottom: 0.5rem; border-radius: 8px; border-left: 4px solid ${color}; color: #e2e8f0;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <strong style="color: ${color};">${icon} ${activity.title}</strong><br>
+                        <small style="color: #cbd5e0;">${activity.description}</small>
+                    </div>
+                    <small style="color: #a0aec0;">${activity.time}</small>
+                </div>
+            </div>
+        `;
+    });
+    
+    content += '</div>';
+    document.getElementById('userActivityContent').innerHTML = content;
+}
+
+function viewUserMatches(userId, username) {
+    window.open(`/admin/matches?user=${userId}`, '_blank');
+    document.getElementById(`userActions-${userId}`).style.display = 'none';
+}
+
+function viewUserTransactions(userId, username) {
+    window.open(`/admin/transactions?user=${userId}`, '_blank');
+    document.getElementById(`userActions-${userId}`).style.display = 'none';
+}
+
+function checkFakeScreenshots(userId, username) {
+    // Open fake screenshot modal and auto-search for this user
+    showFakeScreenshotPanel();
+    setTimeout(() => {
+        document.getElementById('userIdInput').value = userId;
+        loadFakeScreenshotHistory();
+    }, 500);
+    document.getElementById(`userActions-${userId}`).style.display = 'none';
+}
+
+function sendUserMessage(userId, username) {
+    const message = prompt(`Send message to ${username}:`);
+    if (message && message.trim()) {
+        fetch('/admin/send_user_message', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({user_id: userId, message: message.trim()})
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(`Message sent to ${username}!`);
+            } else {
+                alert('Error sending message: ' + (data.error || 'Unknown error'));
+            }
+        })
+        .catch(error => {
+            alert('Network error: ' + error);
+        });
+    }
+    document.getElementById(`userActions-${userId}`).style.display = 'none';
+}
+
+function viewUserDetails(userId, username) {
+    viewUserActivity(userId, username);
+}
+
+function resetPassword(userId, username) {
+    if (confirm(`Reset password for ${username}?\nNew password will be: password123`)) {
+        fetch('/admin/reset_password_new', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({user_id: userId})
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(`Password reset for ${username}!\nNew password: password123`);
+            } else {
+                alert('Error: ' + (data.error || 'Unknown error'));
+            }
+        })
+        .catch(error => {
+            alert('Network error: ' + error);
+        });
+    }
+    document.getElementById(`userActions-${userId}`).style.display = 'none';
+}
+</script>
+{% endblock %}

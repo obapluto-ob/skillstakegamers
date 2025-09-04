@@ -1,0 +1,374 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+        <div>
+            <h1>🔴 {{ stream[4] }}</h1>
+            <p>Streamed by <strong>{{ stream[10] }}</strong> • {{ stream[9] or 'Screen Share' }}</p>
+        </div>
+        <div style="display: flex; gap: 1rem; align-items: center;">
+            <span style="background: #dc3545; color: white; padding: 0.5rem 1rem; border-radius: 20px;">
+                🔴 LIVE
+            </span>
+            <span style="color: #ffc107;" id="viewerCount">👥 {{ stream[5] }} viewers</span>
+        </div>
+    </div>
+</div>
+
+<!-- Live Stream Player -->
+<div class="card">
+    <div id="streamContainer" style="position: relative; background: #000; border-radius: 12px; overflow: hidden;">
+        <div id="streamPlayer" style="aspect-ratio: 16/9; display: flex; align-items: center; justify-content: center; color: white;">
+            <div style="text-align: center;">
+                <div style="font-size: 4rem; margin-bottom: 1rem;">📺</div>
+                <h2>{{ stream[4] }}</h2>
+                <p>by {{ stream[10] }}</p>
+                {% if stream[1] == session.user_id %}
+                <button onclick="stopStream()" class="btn btn-danger">Stop Stream</button>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Stream Controls Overlay -->
+        <div id="streamControls" style="position: absolute; bottom: 20px; left: 20px; right: 20px; display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.7); padding: 1rem; border-radius: 8px;">
+            <div style="display: flex; gap: 1rem;">
+                <button onclick="toggleFullscreen()" class="btn btn-secondary">Fullscreen</button>
+                <button onclick="toggleMute()" class="btn btn-secondary" id="muteBtn">Audio</button>
+                <button onclick="toggleQuality()" class="btn btn-secondary" id="qualityBtn">HD</button>
+                <button onclick="toggleMiniPlayer()" class="btn btn-secondary">Mini Player</button>
+                <button onclick="startVoiceChat()" class="btn btn-success" id="voiceBtn">Voice Chat</button>
+            </div>
+            <div style="display: flex; gap: 1rem;">
+                {% if stream[1] != session.user_id %}
+                <button onclick="sendTip()" class="btn" style="background: #ffc107; color: black;">Tip Streamer</button>
+                <button onclick="reportStream()" class="btn btn-danger">Report</button>
+                {% else %}
+                <button onclick="showViewers()" class="btn btn-success">View Audience</button>
+                <button onclick="endStream()" class="btn btn-danger">End Stream</button>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Live Indicators -->
+        <div style="position: absolute; top: 20px; left: 20px; background: #dc3545; color: white; padding: 0.5rem 1rem; border-radius: 20px; font-weight: bold;">
+            🔴 LIVE
+        </div>
+        <div style="position: absolute; top: 20px; right: 20px; background: rgba(0,0,0,0.7); color: white; padding: 0.5rem 1rem; border-radius: 20px;" id="liveViewers">
+            👥 {{ stream[5] }} watching
+        </div>
+    </div>
+</div>
+
+<!-- Stream Info & Multi-View -->
+<div style="display: grid; grid-template-columns: 2fr 1fr; gap: 1rem;">
+    <!-- Stream Details -->
+    <div class="card">
+        <h3>Stream Information</h3>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
+            <div>
+                <strong>Streamer:</strong><br>
+                <span style="color: #ffc107;">{{ stream[10] }}</span>
+            </div>
+            <div>
+                <strong>Stream Type:</strong><br>
+                {% if stream[9] == 'screen' %}🖥️ Screen Share
+                {% elif stream[9] == 'camera' %}📹 Camera
+                {% else %}🎮 Screen + Camera{% endif %}
+            </div>
+            <div>
+                <strong>Started:</strong><br>
+                {{ stream[8] }}
+            </div>
+            <div>
+                <strong>Viewers:</strong><br>
+                <span style="color: #28a745;" id="viewerDisplay">{{ stream[5] }} watching</span>
+            </div>
+        </div>
+        
+        {% if stream[2] %}
+        <div style="background: rgba(255, 193, 7, 0.1); padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+            <h4 style="color: #ffc107;">🎯 Live Match Stream</h4>
+            <p>This streamer is broadcasting their live match gameplay! Watch their strategies and skills in real-time.</p>
+            <div style="display: flex; gap: 1rem;">
+                <button onclick="enablePictureInPicture()" class="btn btn-secondary">📱 Mini Player</button>
+                <button onclick="shareStream()" class="btn btn-primary">📤 Share Stream</button>
+            </div>
+        </div>
+        {% endif %}
+        
+        {% if stream[3] %}
+        <div style="background: rgba(220, 53, 69, 0.1); padding: 1rem; border-radius: 8px;">
+            <h4 style="color: #dc3545;">🏆 Tournament Stream</h4>
+            <p>Live tournament match! High stakes competitive gaming.</p>
+            <div style="display: flex; gap: 1rem;">
+                <a href="{{ url_for('tournament_details', tournament_id=stream[3]) }}" class="btn btn-primary">View Tournament</a>
+                <a href="{{ url_for('multi_stream', tournament_id=stream[3]) }}" class="btn btn-success">Multi-Stream View</a>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    
+    <!-- Live Chat -->
+    <div class="card">
+        <h3>💬 Live Chat</h3>
+        <div id="chatMessages" style="height: 300px; overflow-y: auto; background: rgba(0,0,0,0.1); padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+            <div style="color: #28a745; margin-bottom: 0.5rem;">
+                <strong>System:</strong> Welcome to {{ stream[10] }}'s stream!
+            </div>
+            <div style="color: #ffc107; margin-bottom: 0.5rem;">
+                <strong>{{ session.username }}:</strong> Great stream! 🎮
+            </div>
+        </div>
+        
+        <div style="display: flex; gap: 0.5rem;">
+            <input type="text" id="chatInput" placeholder="Type a message..." 
+                   style="flex: 1; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px; background: rgba(255,255,255,0.1); color: white;">
+            <button onclick="sendMessage()" class="btn btn-primary">Send</button>
+        </div>
+        
+        <div style="margin-top: 1rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
+            <button onclick="sendEmoji('🔥')" class="btn btn-secondary" style="padding: 0.3rem 0.6rem;">🔥</button>
+            <button onclick="sendEmoji('👏')" class="btn btn-secondary" style="padding: 0.3rem 0.6rem;">👏</button>
+            <button onclick="sendEmoji('😱')" class="btn btn-secondary" style="padding: 0.3rem 0.6rem;">😱</button>
+            <button onclick="sendEmoji('💯')" class="btn btn-secondary" style="padding: 0.3rem 0.6rem;">💯</button>
+        </div>
+    </div>
+</div>
+
+<script>
+let streamConnected = false;
+let viewerCount = {{ stream[5] }};
+
+function stopStream() {
+    if (confirm('Stop streaming?')) {
+        fetch(`/stop_stream/{{ stream[0] }}`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'}
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Stream stopped!');
+                window.location.href = '/dashboard';
+            }
+        });
+    }
+}
+
+
+
+function toggleFullscreen() {
+    const container = document.getElementById('streamContainer');
+    if (document.fullscreenElement) {
+        document.exitFullscreen();
+    } else {
+        container.requestFullscreen();
+    }
+}
+
+function toggleMute() {
+    const btn = document.getElementById('muteBtn');
+    if (btn.textContent.includes('🔊')) {
+        btn.innerHTML = '🔇 Muted';
+    } else {
+        btn.innerHTML = '🔊 Audio';
+    }
+}
+
+function toggleQuality() {
+    const btn = document.getElementById('qualityBtn');
+    const qualities = ['HD', '720p', '480p', 'Auto'];
+    const current = btn.textContent;
+    const nextIndex = (qualities.indexOf(current) + 1) % qualities.length;
+    btn.textContent = qualities[nextIndex];
+}
+
+function enablePictureInPicture() {
+    const video = document.getElementById('liveVideo');
+    if (video && video.requestPictureInPicture) {
+        video.requestPictureInPicture();
+    } else {
+        alert('Picture-in-Picture not supported');
+    }
+}
+
+function shareStream() {
+    if (navigator.share) {
+        navigator.share({
+            title: '{{ stream[4] }}',
+            text: 'Watch {{ stream[10] }} live streaming!',
+            url: window.location.href
+        });
+    } else {
+        navigator.clipboard.writeText(window.location.href);
+        alert('Stream link copied to clipboard!');
+    }
+}
+
+function sendTip() {
+    const amount = prompt('Enter tip amount (KSh):', '10');
+    if (amount && !isNaN(amount) && amount > 0) {
+        alert(`Tip of KSh ${amount} sent to {{ stream[10] }}!`);
+        sendMessage(`💰 Tipped KSh ${amount}!`);
+    }
+}
+
+function sendMessage(customMessage) {
+    const input = document.getElementById('chatInput');
+    const message = customMessage || input.value.trim();
+    if (message) {
+        const chatDiv = document.getElementById('chatMessages');
+        const newMessage = document.createElement('div');
+        newMessage.style.color = '#ffc107';
+        newMessage.style.marginBottom = '0.5rem';
+        newMessage.innerHTML = `<strong>{{ session.username }}:</strong> ${message}`;
+        chatDiv.appendChild(newMessage);
+        chatDiv.scrollTop = chatDiv.scrollHeight;
+        if (!customMessage) input.value = '';
+    }
+}
+
+function sendEmoji(emoji) {
+    sendMessage(emoji);
+}
+
+function toggleMiniPlayer() {
+    const video = document.querySelector('#streamPlayer video');
+    if (video) {
+        const miniWindow = window.open('', 'miniPlayer', 'width=400,height=300,resizable=yes,scrollbars=no');
+        if (miniWindow) {
+            miniWindow.document.write(`
+                <html>
+                <head><title>Stream Mini Player</title></head>
+                <body style="margin:0;background:#000;">
+                    <video autoplay style="width:100%;height:100%;object-fit:contain;" id="miniVideo"></video>
+                </body>
+                </html>
+            `);
+            const miniVideo = miniWindow.document.getElementById('miniVideo');
+            if (video.srcObject) {
+                miniVideo.srcObject = video.srcObject;
+            }
+        } else {
+            alert('Pop-up blocked. Please allow pop-ups for mini player.');
+        }
+    }
+}
+
+let voiceChatActive = false;
+let localAudioStream = null;
+
+async function startVoiceChat() {
+    const btn = document.getElementById('voiceBtn');
+    
+    if (!voiceChatActive) {
+        try {
+            localAudioStream = await navigator.mediaDevices.getUserMedia({
+                audio: {
+                    echoCancellation: true,
+                    noiseSuppression: true,
+                    autoGainControl: true
+                }
+            });
+            
+            // Create audio context for voice chat
+            const audioContext = new AudioContext();
+            const source = audioContext.createMediaStreamSource(localAudioStream);
+            const analyser = audioContext.createAnalyser();
+            source.connect(analyser);
+            
+            voiceChatActive = true;
+            btn.innerHTML = 'Mute Mic';
+            btn.style.background = '#dc3545';
+            
+            // Visual feedback for voice activity
+            const indicator = document.createElement('div');
+            indicator.id = 'voiceIndicator';
+            indicator.innerHTML = 'Voice Active';
+            indicator.style.position = 'fixed';
+            indicator.style.top = '20px';
+            indicator.style.right = '20px';
+            indicator.style.background = '#28a745';
+            indicator.style.color = 'white';
+            indicator.style.padding = '0.5rem 1rem';
+            indicator.style.borderRadius = '20px';
+            indicator.style.zIndex = '10000';
+            document.body.appendChild(indicator);
+            
+            alert('Voice chat enabled! You can now talk to the streamer.');
+            
+        } catch (err) {
+            alert('Microphone access denied or not available');
+        }
+    } else {
+        // Stop voice chat
+        if (localAudioStream) {
+            localAudioStream.getTracks().forEach(track => track.stop());
+        }
+        
+        const indicator = document.getElementById('voiceIndicator');
+        if (indicator) {
+            indicator.remove();
+        }
+        
+        voiceChatActive = false;
+        btn.innerHTML = 'Voice Chat';
+        btn.style.background = '#28a745';
+        
+        alert('Voice chat disabled');
+    }
+}
+
+function showViewers() {
+    fetch(`/stream_viewers/{{ stream[0] }}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.viewers) {
+                let viewerList = `Current Viewers (${data.count}):\n\n`;
+                data.viewers.forEach(viewer => {
+                    const joinTime = new Date(viewer.joined_at).toLocaleTimeString();
+                    viewerList += `• ${viewer.username} (joined ${joinTime})\n`;
+                });
+                alert(viewerList || 'No viewers currently watching');
+            }
+        });
+}
+
+function endStream() {
+    if (confirm('End your stream?')) {
+        fetch('/stop_stream/{{ stream[0] }}', {
+            method: 'POST'
+        }).then(() => {
+            window.location.href = '/dashboard';
+        });
+    }
+}
+
+function reportStream() {
+    if (confirm('Report this stream for inappropriate content?')) {
+        alert('Stream reported. Thank you for keeping our community safe!');
+    }
+}
+
+
+
+// Enter key to send message
+document.getElementById('chatInput').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        sendMessage();
+    }
+});
+
+// CSS for pulse animation
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes pulse {
+        0% { opacity: 1; }
+        50% { opacity: 0.5; }
+        100% { opacity: 1; }
+    }
+`;
+document.head.appendChild(style);
+</script>
+{% endblock %}

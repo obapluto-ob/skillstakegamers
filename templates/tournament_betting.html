@@ -1,0 +1,267 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card">
+    <h1><svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" fill="none"/><path d="M12 6V12L16 14" stroke="currentColor" stroke-width="2"/></svg> Tournament Betting</h1>
+    <p>Bet on specific match events - Anti-cheat system prevents win/lose betting</p>
+    <div style="text-align: right;">
+        <button onclick="window.history.back()" class="btn btn-secondary"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M19 12H5M12 19L5 12L12 5" stroke="currentColor" stroke-width="2"/></svg> Back to Tournament</button>
+    </div>
+</div>
+
+<div class="card">
+    <h3>Active Betting Markets</h3>
+    <div id="bettingMarkets">
+        <div class="loading">Loading betting markets...</div>
+    </div>
+</div>
+
+<div class="card">
+    <h3>Your Active Bets</h3>
+    <div id="userBets">
+        <div class="loading">Loading your bets...</div>
+    </div>
+</div>
+
+<div class="card">
+    <h3>Betting Rules</h3>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem;">
+        <div style="background: rgba(40, 167, 69, 0.1); padding: 1rem; border-radius: 8px;">
+            <h4 style="color: #28a745;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 12L11 14L15 10" stroke="#28a745" stroke-width="2" fill="none"/><circle cx="12" cy="12" r="10" stroke="#28a745" stroke-width="2" fill="none"/></svg> Allowed Bets</h4>
+            <ul style="margin: 0; padding-left: 1.5rem;">
+                <li>Specific in-game events</li>
+                <li>Performance statistics</li>
+                <li>Time-based occurrences</li>
+                <li>Technical game events</li>
+            </ul>
+        </div>
+        <div style="background: rgba(220, 53, 69, 0.1); padding: 1rem; border-radius: 8px;">
+            <h4 style="color: #dc3545;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="10" stroke="#dc3545" stroke-width="2" fill="none"/><line x1="15" y1="9" x2="9" y2="15" stroke="#dc3545" stroke-width="2"/><line x1="9" y1="9" x2="15" y2="15" stroke="#dc3545" stroke-width="2"/></svg> Prohibited Bets</h4>
+            <ul style="margin: 0; padding-left: 1.5rem;">
+                <li>Match winner/loser</li>
+                <li>Final scores</li>
+                <li>Player rankings</li>
+                <li>Tournament outcomes</li>
+            </ul>
+        </div>
+        <div style="background: rgba(23, 162, 184, 0.1); padding: 1rem; border-radius: 8px;">
+            <h4 style="color: #17a2b8;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><line x1="12" y1="1" x2="12" y2="23" stroke="#17a2b8" stroke-width="2"/><path d="M17 5H9.5A3.5 3.5 0 0 0 6 8.5V8.5A3.5 3.5 0 0 0 9.5 12H14.5A3.5 3.5 0 0 1 18 15.5V15.5A3.5 3.5 0 0 1 14.5 19H6" stroke="#17a2b8" stroke-width="2" fill="none"/></svg> Payouts</h4>
+            <ul style="margin: 0; padding-left: 1.5rem;">
+                <li>Winners split betting pool</li>
+                <li>Platform takes 15% commission</li>
+                <li>Instant payout after verification</li>
+                <li>Minimum bet: $0.80 USD</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<!-- Betting Modal -->
+<div id="bettingModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000;">
+    <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 2rem; border-radius: 10px; max-width: 500px; width: 90%;">
+        <h3 id="modalTitle">Place Bet</h3>
+        <div id="modalContent"></div>
+        <div style="margin-top: 1rem; text-align: right;">
+            <button onclick="closeBettingModal()" class="btn btn-secondary" style="margin-right: 1rem;">Cancel</button>
+            <button onclick="confirmBet()" class="btn btn-success" id="confirmBetBtn">Place Bet</button>
+        </div>
+    </div>
+</div>
+
+<script>
+const tournamentId = {{ tournament_id }};
+let currentBetData = null;
+
+async function loadBettingMarkets() {
+    try {
+        const response = await fetch(`/api/tournament_betting/${tournamentId}`);
+        const data = await response.json();
+        
+        if (data.success) {
+            displayBettingMarkets(data.matches);
+        } else {
+            document.getElementById('bettingMarkets').innerHTML = '<div class="error">No active betting markets</div>';
+        }
+    } catch (error) {
+        document.getElementById('bettingMarkets').innerHTML = '<div class="error">Error loading betting markets</div>';
+    }
+}
+
+function displayBettingMarkets(matches) {
+    if (matches.length === 0) {
+        document.getElementById('bettingMarkets').innerHTML = '<div style="text-align: center; padding: 2rem; color: #666;">No active matches for betting at the moment.</div>';
+        return;
+    }
+    
+    let html = '';
+    
+    matches.forEach(match => {
+        const scheduledTime = new Date(match.scheduled_time).toLocaleString();
+        
+        html += `
+            <div style="border: 1px solid #ddd; border-radius: 10px; padding: 1rem; margin-bottom: 1rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                    <h4>${match.player1} vs ${match.player2}</h4>
+                    <div style="text-align: right;">
+                        <div style="font-size: 0.9rem; color: #666;">${match.phase.toUpperCase()}</div>
+                        <div style="font-size: 0.8rem; color: #999;">${scheduledTime}</div>
+                    </div>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 0.5rem;">
+        `;
+        
+        match.betting_options.forEach(bet => {
+            const potentialPayout = (bet.amount * bet.odds).toFixed(2);
+            
+            html += `
+                <div style="border: 1px solid #eee; border-radius: 5px; padding: 0.8rem; cursor: pointer; transition: all 0.2s;" 
+                     onclick="openBettingModal('${bet.type}', '${bet.description}', ${bet.amount}, ${bet.odds}, ${match.match_id})"
+                     onmouseover="this.style.backgroundColor='#f8f9fa'" 
+                     onmouseout="this.style.backgroundColor='white'">
+                    <div style="font-weight: bold; margin-bottom: 0.3rem;">${bet.description}</div>
+                    <div style="display: flex; justify-content: space-between; font-size: 0.9rem;">
+                        <span style="color: #dc3545;">$${bet.amount}</span>
+                        <span style="color: #28a745;">Pays $${potentialPayout}</span>
+                    </div>
+                    <div style="font-size: 0.8rem; color: #666; text-align: center; margin-top: 0.3rem;">
+                        Odds: ${bet.odds}x
+                    </div>
+                </div>
+            `;
+        });
+        
+        html += `
+                </div>
+            </div>
+        `;
+    });
+    
+    document.getElementById('bettingMarkets').innerHTML = html;
+}
+
+function openBettingModal(betType, description, amount, odds, matchId) {
+    currentBetData = {
+        type: betType,
+        description: description,
+        amount: amount,
+        odds: odds,
+        matchId: matchId
+    };
+    
+    const potentialPayout = (amount * odds).toFixed(2);
+    
+    document.getElementById('modalTitle').textContent = 'Confirm Bet';
+    document.getElementById('modalContent').innerHTML = `
+        <div style="margin-bottom: 1rem;">
+            <strong>Bet:</strong> ${description}
+        </div>
+        <div style="margin-bottom: 1rem;">
+            <strong>Cost:</strong> $${amount} USD
+        </div>
+        <div style="margin-bottom: 1rem;">
+            <strong>Potential Payout:</strong> $${potentialPayout} USD
+        </div>
+        <div style="margin-bottom: 1rem;">
+            <strong>Odds:</strong> ${odds}x
+        </div>
+        <div style="background: rgba(255, 193, 7, 0.1); padding: 1rem; border-radius: 5px; font-size: 0.9rem;">
+            <strong>Note:</strong> This bet is on a specific game event, not the match outcome. 
+            Payout occurs when the event happens during the match.
+        </div>
+    `;
+    
+    document.getElementById('bettingModal').style.display = 'block';
+}
+
+function closeBettingModal() {
+    document.getElementById('bettingModal').style.display = 'none';
+    currentBetData = null;
+}
+
+async function confirmBet() {
+    if (!currentBetData) return;
+    
+    const confirmBtn = document.getElementById('confirmBetBtn');
+    confirmBtn.disabled = true;
+    confirmBtn.textContent = 'Placing Bet...';
+    
+    try {
+        const response = await fetch('/api/place_tournament_bet', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                tournament_id: tournamentId,
+                match_id: currentBetData.matchId,
+                bet_type: currentBetData.type,
+                bet_description: currentBetData.description,
+                bet_amount: currentBetData.amount,
+                odds: currentBetData.odds
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert(data.message);
+            closeBettingModal();
+            loadUserBets(); // Refresh user bets
+        } else {
+            alert('Error: ' + data.error);
+        }
+    } catch (error) {
+        alert('Failed to place bet');
+    }
+    
+    confirmBtn.disabled = false;
+    confirmBtn.textContent = 'Place Bet';
+}
+
+async function loadUserBets() {
+    // This would load user's active bets for this tournament
+    document.getElementById('userBets').innerHTML = '<div style="text-align: center; padding: 2rem; color: #666;">Your active bets will appear here once you place some bets.</div>';
+}
+
+// Load data on page load
+document.addEventListener('DOMContentLoaded', () => {
+    loadBettingMarkets();
+    loadUserBets();
+});
+
+// Refresh betting markets every 60 seconds
+setInterval(loadBettingMarkets, 60000);
+
+// Close modal when clicking outside
+document.getElementById('bettingModal').addEventListener('click', (e) => {
+    if (e.target.id === 'bettingModal') {
+        closeBettingModal();
+    }
+});
+</script>
+
+<style>
+.loading {
+    text-align: center;
+    padding: 2rem;
+    color: #666;
+}
+
+.error {
+    text-align: center;
+    padding: 2rem;
+    color: #dc3545;
+    background: rgba(220, 53, 69, 0.1);
+    border-radius: 5px;
+}
+
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
+}
+
+.loading {
+    animation: pulse 2s infinite;
+}
+</style>
+{% endblock %}
