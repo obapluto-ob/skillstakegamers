@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register - SkillStake</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+        .container { background: white; padding: 2rem; border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); width: 100%; max-width: 400px; }
+        .logo { text-align: center; margin-bottom: 2rem; }
+        .logo h1 { color: #667eea; font-size: 2rem; }
+        .form-group { margin-bottom: 1rem; }
+        label { display: block; margin-bottom: 0.5rem; font-weight: bold; color: #333; }
+        input, select { width: 100%; padding: 0.75rem; border: 2px solid #ddd; border-radius: 5px; font-size: 1rem; }
+        input:focus, select:focus { outline: none; border-color: #667eea; }
+        .phone-input { display: flex; gap: 0.5rem; }
+        .country-code { flex: 0 0 100px; }
+        .phone-number { flex: 1; }
+        .btn { width: 100%; padding: 0.75rem; background: #667eea; color: white; border: none; border-radius: 5px; font-size: 1rem; cursor: pointer; margin-top: 1rem; }
+        .btn:hover { background: #5a6fd8; }
+        .btn:disabled { background: #ccc; cursor: not-allowed; }
+        .verification-step { display: none; }
+        .code-input { text-align: center; font-size: 1.5rem; letter-spacing: 0.5rem; }
+        .alert { padding: 0.75rem; margin: 1rem 0; border-radius: 5px; }
+        .alert-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .alert-error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .login-link { text-align: center; margin-top: 1rem; }
+        .login-link a { color: #667eea; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">
+            <h1>SkillStake</h1>
+            <p>Secure Registration</p>
+        </div>
+
+        <div id="step1" class="registration-step">
+            <form id="registerForm">
+                <div class="form-group">
+                    <label>Username</label>
+                    <input type="text" id="username" required minlength="3">
+                </div>
+
+                <div class="form-group">
+                    <label>Phone Number</label>
+                    <div class="phone-input">
+                        <select id="countryCode" class="country-code">
+                            <option value="+254">🇰🇪 +254</option>
+                            <option value="+1">🇺🇸 +1</option>
+                            <option value="+44">🇬🇧 +44</option>
+                            <option value="+91">🇮🇳 +91</option>
+                            <option value="+234">🇳🇬 +234</option>
+                            <option value="+27">🇿🇦 +27</option>
+                        </select>
+                        <input type="tel" id="phoneNumber" class="phone-number" placeholder="712345678" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="password" required minlength="6">
+                </div>
+
+                <div class="form-group">
+                    <label>Referral Code (Optional)</label>
+                    <input type="text" id="referralCode" placeholder="Enter referral code">
+                </div>
+
+                <button type="submit" class="btn">Send Verification Code</button>
+            </form>
+        </div>
+
+        <div id="step2" class="verification-step">
+            <h3>Verify Your Phone</h3>
+            <p>Enter the 6-digit code sent to <span id="phoneDisplay"></span></p>
+            
+            <form id="verifyForm">
+                <div class="form-group">
+                    <input type="text" id="verificationCode" class="code-input" maxlength="6" placeholder="000000" required>
+                </div>
+                <button type="submit" class="btn">Verify & Register</button>
+                <button type="button" class="btn" onclick="resendCode()" style="background: #6c757d; margin-top: 0.5rem;">Resend Code</button>
+            </form>
+        </div>
+
+        <div id="messages"></div>
+
+        <div class="login-link">
+            <a href="/login">Already have an account? Login</a>
+        </div>
+    </div>
+
+    <script>
+        let registrationData = {};
+
+        document.getElementById('registerForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const username = document.getElementById('username').value;
+            const countryCode = document.getElementById('countryCode').value;
+            const phoneNumber = document.getElementById('phoneNumber').value;
+            const password = document.getElementById('password').value;
+            const referralCode = document.getElementById('referralCode').value;
+            
+            const fullPhone = countryCode + phoneNumber;
+            
+            registrationData = { username, phone: fullPhone, password, referralCode };
+            
+            try {
+                const response = await fetch('/send_verification', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ phone: fullPhone })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    document.getElementById('step1').style.display = 'none';
+                    document.getElementById('step2').style.display = 'block';
+                    document.getElementById('phoneDisplay').textContent = fullPhone;
+                    showMessage('Verification code sent!', 'success');
+                } else {
+                    showMessage(result.message, 'error');
+                }
+            } catch (error) {
+                showMessage('Network error. Please try again.', 'error');
+            }
+        });
+
+        document.getElementById('verifyForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const code = document.getElementById('verificationCode').value;
+            
+            try {
+                const response = await fetch('/register_with_verification', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ...registrationData, code })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showMessage('Registration successful! Redirecting...', 'success');
+                    setTimeout(() => window.location.href = '/login', 2000);
+                } else {
+                    showMessage(result.message, 'error');
+                }
+            } catch (error) {
+                showMessage('Network error. Please try again.', 'error');
+            }
+        });
+
+        async function resendCode() {
+            try {
+                const response = await fetch('/send_verification', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ phone: registrationData.phone })
+                });
+                
+                const result = await response.json();
+                showMessage(result.success ? 'Code resent!' : result.message, result.success ? 'success' : 'error');
+            } catch (error) {
+                showMessage('Failed to resend code', 'error');
+            }
+        }
+
+        function showMessage(message, type) {
+            const messagesDiv = document.getElementById('messages');
+            messagesDiv.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
+            setTimeout(() => messagesDiv.innerHTML = '', 5000);
+        }
+    </script>
+</body>
+</html>

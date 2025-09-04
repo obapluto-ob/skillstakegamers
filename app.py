@@ -526,44 +526,7 @@ def init_db():
 # Initialize database on startup
 init_db()
 
-# Auto-restore users from environment backup if needed
-def restore_users_from_env():
-    """Restore users from environment variable if database is empty"""
-    try:
-        backup_data_str = os.getenv('USER_BACKUP_DATA')
-        if not backup_data_str:
-            return
-            
-        import json
-        backup_data = json.loads(backup_data_str)
-        
-        with get_db_connection() as conn:
-            c = conn.cursor()
-            
-            # Check if we need to restore
-            c.execute('SELECT COUNT(*) FROM users WHERE username != "admin"')
-            user_count = c.fetchone()[0]
-            
-            if user_count == 0:
-                print("Restoring users from environment backup...")
-                restored = 0
-                for user in backup_data['users']:
-                    try:
-                        c.execute('''INSERT INTO users (username, email, password, balance, phone, referral_code, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)''',
-                                 (user['username'], user['email'], user['password_hash'], 
-                                  user['balance'], user['phone'], user['referral_code'], user['created_at']))
-                        restored += 1
-                    except Exception as e:
-                        print(f"Failed to restore {user['username']}: {e}")
-                
-                conn.commit()
-                print(f"Restored {restored} users from backup")
-                
-    except Exception as e:
-        print(f"User restoration failed: {e}")
-
-# Restore users if needed
-restore_users_from_env()
+# Clean start - no user restoration
 
 # Add error handlers and optimization if available
 if NEW_FEATURES_AVAILABLE:
@@ -601,7 +564,141 @@ def handle_exception(e):
 def home():
     if 'user_id' in session:
         return redirect(url_for('dashboard'))
-    return render_template('home.html')
+    return redirect(url_for('login_secure'))
+
+@app.route('/register_new')
+def register_new():
+    return render_template('register_new.html')
+
+@app.route('/login_secure')
+def login_secure():
+    return render_template('login_secure.html')
+
+@app.route('/send_verification', methods=['POST'])
+def send_verification():
+    from phone_auth import send_sms_code
+    
+    data = request.get_json()
+    phone = data.get('phone')
+    
+    if not phone:
+        return jsonify({'success': False, 'message': 'Phone number required'})
+    
+    try:
+        code = send_sms_code(phone)
+        return jsonify({'success': True, 'message': 'Verification code sent', 'demo_code': code})
+    except Exception as e:
+        return jsonify({'success': False, 'message': 'Failed to send code'})
+
+@app.route('/register_with_verification', methods=['POST'])
+def register_with_verification():
+    from phone_auth import verify_sms_code
+    
+    data = request.get_json()
+    username = data.get('username')
+    phone = data.get('phone')
+    password = data.get('password')
+    referral_code = data.get('referralCode')
+    code = data.get('code')
+    
+    # Verify SMS code
+    is_valid, message = verify_sms_code(phone, code)
+    if not is_valid:
+        return jsonify({'success': False, 'message': message})
+    
+    # Register user
+    try:
+        with get_db_connection() as conn:
+            c = conn.cursor()
+            
+            # Check if username/phone exists
+            c.execute('SELECT id FROM users WHERE username = ? OR phone = ?', (username, phone))
+            if c.fetchone():
+                return jsonify({'success': False, 'message': 'Username or phone already registered'})
+            
+            hashed_password = generate_password_hash(password)
+            import random, string
+            user_referral_code = username[:3].upper() + ''.join(random.choices(string.digits, k=4))
+            
+            c.execute('''INSERT INTO users (username, email, password, balance, phone, referral_code) 
+                         VALUES (?, ?, ?, ?, ?, ?)''',
+                     (username, phone + '@skillstake.com', hashed_password, 0.0, phone, user_referral_code))
+            
+            if not os.getenv('DATABASE_URL'):
+                conn.commit()
+            
+            return jsonify({'success': True, 'message': 'Registration successful'})
+            
+    except Exception as e:
+        return jsonify({'success': False, 'message': 'Registration failed'})
+
+@app.route('/secure_login_step1', methods=['POST'])
+def secure_login_step1():
+    from phone_auth import generate_login_code
+    
+    data = request.get_json()
+    login_input = data.get('loginInput')
+    password = data.get('password')
+    
+    try:
+        with get_db_connection() as conn:
+            c = conn.cursor()
+            c.execute('SELECT id, username, password, phone FROM users WHERE username = ? OR phone = ?', 
+                     (login_input, login_input))
+            user = c.fetchone()
+            
+            if user and check_password_hash(user[2], password):
+                # Generate and send login code
+                code = generate_login_code(user[0])
+                
+                # Store user ID in session temporarily
+                session['temp_user_id'] = user[0]
+                
+                return jsonify({'success': True, 'message': 'Code sent', 'demo_code': code})
+            else:
+                return jsonify({'success': False, 'message': 'Invalid credentials'})
+                
+    except Exception as e:
+        return jsonify({'success': False, 'message': 'Login error'})
+
+@app.route('/secure_login_step2', methods=['POST'])
+def secure_login_step2():
+    from phone_auth import verify_login_code
+    
+    data = request.get_json()
+    code = data.get('code')
+    
+    temp_user_id = session.get('temp_user_id')
+    if not temp_user_id:
+        return jsonify({'success': False, 'message': 'Session expired'})
+    
+    # Verify code
+    is_valid, message = verify_login_code(temp_user_id, code)
+    if not is_valid:
+        return jsonify({'success': False, 'message': message})
+    
+    # Complete login
+    try:
+        with get_db_connection() as conn:
+            c = conn.cursor()
+            c.execute('SELECT id, username, balance FROM users WHERE id = ?', (temp_user_id,))
+            user = c.fetchone()
+            
+            if user:
+                session['user_id'] = user[0]
+                session['username'] = user[1]
+                session['balance'] = user[2]
+                session['is_admin'] = (user[1] == 'admin')
+                
+                # Clear temp session
+                session.pop('temp_user_id', None)
+                
+                return jsonify({'success': True, 'message': 'Login successful'})
+            else:
+                return jsonify({'success': False, 'message': 'User not found'})
+                
+    except Exception as e:
+        return jsonify({'success': False, 'message': 'Login error'})
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
