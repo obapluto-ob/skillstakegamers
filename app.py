@@ -20,6 +20,9 @@ from final_security_enhancements import (
     rate_limit_endpoint, add_security_headers, generate_csrf_token,
     validate_csrf_token, secure_admin_check
 )
+from smart_rate_limiting import smart_rate_limit
+from improved_error_handler import handle_user_friendly_errors, log_user_actions
+from performance_utils import optimize_database, get_platform_stats
 
 # import pytesseract
 # pytesseract.pytesseract.tesseract_cmd = r'C:\Windows\System32\gamers\tesseract_installer.exe'
@@ -408,6 +411,12 @@ def init_db():
 
 # Initialize database on startup
 init_db()
+
+# Add error handlers
+handle_user_friendly_errors(app)
+
+# Optimize database on startup
+optimize_database()
 app.config['SESSION_COOKIE_SECURE'] = True
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
@@ -434,7 +443,7 @@ def home():
     return render_template('home.html')
 
 @app.route('/register', methods=['GET', 'POST'])
-@rate_limit_endpoint(max_requests=3, window=600)
+@smart_rate_limit(max_requests=5, window=600, user_based=False)
 def register():
     if request.method == 'POST':
         # Validate inputs
@@ -511,7 +520,7 @@ def register():
     return render_template('register.html')
 
 @app.route('/login', methods=['GET', 'POST'])
-@rate_limit_endpoint(max_requests=5, window=300)
+@smart_rate_limit(max_requests=8, window=300, user_based=False)
 def login():
     if request.method == 'POST':
         login_input = request.form['login_input'].strip()
