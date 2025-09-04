@@ -1,14 +1,13 @@
+from flask import jsonify, flash
 import logging
-from flask import jsonify
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
+# Setup logger
 logger = logging.getLogger(__name__)
 
 def handle_error(e):
     """Handle application errors"""
-    logger.error(f"Application error: {str(e)}")
-    return jsonify({'error': 'An error occurred'}), 500
+    logger.error(f"Application error: {e}")
+    return jsonify({'error': 'Internal server error'}), 500
 
 def log_transaction(user_id, transaction_type, amount, description):
     """Log transaction"""
@@ -16,4 +15,4 @@ def log_transaction(user_id, transaction_type, amount, description):
 
 def log_security_event(event_type, user_id, details):
     """Log security events"""
-    logger.warning(f"Security Event: {event_type}, User: {user_id}, Details: {details}")
+    logger.warning(f"Security event: {event_type}, User: {user_id}, Details: {details}")
