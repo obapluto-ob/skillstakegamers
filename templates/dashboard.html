@@ -29,39 +29,53 @@
     </div>
 </div>
 
-<div class="stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
-    <div class="stat-card">
-        <div class="stat-number">KSh {{ "%.0f"|format(stats.balance) }}</div>
-        <div class="stat-label">Current Balance</div>
+<!-- Wallet Transaction History -->
+<div class="card">
+    <h2>📊 Wallet History</h2>
+    <div style="background: #f8f9fa; border: 1px solid #dee2e6; padding: 0.8rem; border-radius: 6px; margin-bottom: 1rem; font-size: 0.9rem; color: #495057;">
+        <strong>📊 Transaction History:</strong> All your deposits, withdrawals, bets and winnings in order
     </div>
-    <div class="stat-card">
-        <div class="stat-number">{{ stats.wins }}</div>
-        <div class="stat-label">Total Wins</div>
-    </div>
-    <div class="stat-card">
-        <div class="stat-number">{{ stats.losses }}</div>
-        <div class="stat-label">Total Losses</div>
-    </div>
-    <div class="stat-card">
-        <div class="stat-number">KSh {{ "%.0f"|format(stats.earnings) }}</div>
-        <div class="stat-label">Total Earnings</div>
-    </div>
-    <div class="stat-card">
-        <div class="stat-number">KSh {{ "%.0f"|format(stats.refunds) }}</div>
-        <div class="stat-label">Total Refunds</div>
-    </div>
-    <div class="stat-card">
-        <div class="stat-number">KSh {{ "%.0f"|format(stats.rejected_withdrawals) }}</div>
-        <div class="stat-label">Rejected Withdrawals</div>
-    </div>
-    <div class="stat-card">
-        <div class="stat-number">KSh {{ "%.0f"|format(stats.topups) }}</div>
-        <div class="stat-label">Total Top-ups</div>
-    </div>
-    <div class="stat-card">
-        <div class="stat-number">KSh {{ "%.0f"|format(stats.accepted_withdrawals) }}</div>
-        <div class="stat-label">Paid Withdrawals</div>
-    </div>
+    {% if transactions %}
+        {% for transaction in transactions[:10] %}
+        <div style="padding: 1rem; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; border-left: 4px solid {% if transaction[2] in ['deposit', 'paypal_deposit', 'crypto_deposit'] %}#28a745{% elif transaction[2] in ['pending_deposit', 'pending_withdrawal'] %}#ffc107{% elif transaction[2] in ['rejected_deposit', 'rejected_withdrawal'] %}#dc3545{% else %}#6c757d{% endif %};">
+            <div style="flex: 1;">
+                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.3rem;">
+                    <span style="font-size: 1.2rem;">
+                        {% if transaction[2] == 'deposit' %}💰
+                        {% elif transaction[2] == 'withdrawal' %}💸
+                        {% elif transaction[2] == 'bet' %}🎮
+                        {% elif transaction[2] == 'win' %}🏆
+                        {% else %}📊
+                        {% endif %}
+                    </span>
+                    <strong>
+                        {% if transaction[2] == 'deposit' %}Deposit
+                        {% elif transaction[2] == 'withdrawal' %}Withdrawal
+                        {% elif transaction[2] == 'bet' %}Bet Placed
+                        {% elif transaction[2] == 'win' %}Match Won
+                        {% else %}{{ transaction[2].replace('_', ' ').title() }}
+                        {% endif %}
+                    </strong>
+                </div>
+                <div style="font-size: 0.9rem; color: #666; margin-bottom: 0.3rem;">{{ transaction[4] }}</div>
+                <small style="color: #999;">{{ transaction[5] }}</small>
+            </div>
+            <div style="text-align: right; font-size: 1.1rem; font-weight: bold; color: {% if transaction[3] > 0 %}#28a745{% else %}#dc3545{% endif %};">
+                {% if transaction[3] > 0 %}+{% endif %} KSh {{ "%.0f"|format(transaction[3]) }}
+            </div>
+        </div>
+        {% endfor %}
+        {% if transactions|length > 10 %}
+        <div style="text-align: center; padding: 1rem;">
+            <a href="{{ url_for('wallet') }}" class="btn btn-secondary">View All Transactions</a>
+        </div>
+        {% endif %}
+    {% else %}
+        <div style="text-align: center; padding: 2rem; color: #666;">
+            <div style="font-size: 3rem; margin-bottom: 1rem;">📊</div>
+            <p>No transactions yet. Start playing to see your wallet history!</p>
+        </div>
+    {% endif %}
 </div>
 
 <div class="card">

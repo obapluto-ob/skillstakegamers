@@ -788,8 +788,15 @@ def dashboard():
         flash('Error loading dashboard data', 'error')
         return redirect(url_for('login'))
     
+    # Get user's transaction history for wallet display
+    c.execute('''SELECT id, user_id, type, amount, description, created_at FROM transactions 
+                 WHERE user_id = ? 
+                 AND type NOT IN ('deposit_fee', 'withdrawal_fee', 'admin_fraud_commission', 'admin_referral_profit', 'tournament_commission', 'gift_commission')
+                 ORDER BY created_at DESC, id DESC LIMIT 10''', (user_id,))
+    transactions = c.fetchall()
+    
     return render_template('dashboard.html', user=user, stats=stats, matches=recent_matches, 
-                         user_streams=user_streams, competition_earnings=competition_earnings)
+                         user_streams=user_streams, competition_earnings=competition_earnings, transactions=transactions)
 
 # Add all the missing routes that templates need
 @app.route('/games')
