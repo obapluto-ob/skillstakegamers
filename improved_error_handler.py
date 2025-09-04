@@ -1,4 +1,4 @@
-from flask import jsonify, flash, redirect, url_for, request
+from flask import jsonify, flash, redirect, url_for, request, session
 import logging
 
 def handle_user_friendly_errors(app):

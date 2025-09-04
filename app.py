@@ -20,9 +20,25 @@ from final_security_enhancements import (
     rate_limit_endpoint, add_security_headers, generate_csrf_token,
     validate_csrf_token, secure_admin_check
 )
-from smart_rate_limiting import smart_rate_limit
-from improved_error_handler import handle_user_friendly_errors, log_user_actions
-from performance_utils import optimize_database, get_platform_stats
+# Import new modules with error handling
+try:
+    from smart_rate_limiting import smart_rate_limit
+    from improved_error_handler import handle_user_friendly_errors, log_user_actions
+    from performance_utils import optimize_database, get_platform_stats
+    NEW_FEATURES_AVAILABLE = True
+except ImportError:
+    NEW_FEATURES_AVAILABLE = False
+    # Fallback to old rate limiting
+    def smart_rate_limit(*args, **kwargs):
+        return rate_limit_endpoint(*args, **kwargs)
+    def handle_user_friendly_errors(app):
+        pass
+    def log_user_actions(*args, **kwargs):
+        pass
+    def optimize_database():
+        pass
+    def get_platform_stats():
+        return {'users': 0, 'matches': 0, 'streams': 0}
 
 # import pytesseract
 # pytesseract.pytesseract.tesseract_cmd = r'C:\Windows\System32\gamers\tesseract_installer.exe'
@@ -412,11 +428,12 @@ def init_db():
 # Initialize database on startup
 init_db()
 
-# Add error handlers
-handle_user_friendly_errors(app)
-
-# Optimize database on startup
-optimize_database()
+# Add error handlers and optimization if available
+if NEW_FEATURES_AVAILABLE:
+    handle_user_friendly_errors(app)
+    optimize_database()
+else:
+    print("Running with basic features - new modules not available")
 app.config['SESSION_COOKIE_SECURE'] = True
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
