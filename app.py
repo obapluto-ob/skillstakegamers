@@ -2656,7 +2656,10 @@ def admin_users():
     with sqlite3.connect("gamebet.db") as conn:
         c = conn.cursor()
     
-    c.execute('SELECT * FROM users WHERE username != "admin" ORDER BY id DESC')
+    # Get users with proper column mapping
+    c.execute('''SELECT id, username, email, password, balance, wins, losses, total_earnings, 
+                        created_at, phone, referral_code, banned 
+                 FROM users WHERE username != "admin" ORDER BY id DESC''')
     users = c.fetchall()
     return render_template('admin_users_fixed.html', users=users)
 

@@ -15,7 +15,7 @@
             <div class="stat-label">Total Users</div>
         </div>
         <div class="stat-card danger">
-            <div class="stat-value">{{ users|selectattr('10', 'equalto', 1)|list|length or 0 }}</div>
+            <div class="stat-value">{{ users|selectattr('11', 'equalto', 1)|list|length or 0 }}</div>
             <div class="stat-label">Banned Users</div>
         </div>
         <div class="stat-card warning">
@@ -23,7 +23,7 @@
             <div class="stat-label">Total Balance (KSh)</div>
         </div>
         <div class="stat-card info">
-            <div class="stat-value">{{ users|map(attribute='6')|map('int')|sum or 0 }}</div>
+            <div class="stat-value">{{ users|map(attribute='5')|map('int')|sum or 0 }}</div>
             <div class="stat-label">Total Wins</div>
         </div>
     </div>
@@ -53,8 +53,8 @@
                     </td>
                     <td>
                         <div class="contact-info">
-                            <div>M-Pesa: {{ user[5] if user[5] and user[5] != '1' else 'Not provided' }}</div>
-                            <div class="join-date">Joined: {{ user[2].split('@')[0] if '@gamebet.local' in user[2] else 'N/A' }}</div>
+                            <div>M-Pesa: {{ user[9] if user[9] and user[9] != '1' else 'Not provided' }}</div>
+                            <div class="join-date">Joined: {{ user[8][:10] if user[8] else 'N/A' }}</div>
                         </div>
                     </td>
                     <td>
@@ -66,8 +66,8 @@
                         </div>
                     </td>
                     <td>
-                        <span id="status-{{ user[0] }}" class="status-badge {% if user|length > 10 and user[10] == 1 %}banned{% else %}active{% endif %}">
-                            {% if user|length > 10 and user[10] == 1 %}
+                        <span id="status-{{ user[0] }}" class="status-badge {% if user[11] == 1 %}banned{% else %}active{% endif %}">
+                            {% if user[11] == 1 %}
                                 BANNED
                             {% else %}
                                 ACTIVE
@@ -110,9 +110,9 @@
                                 </div>
                             </div>
                             
-                            <button id="ban-btn-{{ user[0] }}" class="btn-ban {% if user|length > 10 and user[10] == 1 %}unban{% else %}ban{% endif %}" 
+                            <button id="ban-btn-{{ user[0] }}" class="btn-ban {% if user[11] == 1 %}unban{% else %}ban{% endif %}" 
                                     onclick="toggleBan({{ user[0] }}, '{{ user[1] }}')">
-                                {% if user|length > 10 and user[10] == 1 %}
+                                {% if user[11] == 1 %}
                                     <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M9,20.42L2.79,14.21L5.62,11.38L9,14.77L18.88,4.88L21.71,7.71L9,20.42Z"/></svg>
                                     Unban
                                 {% else %}
