@@ -2759,17 +2759,30 @@ def admin_users():
     with sqlite3.connect("gamebet.db") as conn:
         c = conn.cursor()
     
-    # Get users with proper column mapping - force fresh query
-    c.execute('''SELECT id, username, email, password, balance, wins, losses, total_earnings, 
-                        created_at, phone, referral_code, COALESCE(banned, 0) as banned 
-                 FROM users WHERE username != "admin" ORDER BY id DESC''')
+    # Force database refresh and get ALL users
+    c.execute('PRAGMA table_info(users)')
+    columns = c.fetchall()
+    
+    # Get users with proper column mapping - force fresh query with no cache
+    c.execute('''SELECT id, username, email, password, balance, 
+                        COALESCE(wins, 0) as wins, 
+                        COALESCE(losses, 0) as losses, 
+                        COALESCE(total_earnings, 0) as total_earnings, 
+                        created_at, phone, referral_code, 
+                        COALESCE(banned, 0) as banned 
+                 FROM users WHERE username != "admin" 
+                 ORDER BY created_at DESC, id DESC''')
     users = c.fetchall()
+    
+    # Debug: Count total users
+    c.execute('SELECT COUNT(*) FROM users WHERE username != "admin"')
+    total_count = c.fetchone()[0]
     
     # Add cache-busting timestamp
     import time
     cache_buster = int(time.time())
     
-    return render_template('admin_users_fixed.html', users=users, cache_buster=cache_buster)
+    return render_template('admin_users_fixed.html', users=users, cache_buster=cache_buster, total_count=total_count)
 
 @app.route('/admin/transactions')
 @admin_required
@@ -4137,13 +4150,16 @@ def mark_alert_read():
 @app.route('/admin/user_count')
 @admin_required
 def admin_user_count():
-    """API endpoint to get current user count"""
+    """API endpoint to get current user count with fresh data"""
     with sqlite3.connect("gamebet.db") as conn:
         c = conn.cursor()
+        
+        # Force fresh count
         c.execute('SELECT COUNT(*) FROM users WHERE username != "admin"')
         total_users = c.fetchone()[0]
         
-        c.execute('SELECT id, username, created_at FROM users WHERE username != "admin" ORDER BY id DESC LIMIT 5')
+        # Get most recent users ordered by creation time
+        c.execute('SELECT id, username, created_at FROM users WHERE username != "admin" ORDER BY created_at DESC, id DESC LIMIT 10')
         recent_users = c.fetchall()
         
     return jsonify({
