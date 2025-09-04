@@ -519,7 +519,7 @@ def init_db():
         # Create admin user if not exists
         admin_password = generate_password_hash(os.getenv('ADMIN_PASSWORD', 'change-me-in-production'))
         c.execute('''INSERT INTO users (username, email, password, balance, phone, referral_code) 
-                     VALUES (%s, %s, %s, %s, %s, %s) ON CONFLICT (username) DO NOTHING''',
+                     VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT (username) DO NOTHING''',
                  ('admin', 'admin@skillstake.com', admin_password, 0.0, '0700000000', 'ADMIN001'))
         conn.commit()
 
@@ -549,7 +549,7 @@ def restore_users_from_env():
                 restored = 0
                 for user in backup_data['users']:
                     try:
-                        c.execute('''INSERT INTO users (username, email, password, balance, phone, referral_code, created_at) VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT (username) DO NOTHING''',
+                        c.execute('''INSERT INTO users (username, email, password, balance, phone, referral_code, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)''',
                                  (user['username'], user['email'], user['password_hash'], 
                                   user['balance'], user['phone'], user['referral_code'], user['created_at']))
                         restored += 1
