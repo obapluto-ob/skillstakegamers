@@ -1446,10 +1446,11 @@ def wallet():
         flash('An error occurred', 'error')
         return redirect(url_for('dashboard'))
     
-    # Get user's enhanced transaction history - exclude platform revenue entries, latest first
-    c.execute('''SELECT * FROM transactions WHERE user_id = ? 
+    # Get user's complete transaction history - latest first
+    c.execute('''SELECT id, user_id, type, amount, description, created_at FROM transactions 
+                 WHERE user_id = ? 
                  AND type NOT IN ('deposit_fee', 'withdrawal_fee', 'admin_fraud_commission', 'admin_referral_profit', 'tournament_commission', 'gift_commission')
-                 ORDER BY id DESC, created_at DESC LIMIT 50''', (session['user_id'],))
+                 ORDER BY created_at DESC, id DESC LIMIT 50''', (session['user_id'],))
     transactions = c.fetchall()
     
     # Get withdrawal history
@@ -1458,7 +1459,7 @@ def wallet():
     withdrawals = c.fetchall()
     
     conn.commit()
-    return render_template('wallet.html', transactions=transactions, withdrawals=withdrawals)
+    return render_template('wallet_mobile.html', transactions=transactions, withdrawals=withdrawals)
 
 @app.route('/create_paypal_payment', methods=['POST'])
 @login_required
@@ -1586,17 +1587,14 @@ def create_crypto_payment():
     usd_rate = 130
     amount_usd = round(amount_kes / usd_rate, 2)
     
-    # Create payment payload for card payments
+    # Create payment payload for NOWPayments
     order_id = f'skillstake_{session["user_id"]}_{int(time.time())}'
     payment_data = {
         'price_amount': amount_usd,
         'price_currency': 'usd',
-        'pay_currency': 'usdttrc20',  # Default to USDT TRC-20
+        'pay_currency': 'usdttrc20',
         'order_id': order_id,
-        'order_description': 'SkillStake Gaming Deposit',
-        'success_url': f'{request.url_root}payment_success',
-        'cancel_url': f'{request.url_root}wallet',
-        'ipn_callback_url': f'{request.url_root}payment_webhook'
+        'order_description': 'SkillStake Gaming Deposit'
     }
     
     try:
@@ -1606,10 +1604,10 @@ def create_crypto_payment():
             'Content-Type': 'application/json'
         }
         
-        # Use invoice endpoint for hosted payment pages
-        invoice_url = 'https://api.nowpayments.io/v1/invoice'
+        # Use payment endpoint for crypto payments
+        payment_url = 'https://api.nowpayments.io/v1/payment'
         response = requests.post(
-            invoice_url, 
+            payment_url, 
             json=payment_data, 
             headers=headers, 
             timeout=REQUEST_TIMEOUT
@@ -1645,11 +1643,15 @@ def create_crypto_payment():
                       amount_kes, amount_usd, 'pending'))
             
             conn.commit()
-            # Use the invoice_url from the response or construct it
-            payment_url = payment_info.get('invoice_url')
+            # Get payment URL - NOWPayments returns pay_url for direct payments
+            payment_url = payment_info.get('pay_url')
             if not payment_url:
-                invoice_id = payment_info.get('id')
-                payment_url = f"https://nowpayments.io/payment/?iid={invoice_id}"
+                # Fallback: construct URL with payment_id
+                payment_id = payment_info.get('payment_id')
+                if payment_id:
+                    payment_url = f"https://nowpayments.io/payment/?pid={payment_id}"
+                else:
+                    return jsonify({'error': 'No payment URL received from provider'}), 500
             
             return jsonify({
                 'success': True,

@@ -1,0 +1,629 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+/* Mobile-First Responsive Design */
+.wallet-container {
+    padding: 0.5rem;
+    max-width: 100%;
+}
+
+.balance-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 1.5rem;
+    border-radius: 12px;
+    margin-bottom: 1rem;
+    text-align: center;
+}
+
+.balance-amount {
+    font-size: 2rem;
+    font-weight: bold;
+    margin: 0.5rem 0;
+}
+
+.action-buttons {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.action-btn {
+    padding: 0.8rem;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+    transition: transform 0.2s;
+}
+
+.action-btn:active {
+    transform: scale(0.95);
+}
+
+.btn-deposit {
+    background: #28a745;
+    color: white;
+}
+
+.btn-crypto {
+    background: #f7931a;
+    color: white;
+}
+
+.btn-paypal {
+    background: #0070ba;
+    color: white;
+}
+
+.btn-withdraw {
+    background: #6c757d;
+    color: white;
+}
+
+.transaction-card {
+    background: white;
+    border-radius: 8px;
+    margin-bottom: 0.5rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    overflow: hidden;
+}
+
+.transaction-header {
+    padding: 1rem;
+    border-left: 4px solid;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+}
+
+.transaction-info {
+    flex: 1;
+}
+
+.transaction-type {
+    font-weight: bold;
+    margin-bottom: 0.25rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.transaction-desc {
+    font-size: 0.85rem;
+    color: #666;
+    margin-bottom: 0.25rem;
+}
+
+.transaction-date {
+    font-size: 0.75rem;
+    color: #999;
+}
+
+.transaction-amount {
+    font-weight: bold;
+    font-size: 1.1rem;
+    text-align: right;
+}
+
+.status-badge {
+    padding: 0.2rem 0.5rem;
+    border-radius: 10px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    margin-top: 0.25rem;
+}
+
+.modal-mobile {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.8);
+    z-index: 1000;
+    display: none;
+    overflow-y: auto;
+}
+
+.modal-content-mobile {
+    background: white;
+    margin: 1rem;
+    border-radius: 12px;
+    padding: 1.5rem;
+    max-height: calc(100vh - 2rem);
+    overflow-y: auto;
+}
+
+.form-group-mobile {
+    margin-bottom: 1rem;
+}
+
+.form-group-mobile label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+}
+
+.form-control-mobile {
+    width: 100%;
+    padding: 0.8rem;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    font-size: 1rem;
+    box-sizing: border-box;
+}
+
+.form-control-mobile:focus {
+    border-color: #667eea;
+    outline: none;
+}
+
+.btn-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+    margin-top: 1rem;
+}
+
+.btn-mobile {
+    padding: 0.8rem;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 1rem;
+}
+
+.btn-primary-mobile {
+    background: #667eea;
+    color: white;
+}
+
+.btn-secondary-mobile {
+    background: #6c757d;
+    color: white;
+}
+
+.crypto-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+    margin: 1rem 0;
+}
+
+.crypto-option {
+    padding: 1rem;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.crypto-option.selected {
+    border-color: #f7931a;
+    background: #fff3cd;
+}
+
+.info-box {
+    background: #e7f3ff;
+    padding: 1rem;
+    border-radius: 8px;
+    margin: 1rem 0;
+    font-size: 0.9rem;
+}
+
+.warning-box {
+    background: #fff3cd;
+    border: 2px solid #ffc107;
+    padding: 1rem;
+    border-radius: 8px;
+    margin: 1rem 0;
+    color: #856404;
+}
+
+@media (min-width: 768px) {
+    .wallet-container {
+        padding: 1rem;
+        max-width: 800px;
+        margin: 0 auto;
+    }
+    
+    .action-buttons {
+        grid-template-columns: repeat(4, 1fr);
+    }
+    
+    .crypto-grid {
+        grid-template-columns: repeat(4, 1fr);
+    }
+    
+    .modal-content-mobile {
+        margin: 2rem auto;
+        max-width: 600px;
+    }
+}
+</style>
+
+<div class="wallet-container">
+    <!-- Balance Card -->
+    <div class="balance-card">
+        <div>💰 Current Balance</div>
+        <div class="balance-amount">KSh {{ "%.0f"|format(session.balance) }}</div>
+        <div style="font-size: 0.9rem; opacity: 0.9;">Available for withdrawal</div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="action-buttons">
+        <button class="action-btn btn-deposit" onclick="showMpesaDeposit()">
+            📱 M-Pesa
+        </button>
+        <button class="action-btn btn-crypto" onclick="showCryptoDeposit()">
+            ₿ Crypto
+        </button>
+        <button class="action-btn btn-paypal" onclick="showPayPalDeposit()">
+            💳 PayPal
+        </button>
+        <button class="action-btn btn-withdraw" onclick="showWithdraw()">
+            💸 Withdraw
+        </button>
+    </div>
+
+    <!-- Transaction History -->
+    <div style="margin-bottom: 1rem;">
+        <h3 style="margin-bottom: 1rem;">📊 Transaction History</h3>
+        
+        {% if transactions %}
+            {% for transaction in transactions %}
+            <div class="transaction-card">
+                <div class="transaction-header" style="border-left-color: {% if transaction[2] in ['deposit', 'paypal_deposit', 'crypto_deposit'] %}#28a745{% elif transaction[2] in ['pending_deposit', 'pending_withdrawal'] %}#ffc107{% elif transaction[2] in ['rejected_deposit', 'rejected_withdrawal'] %}#dc3545{% else %}#6c757d{% endif %};">
+                    <div class="transaction-info">
+                        <div class="transaction-type">
+                            {% if transaction[2] == 'deposit' %}📱 M-Pesa Deposit
+                            {% elif transaction[2] == 'paypal_deposit' %}💳 PayPal Deposit
+                            {% elif transaction[2] == 'crypto_deposit' %}₿ Crypto Deposit
+                            {% elif transaction[2] == 'pending_deposit' %}⏳ Pending Deposit
+                            {% elif transaction[2] == 'withdrawal' %}✅ Withdrawal Paid
+                            {% elif transaction[2] == 'pending_withdrawal' %}⏳ Withdrawal Processing
+                            {% elif transaction[2] == 'match_win' %}🏆 Match Won
+                            {% elif transaction[2] == 'referral_bonus' %}🎁 Referral Bonus
+                            {% else %}📊 {{ transaction[2].replace('_', ' ').title() }}
+                            {% endif %}
+                            
+                            {% if transaction[2] in ['paypal_deposit', 'crypto_deposit'] %}
+                                <span class="status-badge" style="background: #28a745; color: white;">INSTANT</span>
+                            {% elif transaction[2] == 'pending_deposit' %}
+                                <span class="status-badge" style="background: #ffc107; color: black;">REVIEW</span>
+                            {% endif %}
+                        </div>
+                        <div class="transaction-desc">{{ transaction[4][:50] }}{% if transaction[4]|length > 50 %}...{% endif %}</div>
+                        <div class="transaction-date">{{ transaction[5] }}</div>
+                        
+                        {% if transaction[2] == 'pending_deposit' %}
+                        <button onclick="alertAdmin({{ transaction[0] }}, {{ transaction[3] }})" 
+                                style="background: #ffc107; color: black; border: none; padding: 0.3rem 0.6rem; border-radius: 15px; font-size: 0.8rem; margin-top: 0.5rem;">
+                            🔔 Alert Admin
+                        </button>
+                        {% endif %}
+                    </div>
+                    <div class="transaction-amount" style="color: {% if transaction[3] > 0 %}#28a745{% else %}#dc3545{% endif %};">
+                        {% if transaction[3] > 0 %}+{% endif %}KSh {{ "%.0f"|format(transaction[3]) }}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div style="text-align: center; padding: 2rem; color: #666;">
+                <div style="font-size: 3rem; margin-bottom: 1rem;">📊</div>
+                <p>No transactions yet</p>
+                <p style="font-size: 0.9rem;">Start playing to see your history!</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- M-Pesa Deposit Modal -->
+<div id="mpesaModal" class="modal-mobile">
+    <div class="modal-content-mobile">
+        <h2>📱 M-Pesa Deposit</h2>
+        
+        <div class="info-box">
+            <strong>SEND M-PESA TO:</strong><br>
+            Paybill: <strong>400200</strong><br>
+            Account: <strong>1075794</strong><br>
+            Reference: <strong>{{ session.username }}</strong>
+        </div>
+        
+        <form method="POST" action="{{ url_for('add_funds') }}" enctype="multipart/form-data">
+            <div class="form-group-mobile">
+                <label>Amount (KSh)</label>
+                <select name="amount" class="form-control-mobile" required>
+                    <option value="200">KSh 200</option>
+                    <option value="500">KSh 500</option>
+                    <option value="1000">KSh 1000</option>
+                    <option value="2500">KSh 2500</option>
+                    <option value="5000">KSh 5000</option>
+                </select>
+            </div>
+            
+            <div class="form-group-mobile">
+                <label>Your M-Pesa Number</label>
+                <input type="tel" name="mpesa_number" class="form-control-mobile" placeholder="0712345678" required>
+            </div>
+            
+            <div class="form-group-mobile">
+                <label>Your Full Name</label>
+                <input type="text" name="sender_name" class="form-control-mobile" placeholder="John Doe" required>
+            </div>
+            
+            <div class="form-group-mobile">
+                <label>M-Pesa Receipt Screenshot</label>
+                <input type="file" name="receipt_screenshot" accept="image/*" class="form-control-mobile" required>
+            </div>
+            
+            <div class="btn-grid">
+                <button type="submit" class="btn-mobile btn-primary-mobile">Submit Deposit</button>
+                <button type="button" class="btn-mobile btn-secondary-mobile" onclick="closeMpesaDeposit()">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Crypto Deposit Modal -->
+<div id="cryptoModal" class="modal-mobile">
+    <div class="modal-content-mobile">
+        <h2>₿ Crypto Deposit</h2>
+        <p>Pay with USDT TRC-20, Bitcoin, Ethereum, and 300+ cryptocurrencies</p>
+        
+        <div class="crypto-grid">
+            <div class="crypto-option" onclick="selectCryptoAmount(1950)">
+                <strong>KSh 1,950</strong><br>
+                <small>~$15</small>
+            </div>
+            <div class="crypto-option" onclick="selectCryptoAmount(2600)">
+                <strong>KSh 2,600</strong><br>
+                <small>~$20</small>
+            </div>
+            <div class="crypto-option" onclick="selectCryptoAmount(3900)">
+                <strong>KSh 3,900</strong><br>
+                <small>~$30</small>
+            </div>
+            <div class="crypto-option" onclick="selectCryptoAmount(6500)">
+                <strong>KSh 6,500</strong><br>
+                <small>~$50</small>
+            </div>
+        </div>
+        
+        <div class="form-group-mobile">
+            <label>Custom Amount (KSh)</label>
+            <input type="number" id="customCryptoAmount" class="form-control-mobile" min="1950" placeholder="Min KSh 1,950">
+        </div>
+        
+        <div class="warning-box">
+            <strong>IMPORTANT: USDT TRC-20 ONLY</strong><br>
+            For fastest processing, use USDT TRC-20 network only.
+        </div>
+        
+        <div class="btn-grid">
+            <button onclick="createCryptoPayment()" class="btn-mobile" style="background: #f7931a; color: white;">Continue with Crypto</button>
+            <button type="button" class="btn-mobile btn-secondary-mobile" onclick="closeCryptoDeposit()">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<!-- Withdraw Modal -->
+<div id="withdrawModal" class="modal-mobile">
+    <div class="modal-content-mobile">
+        <h2>💸 Withdraw Funds</h2>
+        
+        <form method="POST" action="{{ url_for('withdraw') }}">
+            <div class="form-group-mobile">
+                <label>Withdrawal Method</label>
+                <select name="withdrawal_method" class="form-control-mobile" onchange="updateWithdrawalMethod()" required>
+                    <option value="mpesa">📱 M-Pesa (KSh 25 fee)</option>
+                    <option value="paypal">💳 PayPal (5.5% fee)</option>
+                    <option value="crypto">₿ Crypto (3.5% fee)</option>
+                </select>
+            </div>
+            
+            <div class="form-group-mobile">
+                <label>Amount (KSh)</label>
+                <input type="number" name="amount" class="form-control-mobile" min="100" max="{{ session.balance }}" required>
+            </div>
+            
+            <div id="mpesaFields">
+                <div class="form-group-mobile">
+                    <label>M-Pesa Number</label>
+                    <input type="tel" name="mpesa_number" class="form-control-mobile" placeholder="0712345678">
+                </div>
+                <div class="form-group-mobile">
+                    <label>Account Name</label>
+                    <input type="text" name="mpesa_name" class="form-control-mobile" placeholder="John Doe">
+                </div>
+            </div>
+            
+            <div id="paypalFields" style="display: none;">
+                <div class="form-group-mobile">
+                    <label>PayPal Email</label>
+                    <input type="email" name="paypal_email" class="form-control-mobile" placeholder="your@email.com">
+                </div>
+            </div>
+            
+            <div id="cryptoFields" style="display: none;">
+                <div class="form-group-mobile">
+                    <label>Crypto Type</label>
+                    <select name="crypto_type" class="form-control-mobile">
+                        <option value="USDT">USDT TRC-20</option>
+                        <option value="BTC">Bitcoin</option>
+                    </select>
+                </div>
+                <div class="form-group-mobile">
+                    <label>Wallet Address</label>
+                    <input type="text" name="crypto_address" class="form-control-mobile" placeholder="Your wallet address">
+                </div>
+            </div>
+            
+            <div class="info-box">
+                <strong>Processing:</strong> 2-24 hours<br>
+                <strong>Security:</strong> First withdrawal needs verification
+            </div>
+            
+            <div class="btn-grid">
+                <button type="submit" class="btn-mobile btn-primary-mobile">Process Withdrawal</button>
+                <button type="button" class="btn-mobile btn-secondary-mobile" onclick="closeWithdraw()">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+let selectedCryptoAmount = 0;
+
+function showMpesaDeposit() {
+    document.getElementById('mpesaModal').style.display = 'block';
+}
+
+function closeMpesaDeposit() {
+    document.getElementById('mpesaModal').style.display = 'none';
+}
+
+function showCryptoDeposit() {
+    document.getElementById('cryptoModal').style.display = 'block';
+}
+
+function closeCryptoDeposit() {
+    document.getElementById('cryptoModal').style.display = 'none';
+}
+
+function showWithdraw() {
+    document.getElementById('withdrawModal').style.display = 'block';
+}
+
+function closeWithdraw() {
+    document.getElementById('withdrawModal').style.display = 'none';
+}
+
+function showPayPalDeposit() {
+    const amounts = [
+        {text: 'KSh 1,300 (~$10)', value: 1300},
+        {text: 'KSh 2,600 (~$20)', value: 2600},
+        {text: 'KSh 6,500 (~$50)', value: 6500},
+        {text: 'KSh 13,000 (~$100)', value: 13000}
+    ];
+    
+    let choice = prompt('Select amount:\\n\\n' + 
+        amounts.map((a, i) => `${i+1} = ${a.text}`).join('\\n') + 
+        '\\n\\nOr enter custom amount (KSh):');
+    
+    if (!choice) return;
+    
+    let amount = 0;
+    const choiceNum = parseInt(choice);
+    
+    if (choiceNum >= 1 && choiceNum <= 4) {
+        amount = amounts[choiceNum - 1].value;
+    } else {
+        amount = parseFloat(choice);
+        if (isNaN(amount) || amount < 130) {
+            alert('Invalid amount. Minimum: KSh 130');
+            return;
+        }
+    }
+    
+    window.open('/paypal_checkout?amount=' + amount, '_blank', 'width=500,height=600');
+}
+
+function selectCryptoAmount(amount) {
+    document.querySelectorAll('.crypto-option').forEach(el => {
+        el.classList.remove('selected');
+    });
+    
+    event.target.closest('.crypto-option').classList.add('selected');
+    selectedCryptoAmount = amount;
+    document.getElementById('customCryptoAmount').value = amount;
+}
+
+function createCryptoPayment() {
+    const amount = selectedCryptoAmount || document.getElementById('customCryptoAmount').value;
+    
+    if (!amount || amount < 1950) {
+        alert('Please select or enter an amount (minimum KSh 1,950)');
+        return;
+    }
+    
+    const btn = event.target;
+    btn.disabled = true;
+    btn.textContent = 'Processing...';
+    
+    fetch('/create_crypto_payment', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({amount: parseFloat(amount)})
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success && data.payment_url) {
+            closeCryptoDeposit();
+            window.open(data.payment_url, '_blank');
+            alert('Payment page opened. Complete payment there.');
+        } else {
+            alert('Error: ' + (data.error || 'Payment failed'));
+        }
+        btn.disabled = false;
+        btn.textContent = 'Continue with Crypto';
+    })
+    .catch(error => {
+        alert('Error creating payment. Please try again.');
+        btn.disabled = false;
+        btn.textContent = 'Continue with Crypto';
+    });
+}
+
+function updateWithdrawalMethod() {
+    const method = event.target.value;
+    
+    document.getElementById('mpesaFields').style.display = method === 'mpesa' ? 'block' : 'none';
+    document.getElementById('paypalFields').style.display = method === 'paypal' ? 'block' : 'none';
+    document.getElementById('cryptoFields').style.display = method === 'crypto' ? 'block' : 'none';
+}
+
+function alertAdmin(transactionId, amount) {
+    if (confirm(`Send alert to admin about your KSh ${amount} deposit?`)) {
+        fetch('/alert_admin_deposit', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                transaction_id: transactionId,
+                amount: amount
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('✅ Alert sent to admin!');
+            } else {
+                alert('❌ Error: ' + data.message);
+            }
+        })
+        .catch(error => {
+            alert('❌ Error sending alert.');
+        });
+    }
+}
+
+// Close modals when clicking outside
+document.addEventListener('click', function(event) {
+    if (event.target.classList.contains('modal-mobile')) {
+        event.target.style.display = 'none';
+    }
+});
+</script>
+
+{% endblock %}
