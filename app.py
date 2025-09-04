@@ -2658,12 +2658,17 @@ def admin_users():
     with sqlite3.connect("gamebet.db") as conn:
         c = conn.cursor()
     
-    # Get users with proper column mapping
+    # Get users with proper column mapping - force fresh query
     c.execute('''SELECT id, username, email, password, balance, wins, losses, total_earnings, 
-                        created_at, phone, referral_code, banned 
+                        created_at, phone, referral_code, COALESCE(banned, 0) as banned 
                  FROM users WHERE username != "admin" ORDER BY id DESC''')
     users = c.fetchall()
-    return render_template('admin_users_fixed.html', users=users)
+    
+    # Add cache-busting timestamp
+    import time
+    cache_buster = int(time.time())
+    
+    return render_template('admin_users_fixed.html', users=users, cache_buster=cache_buster)
 
 @app.route('/admin/transactions')
 @admin_required
@@ -4033,6 +4038,28 @@ def mark_alert_read():
     c.execute('UPDATE admin_notifications SET status = "read" WHERE id = ?', (alert_id,))
     conn.commit()
     return jsonify({'success': True})
+
+@app.route('/admin/user_count')
+@admin_required
+def admin_user_count():
+    """API endpoint to get current user count"""
+    with sqlite3.connect("gamebet.db") as conn:
+        c = conn.cursor()
+        c.execute('SELECT COUNT(*) FROM users WHERE username != "admin"')
+        total_users = c.fetchone()[0]
+        
+        c.execute('SELECT id, username, created_at FROM users WHERE username != "admin" ORDER BY id DESC LIMIT 5')
+        recent_users = c.fetchall()
+        
+    return jsonify({
+        'success': True,
+        'total_users': total_users,
+        'recent_users': [{
+            'id': u[0],
+            'username': u[1], 
+            'created_at': u[2]
+        } for u in recent_users]
+    })
 
 @app.route('/admin/status')
 @admin_required
