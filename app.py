@@ -2097,8 +2097,8 @@ def add_funds():
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )''')
     
-    processing_fee = amount * 0.03  # 3% processing fee for platform revenue
-    amount_to_credit = amount - processing_fee  # Credit amount after fee
+    processing_fee = 0  # No processing fee - deposits are free
+    amount_to_credit = amount  # Credit full amount
     
     description = f'M-Pesa deposit KSh {amount} from {sender_name} ({mpesa_number}) - To credit: KSh {amount_to_credit:.0f}'
     c.execute('''INSERT INTO transactions (user_id, type, amount, description, created_at)
@@ -3008,18 +3008,12 @@ def approve_deposit(transaction_id):
             c.execute('UPDATE users SET balance = balance + ? WHERE id = ?', (amount, user_id))
             flash(f'Deposit corrected from rejected to approved! KSh {amount:.0f} credited to user.', 'success')
         elif current_type == 'pending_deposit':
-            # Apply 3% processing fee on deposits for platform revenue
-            processing_fee = amount * 0.03
-            net_amount = amount - processing_fee
+            # No processing fee - credit full amount
+            net_amount = amount
             
             c.execute('UPDATE users SET balance = balance + ? WHERE id = ?', (net_amount, user_id))
             c.execute('UPDATE transactions SET type = "deposit", amount = ?, description = ? WHERE id = ?', 
-                     (net_amount, f'M-Pesa deposit KSh {amount} - Processing fee: KSh {processing_fee:.2f} - Net credited: KSh {net_amount:.2f}', transaction_id))
-            
-            # Record platform processing fee
-            c.execute('''INSERT INTO transactions (user_id, type, amount, description)
-                         VALUES (?, ?, ?, ?)''',
-                     (1, 'deposit_fee', processing_fee, f'3% processing fee from KSh {amount} deposit - User ID {user_id}'))
+                     (net_amount, f'M-Pesa deposit KSh {amount} - Full amount credited (no fees)', transaction_id))
             
             flash(f'Deposit approved! KSh {net_amount:.0f} credited (full amount)', 'success')
         else:

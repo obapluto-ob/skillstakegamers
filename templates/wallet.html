@@ -195,9 +195,9 @@
                     <div style="font-size: 0.85rem; color: #dc3545; background: #f8d7da; padding: 0.3rem 0.5rem; border-radius: 4px; margin-top: 0.3rem;">
                         <strong>Reason:</strong> {{ transaction[4].split('Reason: ')[1] if 'Reason: ' in transaction[4] else 'No reason provided' }}
                     </div>
-                {% elif transaction[2] in ['paypal_deposit', 'crypto_deposit'] and '3% fee' in transaction[4] %}
+                {% elif transaction[2] in ['paypal_deposit', 'crypto_deposit'] %}
                     <div style="font-size: 0.85rem; color: #155724; background: #d4edda; padding: 0.3rem 0.5rem; border-radius: 4px; margin-top: 0.3rem;">
-                        <strong>💰 Fee Applied:</strong> 3% platform fee deducted (helps us maintain 24/7 service)
+                        <strong>💰 No Fees:</strong> Full amount credited - deposits are completely free!
                     </div>
                 {% elif transaction[2] in ['failed_crypto_deposit', 'failed_paypal_deposit'] %}
                     <div style="font-size: 0.85rem; color: #dc3545; background: #f8d7da; padding: 0.3rem 0.5rem; border-radius: 4px; margin-top: 0.3rem;">
