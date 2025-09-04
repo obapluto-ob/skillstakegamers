@@ -718,8 +718,8 @@ function createCryptoPayment() {
     .then(data => {
         if (data.success && data.payment_url) {
             closeCryptoDeposit();
-            window.open(data.payment_url, '_blank');
-            alert('Payment page opened. Complete payment there.');
+            // Redirect in same tab for better mobile experience
+            window.location.href = data.payment_url;
         } else {
             alert('Error: ' + (data.error || 'Payment failed'));
         }

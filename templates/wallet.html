@@ -77,25 +77,25 @@
         
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 1rem; margin: 1rem 0;">
             <div class="crypto-amount" data-amount="1950" onclick="selectCryptoAmount(1950)">
-                <div style="text-align: center; padding: 1rem; border: 2px solid #ddd; border-radius: 8px; cursor: pointer;">
+                <div style="text-align: center; padding: 1rem; border: 2px solid #ddd; border-radius: 8px; cursor: pointer; background: linear-gradient(135deg, #f8f9fa, #e9ecef);">
                     <strong>KSh 1,950</strong><br>
                     <small>~$15</small>
                 </div>
             </div>
             <div class="crypto-amount" data-amount="2600" onclick="selectCryptoAmount(2600)">
-                <div style="text-align: center; padding: 1rem; border: 2px solid #ddd; border-radius: 8px; cursor: pointer;">
+                <div style="text-align: center; padding: 1rem; border: 2px solid #ddd; border-radius: 8px; cursor: pointer; background: linear-gradient(135deg, #f8f9fa, #e9ecef);">
                     <strong>KSh 2,600</strong><br>
                     <small>~$20</small>
                 </div>
             </div>
             <div class="crypto-amount" data-amount="3900" onclick="selectCryptoAmount(3900)">
-                <div style="text-align: center; padding: 1rem; border: 2px solid #ddd; border-radius: 8px; cursor: pointer;">
+                <div style="text-align: center; padding: 1rem; border: 2px solid #ddd; border-radius: 8px; cursor: pointer; background: linear-gradient(135deg, #f8f9fa, #e9ecef);">
                     <strong>KSh 3,900</strong><br>
                     <small>~$30</small>
                 </div>
             </div>
             <div class="crypto-amount" data-amount="6500" onclick="selectCryptoAmount(6500)">
-                <div style="text-align: center; padding: 1rem; border: 2px solid #ddd; border-radius: 8px; cursor: pointer;">
+                <div style="text-align: center; padding: 1rem; border: 2px solid #ddd; border-radius: 8px; cursor: pointer; background: linear-gradient(135deg, #f8f9fa, #e9ecef);">
                     <strong>KSh 6,500</strong><br>
                     <small>~$50</small>
                 </div>
@@ -412,7 +412,7 @@ function selectCryptoAmount(amount) {
     
     const selected = document.querySelector(`[data-amount="${amount}"] div`);
     selected.style.borderColor = '#f7931a';
-    selected.style.background = '#fff3cd';
+    selected.style.background = 'linear-gradient(135deg, #fff3cd, #ffeaa7)';
     
     selectedCryptoAmount = amount;
     document.getElementById('customCryptoAmount').value = amount;
@@ -443,8 +443,8 @@ function createCryptoPayment() {
         console.log('Payment response:', data);
         if (data.success && data.payment_url && data.payment_url !== '#') {
             closeCryptoDeposit();
-            window.open(data.payment_url, '_blank');
-            alert('Payment page opened in new tab. Complete payment there.');
+            // Redirect in same tab for better mobile experience
+            window.location.href = data.payment_url;
         } else {
             alert('Error: ' + (data.error || 'Invalid payment URL'));
         }
