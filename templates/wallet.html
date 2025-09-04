@@ -18,7 +18,7 @@
 
 <!-- Add Funds Modal -->
 <div id="addFundsModal" class="modal">
-    <div class="modal-content" style="max-width: 500px; max-height: 90vh; overflow-y: auto;">
+    <div class="modal-content" style="max-width: 500px; max-height: 90vh; overflow-y: auto; margin-top: 80px;">
         <span class="close" onclick="closeAddFunds()">&times;</span>
         <h2>Add Funds</h2>
         
@@ -70,34 +70,34 @@
 
 <!-- Crypto Deposit Modal -->
 <div id="cryptoDepositModal" class="modal">
-    <div class="modal-content" style="max-width: 600px; max-height: 90vh; overflow-y: auto;">
+    <div class="modal-content" style="max-width: 600px; max-height: 90vh; overflow-y: auto; margin-top: 80px;">
         <span class="close" onclick="closeCryptoDeposit()">&times;</span>
         <h2>Crypto Deposit</h2>
         <p>Pay with USDT TRC-20 (recommended), Bitcoin, Ethereum, and 300+ cryptocurrencies</p>
         
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 1rem; margin: 1rem 0;">
             <div class="crypto-amount" data-amount="1950" onclick="selectCryptoAmount(1950)">
-                <div style="text-align: center; padding: 1rem; border: 2px solid #ddd; border-radius: 8px; cursor: pointer; background: linear-gradient(135deg, #f8f9fa, #e9ecef);">
-                    <strong>KSh 1,950</strong><br>
-                    <small>~$15</small>
+                <div style="text-align: center; padding: 1rem; border: 2px solid #ddd; border-radius: 8px; cursor: pointer; background: linear-gradient(135deg, #667eea, #764ba2);">
+                    <strong style="color: white;">KSh 1,950</strong><br>
+                    <small style="color: #e0e0e0;">~$15</small>
                 </div>
             </div>
             <div class="crypto-amount" data-amount="2600" onclick="selectCryptoAmount(2600)">
-                <div style="text-align: center; padding: 1rem; border: 2px solid #ddd; border-radius: 8px; cursor: pointer; background: linear-gradient(135deg, #f8f9fa, #e9ecef);">
-                    <strong>KSh 2,600</strong><br>
-                    <small>~$20</small>
+                <div style="text-align: center; padding: 1rem; border: 2px solid #ddd; border-radius: 8px; cursor: pointer; background: linear-gradient(135deg, #667eea, #764ba2);">
+                    <strong style="color: white;">KSh 2,600</strong><br>
+                    <small style="color: #e0e0e0;">~$20</small>
                 </div>
             </div>
             <div class="crypto-amount" data-amount="3900" onclick="selectCryptoAmount(3900)">
-                <div style="text-align: center; padding: 1rem; border: 2px solid #ddd; border-radius: 8px; cursor: pointer; background: linear-gradient(135deg, #f8f9fa, #e9ecef);">
-                    <strong>KSh 3,900</strong><br>
-                    <small>~$30</small>
+                <div style="text-align: center; padding: 1rem; border: 2px solid #ddd; border-radius: 8px; cursor: pointer; background: linear-gradient(135deg, #667eea, #764ba2);">
+                    <strong style="color: white;">KSh 3,900</strong><br>
+                    <small style="color: #e0e0e0;">~$30</small>
                 </div>
             </div>
             <div class="crypto-amount" data-amount="6500" onclick="selectCryptoAmount(6500)">
-                <div style="text-align: center; padding: 1rem; border: 2px solid #ddd; border-radius: 8px; cursor: pointer; background: linear-gradient(135deg, #f8f9fa, #e9ecef);">
-                    <strong>KSh 6,500</strong><br>
-                    <small>~$50</small>
+                <div style="text-align: center; padding: 1rem; border: 2px solid #ddd; border-radius: 8px; cursor: pointer; background: linear-gradient(135deg, #667eea, #764ba2);">
+                    <strong style="color: white;">KSh 6,500</strong><br>
+                    <small style="color: #e0e0e0;">~$50</small>
                 </div>
             </div>
         </div>
@@ -241,7 +241,7 @@
 
 <!-- Smart Withdraw Modal -->
 <div id="withdrawModal" class="modal">
-    <div class="modal-content" style="max-width: 600px; max-height: 85vh; overflow-y: auto;">
+    <div class="modal-content" style="max-width: 600px; max-height: 85vh; overflow-y: auto; margin-top: 80px;">
         <span class="close" onclick="closeWithdraw()">&times;</span>
         <h2>💡 Smart Withdrawal System</h2>
         
@@ -407,12 +407,12 @@ let selectedCryptoAmount = 0;
 function selectCryptoAmount(amount) {
     document.querySelectorAll('.crypto-amount div').forEach(el => {
         el.style.borderColor = '#ddd';
-        el.style.background = 'white';
+        el.style.background = 'linear-gradient(135deg, #667eea, #764ba2)';
     });
     
     const selected = document.querySelector(`[data-amount="${amount}"] div`);
     selected.style.borderColor = '#f7931a';
-    selected.style.background = 'linear-gradient(135deg, #fff3cd, #ffeaa7)';
+    selected.style.background = 'linear-gradient(135deg, #f7931a, #ff6b35)';
     
     selectedCryptoAmount = amount;
     document.getElementById('customCryptoAmount').value = amount;
@@ -659,7 +659,7 @@ window.onclick = function(event) {
 </div>
 
 <div id="proofModal" class="modal">
-    <div class="modal-content">
+    <div class="modal-content" style="margin-top: 80px;">
         <span class="close" onclick="closeProofModal()">&times;</span>
         <h3>Payment Proof</h3>
         <img id="proofImage" src="" style="max-width: 100%; height: auto; border-radius: 8px;">

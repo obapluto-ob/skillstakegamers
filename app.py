@@ -1693,9 +1693,9 @@ def payment_webhook():
             user_id, amount_kes = payment
             
             if payment_status == 'finished':
-                # Apply 3% fee
-                fee = amount_kes * 0.03
-                net_amount = amount_kes - fee
+                # Credit full amount (no fee)
+                fee = 0
+                net_amount = amount_kes
                 
                 # Credit user account
                 c.execute('UPDATE users SET balance = balance + ? WHERE id = ?', (net_amount, user_id))
@@ -1706,12 +1706,7 @@ def payment_webhook():
                 # Add transaction record
                 c.execute('''INSERT INTO transactions (user_id, type, amount, description)
                              VALUES (?, ?, ?, ?)''',
-                         (user_id, 'crypto_deposit', net_amount, f'Crypto deposit KSh {amount_kes} - 3% fee = KSh {net_amount:.0f} - Payment ID: {payment_id}'))
-                
-                # Record admin commission
-                c.execute('''INSERT INTO transactions (user_id, type, amount, description)
-                             VALUES (?, ?, ?, ?)''',
-                         (1, 'deposit_fee', fee, f'3% deposit fee from crypto payment - Payment ID: {payment_id}'))
+                         (user_id, 'crypto_deposit', net_amount, f'Crypto deposit KSh {amount_kes} - Full amount credited - Payment ID: {payment_id}'))
                 
             elif payment_status in ['failed', 'expired', 'cancelled']:
                 # Update payment status to failed
@@ -1805,9 +1800,9 @@ def paypal_capture():
     amount_kes = safe_float_conversion(request.form.get('amount', 0), 'amount')
     
     try:
-        # Apply 3% fee and credit user account
-        fee = amount_kes * 0.03
-        net_amount = amount_kes - fee
+        # Credit full amount to user account (no fee)
+        fee = 0
+        net_amount = amount_kes
         
         with sqlite3.connect("gamebet.db") as conn:
             c = conn.cursor()
@@ -1815,12 +1810,7 @@ def paypal_capture():
         c.execute('UPDATE users SET balance = balance + ? WHERE id = ?', (net_amount, session['user_id']))
         c.execute('''INSERT INTO transactions (user_id, type, amount, description)
                      VALUES (?, ?, ?, ?)''',
-                 (session['user_id'], 'paypal_deposit', net_amount, f'PayPal deposit KSh {amount_kes} - 3% fee = KSh {net_amount:.0f} - Order: {order_id}'))
-        
-        # Record admin commission
-        c.execute('''INSERT INTO transactions (user_id, type, amount, description)
-                     VALUES (?, ?, ?, ?)''',
-                 (1, 'deposit_fee', fee, f'3% deposit fee from PayPal payment - Order: {order_id}'))
+                 (session['user_id'], 'paypal_deposit', net_amount, f'PayPal deposit KSh {amount_kes} - Full amount credited - Order: {order_id}'))
         
         conn.commit()
         session['balance'] = session.get('balance', 0) + net_amount
@@ -1960,8 +1950,8 @@ def add_funds():
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )''')
     
-    processing_fee = amount * 0.03
-    amount_to_credit = amount - processing_fee
+    processing_fee = 0  # No commission on deposits
+    amount_to_credit = amount  # Credit full amount
     
     description = f'M-Pesa deposit KSh {amount} from {sender_name} ({mpesa_number}) - To credit: KSh {amount_to_credit:.0f}'
     c.execute('''INSERT INTO transactions (user_id, type, amount, description, created_at)
@@ -2832,20 +2822,14 @@ def approve_deposit(transaction_id):
             c.execute('UPDATE users SET balance = balance + ? WHERE id = ?', (amount, user_id))
             flash(f'Deposit corrected from rejected to approved! KSh {amount:.0f} credited to user.', 'success')
         elif current_type == 'pending_deposit':
-            # Apply 3% fee to M-Pesa deposits - user deposits 500, gets 485 credited
-            fee = amount * 0.03
-            net_amount = amount - fee
+            # No fee on M-Pesa deposits - credit full amount
+            net_amount = amount
             
             c.execute('UPDATE users SET balance = balance + ? WHERE id = ?', (net_amount, user_id))
             c.execute('UPDATE transactions SET type = "deposit", amount = ?, description = ? WHERE id = ?', 
-                     (net_amount, f'M-Pesa deposit KSh {amount} - 3% fee = KSh {net_amount:.0f}', transaction_id))
+                     (net_amount, f'M-Pesa deposit KSh {amount} - Full amount credited', transaction_id))
             
-            # Record admin commission
-            c.execute('''INSERT INTO transactions (user_id, type, amount, description)
-                         VALUES (?, ?, ?, ?)''',
-                     (1, 'deposit_fee', fee, f'3% deposit fee from M-Pesa deposit - Transaction {transaction_id}'))
-            
-            flash(f'Deposit approved! KSh {net_amount:.0f} credited (KSh {amount} - 3% fee)', 'success')
+            flash(f'Deposit approved! KSh {net_amount:.0f} credited (full amount)', 'success')
         else:
             flash(f'Deposit already processed (status: {current_type})', 'info')
         
