@@ -585,7 +585,7 @@ def login_secure():
 
 @app.route('/send_verification', methods=['POST'])
 def send_verification():
-    from free_sms import send_verification_sms
+    from phone_auth import send_verification_sms
     
     data = request.get_json()
     phone = data.get('phone')
@@ -604,7 +604,7 @@ def send_verification():
 
 @app.route('/register_with_verification', methods=['POST'])
 def register_with_verification():
-    from free_sms import verify_code
+    from phone_auth import verify_code
     
     data = request.get_json()
     username = data.get('username')
