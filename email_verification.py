@@ -55,18 +55,27 @@ def send_email_multiple_ways(to_email, subject, body):
         gmail_user = os.getenv('GMAIL_USER')
         gmail_pass = os.getenv('GMAIL_PASS')
         
+        print(f"DEBUG: Gmail User: {gmail_user}")
+        print(f"DEBUG: Gmail Pass: {'SET' if gmail_pass else 'NOT SET'}")
+        
         if gmail_user and gmail_pass:
-            return send_gmail(to_email, subject, body, gmail_user, gmail_pass)
-    except:
-        pass
+            result = send_gmail(to_email, subject, body, gmail_user, gmail_pass)
+            print(f"DEBUG: Gmail result: {result}")
+            return result
+        else:
+            print("DEBUG: Gmail credentials not found")
+    except Exception as e:
+        print(f"DEBUG: Gmail exception: {str(e)}")
     
     # Method 2: SendGrid (if configured)
     try:
         sendgrid_key = os.getenv('SENDGRID_API_KEY')
         if sendgrid_key:
             return send_sendgrid(to_email, subject, body, sendgrid_key)
-    except:
-        pass
+        else:
+            print("DEBUG: SendGrid not configured")
+    except Exception as e:
+        print(f"DEBUG: SendGrid exception: {str(e)}")
     
     # Method 3: Mailgun (if configured)
     try:
@@ -74,8 +83,10 @@ def send_email_multiple_ways(to_email, subject, body):
         mailgun_domain = os.getenv('MAILGUN_DOMAIN')
         if mailgun_key and mailgun_domain:
             return send_mailgun(to_email, subject, body, mailgun_key, mailgun_domain)
-    except:
-        pass
+        else:
+            print("DEBUG: Mailgun not configured")
+    except Exception as e:
+        print(f"DEBUG: Mailgun exception: {str(e)}")
     
     return False, "No email service configured"
 
