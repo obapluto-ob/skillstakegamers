@@ -739,6 +739,9 @@ def secure_login_step2():
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
+    # Redirect to secure registration with email verification
+    return redirect(url_for('register_secure'))
+    
     if request.method == 'POST':
         # Validate inputs
         username = request.form['username'].strip()
