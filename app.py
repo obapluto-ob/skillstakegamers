@@ -494,6 +494,16 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+# Import email verification system
+try:
+    from email_auth import send_email_verification, verify_email_code
+except ImportError:
+    print("Warning: Email verification system not available")
+    def send_email_verification(email):
+        return False, "Email system not configured"
+    def verify_email_code(email, code):
+        return False, "Email system not configured"
+
 
 def admin_required_check():
     if 'user_id' not in session:
@@ -585,8 +595,6 @@ def login_secure():
 
 @app.route('/send_verification', methods=['POST'])
 def send_verification():
-    from email_auth import send_email_verification
-    
     data = request.get_json()
     email = data.get('email')
     
@@ -601,18 +609,24 @@ def send_verification():
     try:
         success, message = send_email_verification(email)
         print(f"Email Verification Debug: Email={email}, Success={success}, Message={message}")
-        return jsonify({
-            'success': success,
-            'message': message
-        })
+        
+        if success:
+            return jsonify({
+                'success': True,
+                'message': f'Verification code sent to {email}. Please check your inbox and spam folder.'
+            })
+        else:
+            print(f"Email sending failed for {email}: {message}")
+            return jsonify({
+                'success': False, 
+                'message': 'Failed to send email. Please check your email address and try again.'
+            })
     except Exception as e:
         print(f"Email Verification Error: {str(e)}")
-        return jsonify({'success': False, 'message': f'Failed to send verification code: {str(e)}'})
+        return jsonify({'success': False, 'message': 'Email service temporarily unavailable. Please try again.'})
 
 @app.route('/register_with_verification', methods=['POST'])
 def register_with_verification():
-    from email_auth import verify_email_code
-    
     data = request.get_json()
     username = data.get('username')
     email = data.get('email')
@@ -654,8 +668,6 @@ def register_with_verification():
 
 @app.route('/secure_login_step1', methods=['POST'])
 def secure_login_step1():
-    from email_auth import send_email_verification
-    
     data = request.get_json()
     login_input = data.get('loginInput')
     password = data.get('password')
@@ -688,8 +700,6 @@ def secure_login_step1():
 
 @app.route('/secure_login_step2', methods=['POST'])
 def secure_login_step2():
-    from email_auth import verify_email_code
-    
     data = request.get_json()
     code = data.get('code')
     
