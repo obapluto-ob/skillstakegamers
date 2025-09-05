@@ -83,9 +83,11 @@ def send_gmail(to_email, subject, body, gmail_user, gmail_pass):
     """Send email via Gmail SMTP"""
     try:
         msg = MIMEMultipart()
-        msg['From'] = gmail_user
+        msg['From'] = f'SkillStake Gaming <{gmail_user}>'
         msg['To'] = to_email
         msg['Subject'] = subject
+        msg['Reply-To'] = gmail_user
+        msg['X-Mailer'] = 'SkillStake Platform'
         msg.attach(MIMEText(body, 'plain'))
         
         server = smtplib.SMTP('smtp.gmail.com', 587)
