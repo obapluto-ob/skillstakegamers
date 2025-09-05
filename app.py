@@ -496,10 +496,10 @@ load_dotenv()
 
 # Import email verification system
 try:
-    from email_auth import send_email_verification, verify_email_code
+    from email_verification import send_email_code, verify_email_code
 except ImportError:
     print("Warning: Email verification system not available")
-    def send_email_verification(email):
+    def send_email_code(email):
         return False, "Email system not configured"
     def verify_email_code(email, code):
         return False, "Email system not configured"
@@ -607,7 +607,7 @@ def send_verification():
         return jsonify({'success': False, 'message': 'Invalid email format'})
     
     try:
-        success, message = send_email_verification(email)
+        success, message = send_email_code(email)
         print(f"Email Verification Debug: Email={email}, Success={success}, Message={message}")
         
         if success:
@@ -681,7 +681,7 @@ def secure_login_step1():
             
             if user and check_password_hash(user[2], password):
                 # Send login verification code to email
-                success, message = send_email_verification(user[3])
+                success, message = send_email_code(user[3])
                 
                 # Store user ID in session temporarily
                 session['temp_user_id'] = user[0]
