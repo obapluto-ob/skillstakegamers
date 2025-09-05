@@ -585,36 +585,44 @@ def login_secure():
 
 @app.route('/send_verification', methods=['POST'])
 def send_verification():
-    from phone_auth import send_verification_sms
+    from email_auth import send_email_verification
     
     data = request.get_json()
-    phone = data.get('phone')
+    email = data.get('email')
     
-    if not phone:
-        return jsonify({'success': False, 'message': 'Phone number required'})
+    if not email:
+        return jsonify({'success': False, 'message': 'Email address required'})
+    
+    # Validate email format
+    import re
+    if not re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', email):
+        return jsonify({'success': False, 'message': 'Invalid email format'})
     
     try:
-        success, message = send_verification_sms(phone)
+        success, message = send_email_verification(email)
+        print(f"Email Verification Debug: Email={email}, Success={success}, Message={message}")
         return jsonify({
             'success': success,
             'message': message
         })
     except Exception as e:
-        return jsonify({'success': False, 'message': 'Failed to send verification code'})
+        print(f"Email Verification Error: {str(e)}")
+        return jsonify({'success': False, 'message': f'Failed to send verification code: {str(e)}'})
 
 @app.route('/register_with_verification', methods=['POST'])
 def register_with_verification():
-    from phone_auth import verify_code
+    from email_auth import verify_email_code
     
     data = request.get_json()
     username = data.get('username')
-    phone = data.get('phone')
+    email = data.get('email')
+    phone = data.get('phone')  # Optional M-Pesa number
     password = data.get('password')
     referral_code = data.get('referralCode')
     code = data.get('code')
     
-    # Verify SMS code
-    is_valid, message = verify_code(phone, code)
+    # Verify email code
+    is_valid, message = verify_email_code(email, code)
     if not is_valid:
         return jsonify({'success': False, 'message': message})
     
@@ -623,10 +631,10 @@ def register_with_verification():
         with get_db_connection() as conn:
             c = conn.cursor()
             
-            # Check if username/phone exists
-            c.execute('SELECT id FROM users WHERE username = ? OR phone = ?', (username, phone))
+            # Check if username/email exists
+            c.execute('SELECT id FROM users WHERE username = ? OR email = ?', (username, email))
             if c.fetchone():
-                return jsonify({'success': False, 'message': 'Username or phone already registered'})
+                return jsonify({'success': False, 'message': 'Username or email already registered'})
             
             hashed_password = generate_password_hash(password)
             import random, string
@@ -634,19 +642,19 @@ def register_with_verification():
             
             c.execute('''INSERT INTO users (username, email, password, balance, phone, referral_code) 
                          VALUES (?, ?, ?, ?, ?, ?)''',
-                     (username, phone + '@skillstake.com', hashed_password, 0.0, phone, user_referral_code))
+                     (username, email, hashed_password, 0.0, phone or '', user_referral_code))
             
             if not os.getenv('DATABASE_URL'):
                 conn.commit()
             
-            return jsonify({'success': True, 'message': 'Registration successful'})
+            return jsonify({'success': True, 'message': 'Registration successful! You can now login.'})
             
     except Exception as e:
         return jsonify({'success': False, 'message': 'Registration failed'})
 
 @app.route('/secure_login_step1', methods=['POST'])
 def secure_login_step1():
-    from phone_auth import generate_login_code
+    from email_auth import send_email_verification
     
     data = request.get_json()
     login_input = data.get('loginInput')
@@ -655,21 +663,22 @@ def secure_login_step1():
     try:
         with get_db_connection() as conn:
             c = conn.cursor()
-            c.execute('SELECT id, username, password, phone FROM users WHERE username = ? OR phone = ?', 
+            c.execute('SELECT id, username, password, email FROM users WHERE username = ? OR email = ?', 
                      (login_input, login_input))
             user = c.fetchone()
             
             if user and check_password_hash(user[2], password):
-                # Generate and send login code
-                code = generate_login_code(user[0])
+                # Send login verification code to email
+                success, message = send_email_verification(user[3])
                 
                 # Store user ID in session temporarily
                 session['temp_user_id'] = user[0]
+                session['temp_email'] = user[3]
                 
                 return jsonify({
                     'success': True, 
-                    'message': f'Demo Mode: Your login code is {code}',
-                    'demo_code': code
+                    'message': f'Login code sent to {user[3]}',
+                    'email': user[3]
                 })
             else:
                 return jsonify({'success': False, 'message': 'Invalid credentials'})
@@ -679,17 +688,18 @@ def secure_login_step1():
 
 @app.route('/secure_login_step2', methods=['POST'])
 def secure_login_step2():
-    from phone_auth import verify_login_code
+    from email_auth import verify_email_code
     
     data = request.get_json()
     code = data.get('code')
     
     temp_user_id = session.get('temp_user_id')
-    if not temp_user_id:
+    temp_email = session.get('temp_email')
+    if not temp_user_id or not temp_email:
         return jsonify({'success': False, 'message': 'Session expired'})
     
     # Verify code
-    is_valid, message = verify_login_code(temp_user_id, code)
+    is_valid, message = verify_email_code(temp_email, code)
     if not is_valid:
         return jsonify({'success': False, 'message': message})
     
@@ -708,6 +718,7 @@ def secure_login_step2():
                 
                 # Clear temp session
                 session.pop('temp_user_id', None)
+                session.pop('temp_email', None)
                 
                 return jsonify({'success': True, 'message': 'Login successful'})
             else:

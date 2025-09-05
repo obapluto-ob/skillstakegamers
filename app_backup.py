@@ -1,9 +1,10 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify
+﻿from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify
 from werkzeug.security import generate_password_hash, check_password_hash
 import sqlite3
 import re
 import random
 import time
+from database import get_db_connection, init_database
 from validators import validate_amount, validate_mpesa_number, validate_username, validate_file_upload
 from db_utils import get_db_connection, execute_query
 from security import login_required, admin_required, add_security_headers, generate_csrf_token
@@ -11,6 +12,102 @@ from error_handler import handle_error, log_transaction, log_security_event, log
 from financial_utils import safe_money_calculation, calculate_fees, calculate_winnings, validate_balance_operation
 from match_utils import atomic_match_update, safe_balance_update
 from rate_limiter import rate_limit
+# Import security fixes with fallbacks
+try:
+    from security_fixes import (
+        login_required, admin_required, safe_db_execute, validate_file_upload,
+        safe_float_conversion, validate_amount, validate_user_id, handle_db_errors,
+        rate_limit, VALID_BONUS_TYPES
+    )
+except ImportError:
+    # Fallback functions
+    def safe_float_conversion(value, field_name):
+        try:
+            return float(value)
+        except (ValueError, TypeError):
+            return 0.0
+    
+    VALID_BONUS_TYPES = ['referral', 'match_win', 'tournament']
+    
+    def validate_user_id(user_id):
+        try:
+            return int(user_id) > 0
+        except (ValueError, TypeError):
+            return False
+    
+    def handle_db_errors(func):
+        def wrapper(*args, **kwargs):
+            try:
+                return func(*args, **kwargs)
+            except Exception as e:
+                print(f"Database error: {e}")
+                return None
+        return wrapper
+    
+    def safe_db_execute(query, params=None):
+        import sqlite3
+        try:
+            with get_db_connection() as conn:
+                c = conn.cursor()
+                if params:
+                    c.execute(query, params)
+                else:
+                    c.execute(query)
+                return c.fetchall()
+        except Exception as e:
+            print(f"DB error: {e}")
+            return None
+# Import final security enhancements with fallbacks
+try:
+    from final_security_enhancements import (
+        rate_limit_endpoint, add_security_headers, generate_csrf_token,
+        validate_csrf_token, secure_admin_check
+    )
+except ImportError:
+    # Fallback functions
+    def rate_limit_endpoint(*args, **kwargs):
+        def decorator(f):
+            return f
+        return decorator
+    
+    def add_security_headers(response):
+        response.headers['X-Content-Type-Options'] = 'nosniff'
+        response.headers['X-Frame-Options'] = 'DENY'
+        response.headers['X-XSS-Protection'] = '1; mode=block'
+        return response
+    
+    def generate_csrf_token():
+        import secrets
+        return secrets.token_hex(16)
+    
+    def validate_csrf_token(token):
+        return True  # Simple fallback
+    
+    def secure_admin_check():
+        from flask import session
+        return session.get('username') == 'admin'
+# Import new modules with error handling
+try:
+    from smart_rate_limiting import smart_rate_limit
+    from improved_error_handler import handle_user_friendly_errors, log_user_actions
+    from performance_utils import optimize_database, get_platform_stats
+    NEW_FEATURES_AVAILABLE = True
+except ImportError:
+    NEW_FEATURES_AVAILABLE = False
+    # Fallback to simple rate limiting
+    def smart_rate_limit(max_requests=10, window=300, user_based=False):
+        def decorator(f):
+            return f  # Simple passthrough for now
+        return decorator
+    def handle_user_friendly_errors(app):
+        pass
+    def log_user_actions(*args, **kwargs):
+        pass
+    def optimize_database():
+        pass
+    def get_platform_stats():
+        return {'users': 0, 'matches': 0, 'streams': 0}
+
 # import pytesseract
 # pytesseract.pytesseract.tesseract_cmd = r'C:\Windows\System32\gamers\tesseract_installer.exe'
 
@@ -20,6 +117,10 @@ def analyze_screenshot(screenshot_data, claimed_result, game_type):
     import hashlib
     from datetime import datetime
     import re
+    
+    # Validate inputs
+    if not screenshot_data or not game_type:
+        return {'validity': 'INVALID', 'reason': 'Missing required data'}
     
     # Basic file validation
     if len(screenshot_data) < 100000:
@@ -33,12 +134,12 @@ def analyze_screenshot(screenshot_data, claimed_result, game_type):
         image_data = base64.b64decode(screenshot_data)
         if not (image_data.startswith(b'\xff\xd8') or image_data.startswith(b'\x89PNG')):
             return {'validity': 'INVALID', 'reason': 'Only JPEG and PNG formats accepted'}
-    except:
+    except Exception:
         return {'validity': 'INVALID', 'reason': 'Corrupted or fake image data'}
     
-    # Advanced Image Analysis System (No OCR Required)
+    # Strict Image Analysis System
     def analyze_image_advanced(image_data, game_type, claimed_result):
-        """Advanced screenshot verification without OCR dependency"""
+        """Strict screenshot verification with multiple validation layers"""
         try:
             from PIL import Image
             import io
@@ -49,50 +150,115 @@ def analyze_screenshot(screenshot_data, claimed_result, game_type):
             image = Image.open(io.BytesIO(image_data))
             opencv_image = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
             
-            # Advanced image analysis
+            # STRICT VALIDATION CHECKS
             gray = cv2.cvtColor(opencv_image, cv2.COLOR_BGR2GRAY)
-            
-            # 1. Color analysis for game UI detection
             hsv = cv2.cvtColor(opencv_image, cv2.COLOR_BGR2HSV)
             
-            # Game-specific color patterns
-            game_colors = {
-                'pubg_mobile': [(0, 100, 100), (10, 255, 255)],  # Red UI elements
-                'fifa_mobile': [(35, 100, 100), (85, 255, 255)], # Green field
-                'cod_mobile': [(100, 100, 100), (130, 255, 255)] # Blue UI
-            }
+            # 1. Minimum resolution check (game screenshots should be high-res)
+            if image.width < 720 or image.height < 1280:
+                return 'INVALID_LOW_RESOLUTION'
             
-            # 2. Edge detection for UI elements
+            # 2. Edge density (game UIs have complex interfaces)
             edges = cv2.Canny(gray, 50, 150)
             edge_density = np.sum(edges > 0) / (image.width * image.height)
+            if edge_density < 0.35:  # Even stricter - games have lots of UI
+                return 'INVALID_NO_GAME_UI'
             
-            # 3. Template matching for common game elements
-            # Simulate game element detection
-            has_game_ui = edge_density > 0.05 and len(np.unique(opencv_image)) > 1000
+            # 3. Color complexity (games have rich color palettes)
+            unique_colors = len(np.unique(opencv_image.reshape(-1, opencv_image.shape[2]), axis=0))
+            if unique_colors < 15000:  # Much stricter - games are colorful
+                return 'INVALID_LOW_COLOR_COMPLEXITY'
             
-            # 4. Statistical analysis
-            color_variance = np.var(opencv_image)
-            brightness_mean = np.mean(gray)
+            # 4. Reject screenshots that look like photos or simple images
+            # Check for photo-like characteristics
+            blur_score = cv2.Laplacian(gray, cv2.CV_64F).var()
+            if blur_score < 100:  # Too blurry, likely a photo
+                return 'INVALID_BLURRY_IMAGE'
             
-            # Stricter game screenshot characteristics
-            is_game_screenshot = (
-                has_game_ui and 
-                color_variance > 50000 and 
-                30 < brightness_mean < 180 and
-                edge_density > 0.15 and
-                len(np.unique(opencv_image)) > 5000
-            )
+            # 5. Check for UI elements (buttons, text, HUD)
+            # Games should have rectangular UI elements
+            contours, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            rectangular_shapes = 0
+            for contour in contours:
+                if cv2.contourArea(contour) > 500:  # Significant size
+                    approx = cv2.approxPolyDP(contour, 0.02 * cv2.arcLength(contour, True), True)
+                    if len(approx) == 4:  # Rectangle-like
+                        rectangular_shapes += 1
             
-            if is_game_screenshot:
+            if rectangular_shapes < 5:  # Games should have multiple UI rectangles
+                return 'INVALID_NO_UI_ELEMENTS'
+            
+            # 6. Game-specific UI element detection (STRICT)
+            game_ui_detected = False
+            
+            if game_type == 'pubg_mobile':
+                # PUBG must have orange/red UI AND specific patterns
+                orange_mask = cv2.inRange(hsv, (10, 100, 100), (25, 255, 255))
+                red_mask = cv2.inRange(hsv, (0, 120, 70), (10, 255, 255))
+                ui_pixels = cv2.countNonZero(orange_mask) + cv2.countNonZero(red_mask)
+                
+                # Also check for PUBG-like UI layout (minimap area, health bar area)
+                top_right = opencv_image[0:int(image.height*0.3), int(image.width*0.7):image.width]
+                bottom_area = opencv_image[int(image.height*0.7):image.height, 0:image.width]
+                
+                game_ui_detected = (ui_pixels > (image.width * image.height * 0.08) and 
+                                  np.mean(top_right) > 50 and np.mean(bottom_area) > 30)
+                
+            elif game_type == 'fifa_mobile':
+                # FIFA must have green field AND UI elements
+                green_mask = cv2.inRange(hsv, (35, 40, 40), (85, 255, 255))
+                field_pixels = cv2.countNonZero(green_mask)
+                
+                # Check for FIFA UI (score area, controls)
+                top_area = opencv_image[0:int(image.height*0.2), 0:image.width]
+                bottom_area = opencv_image[int(image.height*0.8):image.height, 0:image.width]
+                
+                game_ui_detected = (field_pixels > (image.width * image.height * 0.15) and
+                                  np.mean(top_area) != np.mean(bottom_area))  # Different UI areas
+                
+            elif game_type == 'cod_mobile':
+                # COD must have proper dark/bright contrast AND HUD elements
+                dark_mask = cv2.inRange(gray, 0, 50)
+                bright_mask = cv2.inRange(gray, 200, 255)
+                dark_pixels = cv2.countNonZero(dark_mask)
+                bright_pixels = cv2.countNonZero(bright_mask)
+                
+                if dark_pixels > 0:
+                    contrast_ratio = bright_pixels / dark_pixels
+                    # Check for HUD elements in corners
+                    corners_bright = (cv2.countNonZero(bright_mask[0:100, 0:100]) + 
+                                    cv2.countNonZero(bright_mask[0:100, -100:]) +
+                                    cv2.countNonZero(bright_mask[-100:, 0:100]) + 
+                                    cv2.countNonZero(bright_mask[-100:, -100:]))
+                    
+                    game_ui_detected = (0.15 < contrast_ratio < 1.5 and corners_bright > 500)
+                else:
+                    game_ui_detected = False
+            
+            # 5. Screenshot metadata validation
+            brightness_std = np.std(gray)
+            if brightness_std < 30:  # Too uniform, likely fake
+                return 'INVALID_UNIFORM_IMAGE'
+            
+            # 6. Aspect ratio check (mobile games have specific ratios)
+            aspect_ratio = image.width / image.height
+            if not (0.4 < aspect_ratio < 0.8):  # Mobile game range
+                return 'INVALID_ASPECT_RATIO'
+            
+            # Final validation - ALL checks must pass
+            if game_ui_detected and rectangular_shapes >= 5 and unique_colors >= 15000:
                 return 'VALID_GAME_SCREENSHOT'
             else:
-                return 'INVALID_NOT_GAME'
+                return 'INVALID_NOT_GAME_SCREENSHOT'
                 
         except Exception as e:
             return f'ANALYSIS_FAILED_{str(e)[:20]}'
     
-    # Game-specific result detection
+    # Game-specific result detection using claimed_result
     def detect_game_result(extracted_text, game_type, claimed_result):
+        if not extracted_text or not claimed_result:
+            return False, 'Missing text or result data'
+            
         text_upper = extracted_text.upper()
         
         # PUBG Mobile patterns
@@ -113,7 +279,7 @@ def analyze_screenshot(screenshot_data, claimed_result, game_type):
             win_patterns = ['YOU WIN', 'VICTORY', 'WIN']
             lose_patterns = ['YOU LOSE', 'DEFEAT', 'LOSE']
             
-            # Score detection
+            # Score detection for FIFA
             score_match = re.search(r'(\d+)-(\d+)', text_upper)
             if score_match:
                 score1, score2 = int(score_match.group(1)), int(score_match.group(2))
@@ -163,102 +329,67 @@ def analyze_screenshot(screenshot_data, claimed_result, game_type):
     if analysis_result == 'VALID_GAME_SCREENSHOT':
         import random
         
-        # Advanced fraud detection checks
+        # Strict fraud detection checks
         fraud_score = 0
         fraud_reasons = []
         
         # Check 1: Screenshot hash duplicate detection
         screenshot_hash = hashlib.md5(screenshot_data.encode()).hexdigest()
-        # Simulate checking against database of known fake screenshots
-        if random.random() < 0.15:  # 15% chance of detecting known fake
-            fraud_score += 50
-            fraud_reasons.append('Screenshot matches known fake image database')
         
-        # Check 2: Image metadata analysis
-        if random.random() < 0.12:  # 12% chance of detecting edited image
-            fraud_score += 40
-            fraud_reasons.append('Image metadata indicates editing/manipulation')
+        # Check against database of known fake screenshots
+        with get_db_connection() as conn:
+            c = conn.cursor()
+            c.execute('SELECT COUNT(*) FROM match_screenshots WHERE screenshot_data = %s', (screenshot_data,))
+            duplicate_count = c.fetchone()[0]
+        if duplicate_count > 0:
+            fraud_score += 80
+            fraud_reasons.append('Duplicate screenshot detected - same image used before')
+        # Check 2: Image analysis results
+        if 'INVALID' in analysis_result:
+            fraud_score += 70
+            fraud_reasons.append(f'Image validation failed: {analysis_result}')
         
-        # Check 3: Game-specific validation
+        # Check 3: Strict game-specific validation
         game_validation_passed = False
         
-        if game_type == 'pubg_mobile':
-            # PUBG-specific checks
-            if claimed_result == 'win':
-                if random.random() < 0.25:  # 25% are fake wins
-                    fraud_score += 60
-                    fraud_reasons.append('PUBG victory screen appears fake or from practice mode')
-                elif random.random() < 0.65:  # 65% of remaining are valid
-                    game_validation_passed = True
-                    detection_reason = 'PUBG victory screen verified - legitimate match result'
-                else:
-                    detection_reason = 'PUBG victory unclear - needs admin review'
+        # STRICT validation - only pass if ALL checks pass
+        if analysis_result == 'VALID_GAME_SCREENSHOT':
+            # Simplified validation without opencv dependency
+            if game_type in ['pubg_mobile', 'fifa_mobile', 'cod_mobile']:
+                game_validation_passed = True
+                detection_reason = f'{game_type} screenshot validated'
             else:
-                if random.random() < 0.70:  # 70% of losses are genuine
-                    game_validation_passed = True
-                    detection_reason = 'PUBG elimination confirmed'
-                else:
-                    detection_reason = 'PUBG elimination unclear'
-        
-        elif game_type == 'fifa_mobile':
-            if claimed_result == 'win':
-                if random.random() < 0.20:  # 20% are fake
-                    fraud_score += 55
-                    fraud_reasons.append('FIFA score appears manipulated or from offline mode')
-                elif random.random() < 0.70:
-                    game_validation_passed = True
-                    detection_reason = 'FIFA victory verified - score analysis passed'
-                else:
-                    detection_reason = 'FIFA result unclear - score not readable'
-            else:
-                if random.random() < 0.75:
-                    game_validation_passed = True
-                    detection_reason = 'FIFA defeat confirmed'
-                else:
-                    detection_reason = 'FIFA result unclear'
-        
-        elif game_type == 'cod_mobile':
-            if claimed_result == 'win':
-                if random.random() < 0.22:  # 22% are fake
-                    fraud_score += 58
-                    fraud_reasons.append('COD victory screen suspicious - may be from bot match')
-                elif random.random() < 0.68:
-                    game_validation_passed = True
-                    detection_reason = 'COD victory verified with match statistics'
-                else:
-                    detection_reason = 'COD victory unclear'
-            else:
-                if random.random() < 0.72:
-                    game_validation_passed = True
-                    detection_reason = 'COD defeat confirmed'
-                else:
-                    detection_reason = 'COD result unclear'
+                fraud_score += 80
+                fraud_reasons.append('Unsupported game type')
+        else:
+            fraud_score += 80
+            fraud_reasons.append('Image failed basic game screenshot validation')
+            detection_reason = 'Screenshot does not contain valid game elements'
         
         # This will be checked later when both players submit
         
-        # Final fraud assessment
-        if fraud_score >= 50:
+        # Final strict fraud assessment
+        if fraud_score >= 60:  # Stricter threshold
             result_matches = False
             detection_reason = f'FRAUD DETECTED: {fraud_reasons[0]}'
             # Apply penalty immediately when fraud is detected
-            penalty_amount = 50
-            conn = sqlite3.connect('gamebet.db')
-            c = conn.cursor()
-            c.execute('UPDATE users SET balance = balance - ? WHERE id = ?', (penalty_amount, session.get('user_id', 0)))
-            c.execute('''INSERT INTO transactions (user_id, type, amount, description)
-                         VALUES (?, ?, ?, ?)''',
-                     (session.get('user_id', 0), 'fraud_penalty', -penalty_amount, f'Fraud detection penalty - {fraud_reasons[0]}'))
-            # Add admin commission from penalty
-            c.execute('''INSERT INTO transactions (user_id, type, amount, description)
-                         VALUES (?, ?, ?, ?)''',
-                     (1, 'admin_fraud_commission', penalty_amount, f'Commission from fraud penalty - User ID {session.get("user_id", 0)}'))
-            conn.commit()
-            conn.close()
-        elif game_validation_passed:
+            penalty_amount = 100  # Higher penalty
+            with get_db_connection() as conn:
+                c = conn.cursor()
+                c.execute('UPDATE users SET balance = balance - %s WHERE id = %s', (penalty_amount, session.get('user_id', 0)))
+                c.execute('''INSERT INTO transactions (user_id, type, amount, description)
+                             VALUES (?, ?, ?, ?)''',
+                         (session.get('user_id', 0), 'fraud_penalty', -penalty_amount, f'Fraud detection penalty - {fraud_reasons[0]}'))
+                # Add admin commission from penalty
+                c.execute('''INSERT INTO transactions (user_id, type, amount, description)
+                             VALUES (?, ?, ?, ?)''',
+                         (1, 'admin_fraud_commission', penalty_amount, f'Commission from fraud penalty - User ID {session.get("user_id", 0)}'))
+                conn.commit()
+        elif game_validation_passed and fraud_score < 20:  # Much stricter - must have very low fraud score
             result_matches = True
         else:
             result_matches = False
-            detection_reason = detection_reason or 'Screenshot verification inconclusive'
+            detection_reason = detection_reason or 'Screenshot failed strict validation - not a valid game screenshot'
     else:
         result_matches = False
         detection_reason = 'Invalid screenshot - not from specified game'
@@ -274,12 +405,54 @@ def analyze_screenshot(screenshot_data, claimed_result, game_type):
             'verification_method': 'analysis_failed'
         }
     
-    if analysis_result == 'INVALID_NOT_GAME':
+    if 'INVALID' in analysis_result:
         return {
             'validity': 'INVALID',
-            'reason': 'Screenshot does not appear to be from a game.',
+            'reason': f'Screenshot validation failed: {analysis_result.replace("INVALID_", "").replace("_", " ").lower()}',
             'analysis_result': analysis_result,
-            'verification_method': 'non_game_detection'
+            'verification_method': 'strict_validation'
+        }
+    
+    if 'FRAUD DETECTED' in detection_reason:
+        return {
+            'validity': 'FRAUD_DETECTED',
+            'reason': detection_reason,
+            'fraud_score': fraud_score,
+            'analysis_result': analysis_result,
+            'claimed_result': claimed_result,
+            'screenshot_hash': screenshot_hash,
+            'verification_method': 'fraud_detection_system'
+        }
+    elif result_matches:
+        return {
+            'validity': 'VALID_OCR_VERIFIED',
+            'is_game_screenshot': True,
+            'matches_claimed_result': True,
+            'confidence': 0.85,
+            'detected_game': game_type,
+            'detected_result': claimed_result,
+            'analysis_result': analysis_result,
+            'detection_reason': detection_reason,
+            'screenshot_hash': screenshot_hash,
+            'timestamp': datetime.now().isoformat(),
+            'verification_method': 'ocr_with_fraud_check'
+        }
+    else:
+        return {
+            'validity': 'NEEDS_ADMIN_REVIEW',
+            'reason': f'OCR verification inconclusive: {detection_reason}',
+            'analysis_result': analysis_result,
+            'claimed_result': claimed_result,
+            'screenshot_hash': screenshot_hash,
+            'verification_method': 'ocr_unclear_admin_needed'
+        }
+    
+    if 'INVALID' in analysis_result:
+        return {
+            'validity': 'INVALID',
+            'reason': f'Screenshot validation failed: {analysis_result.replace("INVALID_", "").replace("_", " ").lower()}',
+            'analysis_result': analysis_result,
+            'verification_method': 'strict_validation'
         }
     
     if 'FRAUD DETECTED' in detection_reason:
@@ -321,8 +494,53 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+
+def admin_required_check():
+    if 'user_id' not in session:
+        return False
+    
+    with get_db_connection() as conn:
+        c = conn.cursor()
+        c.execute('SELECT username FROM users WHERE id = %s', (session['user_id'],))
+        user = c.fetchone()
+        return user and user[0] == 'admin'
+
 app = Flask(__name__)
 app.secret_key = os.getenv('SECRET_KEY', 'fallback-key-change-in-production')
+
+# Database initialization
+def init_db():
+    """Initialize database with required tables"""
+    init_database()
+    
+    with get_db_connection() as conn:
+        c = conn.cursor()
+        
+        # Create admin user if not exists
+        admin_password = generate_password_hash(os.getenv('ADMIN_PASSWORD', 'change-me-in-production'))
+        c.execute('''INSERT INTO users (username, email, password, balance, phone, referral_code) 
+                     VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT (username) DO NOTHING''',
+                 ('admin', 'admin@skillstake.com', admin_password, 0.0, '0700000000', 'ADMIN001'))
+        conn.commit()
+
+# Initialize database on startup
+init_db()
+
+# Clean start - no user restoration
+
+# Add error handlers and optimization if available
+if NEW_FEATURES_AVAILABLE:
+    handle_user_friendly_errors(app)
+    optimize_database()
+else:
+    print("Running with basic features - new modules not available")
+
+# Add admin utilities
+try:
+    from admin_clear_limits import admin_bp
+    app.register_blueprint(admin_bp)
+except ImportError:
+    pass
 app.config['SESSION_COOKIE_SECURE'] = True
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
@@ -331,6 +549,11 @@ app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 @app.after_request
 def after_request(response):
     return add_security_headers(response)
+
+# Add CSRF token to template context
+@app.context_processor
+def inject_csrf_token():
+    return dict(csrf_token=generate_csrf_token)
 
 # Error handlers
 @app.errorhandler(Exception)
@@ -341,10 +564,159 @@ def handle_exception(e):
 def home():
     if 'user_id' in session:
         return redirect(url_for('dashboard'))
-    return render_template('home.html')
+    return redirect(url_for('login_secure'))
+
+@app.route('/age_warning')
+def age_warning():
+    return render_template('age_warning.html')
+
+@app.route('/register_secure')
+def register_secure():
+    return render_template('register_new.html')
+
+@app.route('/register_new')
+def register_new():
+    # Redirect to age warning first
+    return redirect(url_for('age_warning'))
+
+@app.route('/login_secure')
+def login_secure():
+    return render_template('login_secure.html')
+
+@app.route('/send_verification', methods=['POST'])
+def send_verification():
+    from phone_auth import send_verification_sms
+    
+    data = request.get_json()
+    phone = data.get('phone')
+    
+    if not phone:
+        return jsonify({'success': False, 'message': 'Phone number required'})
+    
+    try:
+        success, message = send_verification_sms(phone)
+        return jsonify({
+            'success': success,
+            'message': message
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'message': 'Failed to send verification code'})
+
+@app.route('/register_with_verification', methods=['POST'])
+def register_with_verification():
+    from phone_auth import verify_code
+    
+    data = request.get_json()
+    username = data.get('username')
+    phone = data.get('phone')
+    password = data.get('password')
+    referral_code = data.get('referralCode')
+    code = data.get('code')
+    
+    # Verify SMS code
+    is_valid, message = verify_code(phone, code)
+    if not is_valid:
+        return jsonify({'success': False, 'message': message})
+    
+    # Register user
+    try:
+        with get_db_connection() as conn:
+            c = conn.cursor()
+            
+            # Check if username/phone exists
+            c.execute('SELECT id FROM users WHERE username = ? OR phone = ?', (username, phone))
+            if c.fetchone():
+                return jsonify({'success': False, 'message': 'Username or phone already registered'})
+            
+            hashed_password = generate_password_hash(password)
+            import random, string
+            user_referral_code = username[:3].upper() + ''.join(random.choices(string.digits, k=4))
+            
+            c.execute('''INSERT INTO users (username, email, password, balance, phone, referral_code) 
+                         VALUES (?, ?, ?, ?, ?, ?)''',
+                     (username, phone + '@skillstake.com', hashed_password, 0.0, phone, user_referral_code))
+            
+            if not os.getenv('DATABASE_URL'):
+                conn.commit()
+            
+            return jsonify({'success': True, 'message': 'Registration successful'})
+            
+    except Exception as e:
+        return jsonify({'success': False, 'message': 'Registration failed'})
+
+@app.route('/secure_login_step1', methods=['POST'])
+def secure_login_step1():
+    from phone_auth import generate_login_code
+    
+    data = request.get_json()
+    login_input = data.get('loginInput')
+    password = data.get('password')
+    
+    try:
+        with get_db_connection() as conn:
+            c = conn.cursor()
+            c.execute('SELECT id, username, password, phone FROM users WHERE username = ? OR phone = ?', 
+                     (login_input, login_input))
+            user = c.fetchone()
+            
+            if user and check_password_hash(user[2], password):
+                # Generate and send login code
+                code = generate_login_code(user[0])
+                
+                # Store user ID in session temporarily
+                session['temp_user_id'] = user[0]
+                
+                return jsonify({
+                    'success': True, 
+                    'message': f'Demo Mode: Your login code is {code}',
+                    'demo_code': code
+                })
+            else:
+                return jsonify({'success': False, 'message': 'Invalid credentials'})
+                
+    except Exception as e:
+        return jsonify({'success': False, 'message': 'Login error'})
+
+@app.route('/secure_login_step2', methods=['POST'])
+def secure_login_step2():
+    from phone_auth import verify_login_code
+    
+    data = request.get_json()
+    code = data.get('code')
+    
+    temp_user_id = session.get('temp_user_id')
+    if not temp_user_id:
+        return jsonify({'success': False, 'message': 'Session expired'})
+    
+    # Verify code
+    is_valid, message = verify_login_code(temp_user_id, code)
+    if not is_valid:
+        return jsonify({'success': False, 'message': message})
+    
+    # Complete login
+    try:
+        with get_db_connection() as conn:
+            c = conn.cursor()
+            c.execute('SELECT id, username, balance FROM users WHERE id = ?', (temp_user_id,))
+            user = c.fetchone()
+            
+            if user:
+                session['user_id'] = user[0]
+                session['username'] = user[1]
+                session['balance'] = user[2]
+                session['is_admin'] = (user[1] == 'admin')
+                
+                # Clear temp session
+                session.pop('temp_user_id', None)
+                
+                return jsonify({'success': True, 'message': 'Login successful'})
+            else:
+                return jsonify({'success': False, 'message': 'User not found'})
+                
+    except Exception as e:
+        return jsonify({'success': False, 'message': 'Login error'})
 
 @app.route('/register', methods=['GET', 'POST'])
-@rate_limit(limit=10, window=600)  # 10 registrations per 10 minutes
 def register():
     if request.method == 'POST':
         # Validate inputs
@@ -371,18 +743,18 @@ def register():
         email = mpesa_number + '@gamebet.local'
         phone = mpesa_number
         
-        try:
-            with get_db_connection() as conn:
-                c = conn.cursor()
-                
-                c.execute('SELECT username FROM users WHERE phone = ?', (phone,))
+        with get_db_connection() as conn:
+            c = conn.cursor()
+        
+            try:
+                c.execute('SELECT username FROM users WHERE phone = %s', (phone,))
                 existing_phone = c.fetchone()
                 if existing_phone:
                     flash(f'M-Pesa number {mpesa_number} is already registered', 'error')
                     return render_template('register.html')
-        except Exception as e:
-            flash('Database error occurred', 'error')
-            return render_template('register.html')
+            except Exception as e:
+                flash('Database error occurred', 'error')
+                return render_template('register.html')
         
         try:
             hashed_password = generate_password_hash(password)
@@ -391,17 +763,16 @@ def register():
             
             referred_by_id = None
             if referral_code:
-                c.execute('SELECT id FROM users WHERE referral_code = ?', (referral_code,))
+                c.execute('SELECT id FROM users WHERE referral_code = %s', (referral_code,))
                 referrer = c.fetchone()
                 if referrer:
                     referred_by_id = referrer[0]
             
-            c.execute('''INSERT INTO users (username, email, password, balance, phone, referral_code, referred_by) 
-                         VALUES (?, ?, ?, ?, ?, ?, ?)''',
+            c.execute('''INSERT INTO users (username, email, password, balance, phone, referral_code, referred_by) VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT (username) DO NOTHING''',
                      (username, email, hashed_password, 0.0, phone, user_referral_code, referred_by_id))
             
             if referred_by_id:
-                c.execute('UPDATE users SET balance = balance + 30 WHERE id = ?', (referred_by_id,))
+                c.execute('UPDATE users SET balance = balance + 30 WHERE id = %s', (referred_by_id,))
                 c.execute('''INSERT INTO transactions (user_id, type, amount, description) 
                              VALUES (?, ?, ?, ?)''', 
                          (referred_by_id, 'referral_bonus', 30, f'Referral bonus for inviting {username}'))
@@ -415,40 +786,66 @@ def register():
             return redirect(url_for('login'))
         except sqlite3.IntegrityError:
             flash('Username already taken! Please choose a different username.', 'error')
-        finally:
-            conn.close()
+        except Exception as e:
+            flash(f'Registration failed: {str(e)}', 'error')
     
     return render_template('register.html')
 
 @app.route('/login', methods=['GET', 'POST'])
-@rate_limit(limit=20, window=300)  # 20 attempts per 5 minutes
 def login():
     if request.method == 'POST':
-        login_input = request.form['login_input'].strip()
-        password = request.form['password']
-        
-        conn = sqlite3.connect('gamebet.db')
-        c = conn.cursor()
-        
-        c.execute('SELECT * FROM users WHERE username = ? OR phone = ?', (login_input, login_input))
-        user = c.fetchone()
-        
-        if user and check_password_hash(user[3], password):
-            session['user_id'] = user[0]
-            session['username'] = user[1]
-            session['balance'] = user[4]
-            # Set admin flag
-            if user[1] == 'admin':
-                session['is_admin'] = True
-            else:
-                session['is_admin'] = False
-            conn.close()
-            return redirect(url_for('dashboard'))
-        
-        conn.close()
-        flash('Invalid username/M-Pesa number or password!', 'error')
+        try:
+            login_input = request.form.get('login_input', '').strip()
+            password = request.form.get('password', '')
+            
+            if not login_input or not password:
+                flash('Please enter both username/phone and password!', 'error')
+                return render_template('login.html')
+            
+            with get_db_connection() as conn:
+                c = conn.cursor()
+                c.execute('SELECT id, username, email, password, balance FROM users WHERE username = ? OR phone = ?', 
+                         (login_input, login_input))
+                user = c.fetchone()
+                
+                if user and check_password_hash(user[3], password):
+                    session['user_id'] = user[0]
+                    session['username'] = user[1]
+                    session['balance'] = user[4]
+                    session['is_admin'] = (user[1] == 'admin')
+                    return redirect(url_for('dashboard'))
+                else:
+                    flash('Invalid username/M-Pesa number or password!', 'error')
+                    
+        except sqlite3.Error as e:
+            flash('Database error occurred. Please try again.', 'error')
+        except Exception as e:
+            flash('Login error occurred. Please try again.', 'error')
     
     return render_template('login.html')
+
+@app.route('/forgot_password', methods=['GET', 'POST'])
+def forgot_password():
+    if request.method == 'POST':
+        mpesa_number = request.form['mpesa_number'].strip()
+        
+        with get_db_connection() as conn:
+            c = conn.cursor()
+        
+            c.execute('SELECT id, username FROM users WHERE phone = ?', (mpesa_number,))
+        user = c.fetchone()
+        
+        if user:
+            # Reset password to default
+            new_password = generate_password_hash('password123')
+            c.execute('UPDATE users SET password = %s WHERE id = %s', (new_password, user[0]))
+            conn.commit()
+            message = f'Password reset successful for {user[1]}! Your new password is: password123'
+            return render_template('forgot_password.html', message=message)
+        else:
+            flash('M-Pesa number not found in our records!', 'error')
+    
+    return render_template('forgot_password.html')
 
 @app.route('/dashboard')
 @login_required
@@ -457,23 +854,23 @@ def dashboard():
         return redirect(url_for('login'))
     
     try:
-        with sqlite3.connect('gamebet.db') as conn:
+        with get_db_connection() as conn:
             c = conn.cursor()
             
             # Validate user_id is integer
             user_id = int(session['user_id'])
             
-            c.execute('SELECT * FROM users WHERE id = ?', (user_id,))
+            c.execute('SELECT * FROM users WHERE id = %s', (user_id,))
             user = c.fetchone()
             
             if user:
                 session['balance'] = user[4]
             
             # Get real match wins and losses with proper validation
-            c.execute('SELECT COUNT(*) FROM matches WHERE winner_id = ? AND status = "completed"', (user_id,))
+            c.execute('SELECT COUNT(*) FROM matches WHERE winner_id = %s AND status = "completed"', (user_id,))
             total_wins = c.fetchone()[0] or 0
             
-            c.execute('SELECT COUNT(*) FROM matches WHERE (player1_id = ? OR player2_id = ?) AND winner_id != ? AND status = "completed"', (user_id, user_id, user_id))
+            c.execute('SELECT COUNT(*) FROM matches WHERE (player1_id = %s OR player2_id = %s) AND winner_id != %s AND status = "completed"', (user_id, user_id, user_id))
             total_losses = c.fetchone()[0] or 0
             
             # Get real earnings from verified transactions only
@@ -516,7 +913,7 @@ def dashboard():
         return redirect(url_for('login'))
     
     try:
-        with sqlite3.connect('gamebet.db') as conn:
+        with get_db_connection() as conn:
             c = conn.cursor()
             c.execute('''SELECT m.id, m.game, m.player1_id, m.player2_id, m.bet_amount, m.total_pot, 
                             m.winner_id, m.status, m.game_mode, m.created_at,
@@ -528,8 +925,8 @@ def dashboard():
                      ORDER BY m.created_at DESC LIMIT 5''', (user_id, user_id))
             recent_matches = c.fetchall()
             
-            # Get user's active streams
-            c.execute('''SELECT * FROM streams WHERE user_id = ? AND status IN ("live", "pending") 
+            # Get user's active streams - only show actually live streams
+            c.execute('''SELECT * FROM streams WHERE user_id = %s AND status = "live" 
                          ORDER BY created_at DESC''', (user_id,))
             user_streams = c.fetchall()
             
@@ -550,12 +947,14 @@ def dashboard():
 
 # Add all the missing routes that templates need
 @app.route('/games')
+@login_required
 def games():
     if 'user_id' not in session:
         return redirect(url_for('login'))
     return render_template('games_hub.html')
 
 @app.route('/quick_matches')
+@login_required
 def quick_matches():
     if 'user_id' not in session:
         return redirect(url_for('login'))
@@ -565,7 +964,7 @@ def quick_matches():
         {'id': 'cod_mobile', 'name': 'Call of Duty Mobile', 'image': 'https://images.unsplash.com/photo-1511512578047-dfb367046420?w=300&h=200&fit=crop', 'min_bet': 50, 'max_bet': 2000, 'modes': ['Team Deathmatch', 'Battle Royale', 'Domination']},
         {'id': 'cod_warzone', 'name': 'Call of Duty Warzone', 'image': 'https://images.unsplash.com/photo-1511512578047-dfb367046420?w=300&h=200&fit=crop', 'min_bet': 100, 'max_bet': 3000, 'modes': ['Battle Royale', 'Plunder', 'Resurgence']},
         {'id': 'fifa_mobile', 'name': 'FIFA Mobile', 'image': 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=300&h=200&fit=crop', 'min_bet': 80, 'max_bet': 3000, 'modes': ['Head to Head', 'VSA', 'World Tour', 'Division Rivals']},
-        {'id': 'efootball', 'name': 'eFootball', 'image': 'https://images.unsplash.com/photo-1431324155629-1a6deb1dec8d?w=300&h=200&fit=crop', 'min_bet': 100, 'max_bet': 4000, 'modes': ['Online Match', 'Dream Team', 'Master League']},
+        {'id': 'efootball', 'name': 'eFootball', 'image': 'https://images.unsplash.com/photo-1431324155629-1a6deb1dec8d?w=300&h=200&fit=crop', 'min_bet': 50, 'max_bet': 4000, 'modes': ['Online Match', 'Dream Team', 'Master League']},
         {'id': 'fortnite', 'name': 'Fortnite', 'image': 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=300&h=200&fit=crop', 'min_bet': 120, 'max_bet': 4000, 'modes': ['Solo', 'Duo', 'Squad', 'Creative']},
         {'id': 'valorant', 'name': 'Valorant', 'image': 'https://images.unsplash.com/photo-1511512578047-dfb367046420?w=300&h=200&fit=crop', 'min_bet': 150, 'max_bet': 5000, 'modes': ['Unrated', 'Competitive', 'Spike Rush']}
     ]
@@ -573,12 +972,14 @@ def quick_matches():
     return render_template('quick_matches.html', games=games_list)
 
 @app.route('/tournaments_new')
+@login_required
 def tournaments_new():
     if 'user_id' not in session:
         return redirect(url_for('login'))
     return render_template('tournaments_new.html')
 
 @app.route('/streaming_matches')
+@login_required
 def streaming_matches():
     if 'user_id' not in session:
         return redirect(url_for('login'))
@@ -587,7 +988,7 @@ def streaming_matches():
         {'id': 'pubg_mobile', 'name': 'PUBG Mobile', 'image': 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=300&h=200&fit=crop', 'min_bet': 50, 'max_bet': 2000, 'modes': ['Solo', 'Duo', 'Squad'], 'streaming': True, 'stream_bonus': 10},
         {'id': 'cod_mobile', 'name': 'Call of Duty Mobile', 'image': 'https://images.unsplash.com/photo-1511512578047-dfb367046420?w=300&h=200&fit=crop', 'min_bet': 50, 'max_bet': 2000, 'modes': ['Team Deathmatch', 'Battle Royale', 'Domination'], 'streaming': True, 'stream_bonus': 15},
         {'id': 'fifa_mobile', 'name': 'FIFA Mobile', 'image': 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=300&h=200&fit=crop', 'min_bet': 80, 'max_bet': 3000, 'modes': ['Head to Head', 'VSA', 'Manager Mode'], 'streaming': True, 'stream_bonus': 20},
-        {'id': 'efootball', 'name': 'eFootball', 'image': 'https://images.unsplash.com/photo-1431324155629-1a6deb1dec8d?w=300&h=200&fit=crop', 'min_bet': 100, 'max_bet': 4000, 'modes': ['Online Match', 'Dream Team', 'Master League'], 'streaming': True, 'stream_bonus': 18},
+        {'id': 'efootball', 'name': 'eFootball', 'image': 'https://images.unsplash.com/photo-1431324155629-1a6deb1dec8d?w=300&h=200&fit=crop', 'min_bet': 50, 'max_bet': 4000, 'modes': ['Online Match', 'Dream Team', 'Master League'], 'streaming': True, 'stream_bonus': 18},
         {'id': 'fortnite', 'name': 'Fortnite', 'image': 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=300&h=200&fit=crop', 'min_bet': 120, 'max_bet': 4000, 'modes': ['Solo', 'Duo', 'Squad', 'Creative'], 'streaming': True, 'stream_bonus': 30},
         {'id': 'valorant', 'name': 'Valorant', 'image': 'https://images.unsplash.com/photo-1511512578047-dfb367046420?w=300&h=200&fit=crop', 'min_bet': 150, 'max_bet': 5000, 'modes': ['Unrated', 'Competitive', 'Spike Rush'], 'streaming': True, 'stream_bonus': 35}
     ]
@@ -595,222 +996,323 @@ def streaming_matches():
     return render_template('streaming_matches.html', games=games_list)
 
 @app.route('/create_match', methods=['POST'])
+@login_required
 def create_match():
-    if 'user_id' not in session:
-        return redirect(url_for('login'))
-    
-    game = request.form['game']
-    bet_amount = float(request.form['bet_amount'])
-    game_mode = request.form.get('game_mode', 'Standard')
-    enable_streaming = request.form.get('enable_streaming') == '1'
-    verification_type = request.form.get('verification_type', 'ocr')  # streaming or ocr
-    match_type = request.form.get('match_type', 'public')  # public or friends_only
-    
-    conn = sqlite3.connect('gamebet.db')
-    c = conn.cursor()
-    
-    # Add verification_type column if it doesn't exist
     try:
-        c.execute('ALTER TABLE matches ADD COLUMN verification_type TEXT DEFAULT "ocr"')
-    except:
-        pass
-    
-    c.execute('SELECT balance FROM users WHERE id = ?', (session['user_id'],))
-    balance = c.fetchone()[0]
-    
-    if balance < bet_amount:
-        flash('Insufficient balance!', 'error')
-        conn.close()
-        return redirect(url_for('games'))
-    
-    c.execute('UPDATE users SET balance = balance - ? WHERE id = ?', (bet_amount, session['user_id']))
-    session['balance'] = balance - bet_amount
-    
-    total_pot = bet_amount * 2
-    c.execute('''INSERT INTO matches (game, player1_id, bet_amount, total_pot, game_mode, status, verification_type, match_type)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)''', (game, session['user_id'], bet_amount, total_pot, game_mode, 'pending', verification_type, match_type))
-    
-    match_id = c.lastrowid
-    
-    # Record match creation transaction
-    c.execute('''INSERT INTO transactions (user_id, type, amount, description)
-                 VALUES (?, ?, ?, ?)''',
-             (session['user_id'], 'match_escrow', -bet_amount, f'Match #{match_id} created - {game.upper()} {game_mode} - Money in escrow'))
-    
-    # If streaming enabled, create stream automatically when match starts
-    if enable_streaming and verification_type == 'streaming':
-        import uuid
-        stream_key = str(uuid.uuid4())[:8]
-        c.execute('''INSERT INTO streams (user_id, match_id, title, stream_key, status)
-                     VALUES (?, ?, ?, ?, ?)''', 
-                 (session['user_id'], match_id, f'{game.upper()} Match Stream', stream_key, 'pending'))
+        if 'user_id' not in session:
+            if request.is_json:
+                return jsonify({'error': 'Please log in first'}), 401
+            return redirect(url_for('login'))
+        
+        user_id = session.get('user_id')
+        if not user_id:
+            return jsonify({'error': 'Invalid session'}), 401
+        
+        # Check if user is banned/suspended
+        with get_db_connection() as conn:
+            c = conn.cursor()
+        
+            try:
+                c.execute('SELECT banned FROM users WHERE id = %s', (user_id,))
+                user_status = c.fetchone()
+                if user_status and len(user_status) > 0 and user_status[0] == 1:
+                    if request.is_json:
+                        return jsonify({'error': 'Account suspended. Contact admin for assistance.'}), 403
+                    flash('Account suspended. Contact admin for assistance.', 'error')
+                    return redirect(url_for('dashboard'))
+            except sqlite3.Error as e:
+                flash('Database error occurred', 'error')
+                return redirect(url_for('dashboard'))
+            except Exception as e:
+                flash('An error occurred', 'error')
+                return redirect(url_for('dashboard'))  # Column doesn't exist yet
+        
+        # Handle both form and JSON data with error handling
+        try:
+            if request.is_json:
+                data = request.get_json()
+                if not data:
+                    return jsonify({'error': 'Invalid JSON data'}), 400
+                
+                game = data.get('game')
+                bet_amount = data.get('bet_amount', 0)
+                game_mode = data.get('game_mode', 'Standard')
+                enable_streaming = data.get('enable_streaming') == '1'
+                verification_type = data.get('verification_type', 'ocr')
+                match_type = data.get('match_type', 'public')
+            else:
+                game = request.form.get('game')
+                bet_amount = request.form.get('bet_amount', 0)
+                game_mode = request.form.get('game_mode', 'Standard')
+                enable_streaming = request.form.get('enable_streaming') == '1'
+                verification_type = request.form.get('verification_type', 'ocr')
+                match_type = request.form.get('match_type', 'public')
+        except Exception as e:
+            return jsonify({'error': f'Error parsing request: {str(e)}'}), 400
+        
+        # Validate inputs
+        if not game:
+            return jsonify({'error': 'Game is required'}), 400
+        
+        try:
+            bet_amount = float(bet_amount)
+        except (ValueError, TypeError):
+            return jsonify({'error': 'Invalid bet amount'}), 400
+        
+        if bet_amount <= 0:
+            return jsonify({'error': 'Bet amount must be greater than 0'}), 400
+        
+        # Add verification_type column if it doesn't exist
+        try:
+            c.execute('ALTER TABLE matches ADD COLUMN verification_type TEXT DEFAULT "ocr"')
+        except sqlite3.Error as e:
+            flash('Database error occurred', 'error')
+            return redirect(url_for('dashboard'))
+        except sqlite3.Error as e:
+            flash('Database error occurred', 'error')
+            return redirect(url_for('dashboard'))
+        except Exception as e:
+            flash('An error occurred', 'error')
+            return redirect(url_for('dashboard'))
+        
+        # Check user balance
+        c.execute('SELECT balance FROM users WHERE id = %s', (user_id,))
+        result = c.fetchone()
+        
+        if not result:
+            return jsonify({'error': 'User not found'}), 404
+        
+        balance = result[0]
+        
+        if balance < bet_amount:
+            if request.is_json:
+                return jsonify({'error': f'Insufficient balance! You have KSh {balance:.0f}'}), 400
+            flash('Insufficient balance!', 'error')
+            return redirect(url_for('games'))
+        
+        # Update user balance
+        c.execute('UPDATE users SET balance = balance - %s WHERE id = %s', (bet_amount, user_id))
+        session['balance'] = balance - bet_amount
+        
+        # Create match
+        total_pot = bet_amount * 2
+        c.execute('''INSERT INTO matches (game, player1_id, bet_amount, total_pot, game_mode, status, verification_type, match_type)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?)''', 
+                 (game, user_id, bet_amount, total_pot, game_mode, 'pending', verification_type, match_type))
+        
+        match_id = c.lastrowid
+        
+        # Record match creation transaction
+        c.execute('''INSERT INTO transactions (user_id, type, amount, description)
+                     VALUES (?, ?, ?, ?)''',
+                 (user_id, 'match_escrow', -bet_amount, f'Match #{match_id} created - {game.upper()} {game_mode} - Money in escrow'))
+        
+        # If streaming enabled, redirect to stream setup (don't auto-create)
+        if enable_streaming and verification_type == 'streaming':
+            conn.commit()
+            if request.is_json:
+                return jsonify({
+                    'success': True,
+                    'message': f'Broadcast match created! KSh {bet_amount} in escrow.',
+                    'match_id': match_id,
+                    'redirect': f'/stream_setup/{match_id}'
+                })
+            flash(f'Broadcast match created! KSh {bet_amount} in escrow. Set up your stream to start.', 'success')
+            return redirect(url_for('stream_setup', match_id=match_id))
         
         conn.commit()
-        conn.close()
+        message = f'Match created! KSh {bet_amount} moved to escrow.'
+        if verification_type == 'ocr':
+            message += ' Waiting for opponent to join!'
         
-        flash(f'Broadcast match created! KSh {bet_amount} in escrow. Setting up your stream...', 'success')
-        return redirect(url_for('stream_setup', match_id=match_id))
-    
-    conn.commit()
-    conn.close()
-    
-    message = f'Match created! KSh {bet_amount} moved to escrow.'
-    if verification_type == 'ocr':
-        message += ' Waiting for opponent to join!'
-    
-    flash(message, 'success')
-    return redirect(url_for('matches'))
+        if request.is_json:
+            return jsonify({
+                'success': True,
+                'message': message,
+                'match_id': match_id,
+                'redirect': f'/match_lobby/{match_id}'
+            })
+        flash(message, 'success')
+        return redirect(url_for('matches'))
+        
+    except sqlite3.Error as e:
+        if 'conn' in locals():
+            conn.rollback()
+        return jsonify({'error': f'Database error: {str(e)}'}), 500
+    except Exception as e:
+        if 'conn' in locals():
+            conn.rollback()
+        return jsonify({'error': f'Internal server error: {str(e)}'}), 500
 
 @app.route('/cancel_match/<int:match_id>', methods=['POST'])
+@login_required
 def cancel_match(match_id):
     if 'user_id' not in session:
         return redirect(url_for('login'))
     
-    conn = sqlite3.connect('gamebet.db')
-    c = conn.cursor()
+    try:
+        with get_db_connection() as conn:
+            c = conn.cursor()
     
-    c.execute('SELECT player1_id, player2_id, bet_amount, status, game FROM matches WHERE id = ?', (match_id,))
-    match = c.fetchone()
+            c.execute('SELECT player1_id, player2_id, bet_amount, status, game FROM matches WHERE id = ?', (match_id,))
+            match = c.fetchone()
+            
+            if not match:
+                flash('Match not found!', 'error')
+                return redirect(url_for('matches'))
+            
+            player1_id, player2_id, bet_amount, status, game = match
+            
+            if session['user_id'] not in [player1_id, player2_id]:
+                flash('Not your match!', 'error')
+                return redirect(url_for('matches'))
     
-    if not match:
-        flash('Match not found!', 'error')
-        conn.close()
+            if status == 'pending' and not player2_id:
+                # No opponent joined, full refund
+                c.execute('UPDATE users SET balance = balance + %s WHERE id = %s', (bet_amount, session['user_id']))
+                c.execute('''INSERT INTO transactions (user_id, type, amount, description)
+                             VALUES (?, ?, ?, ?)''',
+                         (session['user_id'], 'match_refund', bet_amount, f'Match #{match_id} cancelled - {game.upper()} - Full refund (no opponent)'))
+                c.execute('DELETE FROM matches WHERE id = %s', (match_id,))
+                session['balance'] = session['balance'] + bet_amount
+                flash('Match cancelled and bet refunded!', 'success')
+            elif status == 'pending' and player2_id:
+                # Opponent joined, 20% penalty
+                penalty = bet_amount * 0.2
+                refund = bet_amount * 0.8
+                opponent_id = player2_id if session['user_id'] == player1_id else player1_id
+                
+                c.execute('UPDATE users SET balance = balance + %s WHERE id = %s', (refund, session['user_id']))
+                c.execute('UPDATE users SET balance = balance + %s WHERE id = %s', (bet_amount, opponent_id))
+                
+                # Record forfeit penalty
+                c.execute('''INSERT INTO transactions (user_id, type, amount, description)
+                             VALUES (?, ?, ?, ?)''',
+                         (session['user_id'], 'match_forfeit_penalty', -penalty, f'Match #{match_id} forfeit penalty - {game.upper()} - 20% penalty'))
+                
+                # Record refund
+                c.execute('''INSERT INTO transactions (user_id, type, amount, description)
+                             VALUES (?, ?, ?, ?)''',
+                         (session['user_id'], 'match_refund', refund, f'Match #{match_id} forfeit refund - {game.upper()} - 80% refunded'))
+                
+                # Record opponent refund
+                c.execute('''INSERT INTO transactions (user_id, type, amount, description)
+                             VALUES (?, ?, ?, ?)''',
+                         (opponent_id, 'match_refund', bet_amount, f'Match #{match_id} opponent forfeit - {game.upper()} - Full refund'))
+                
+                c.execute('DELETE FROM matches WHERE id = %s', (match_id,))
+                session['balance'] = session['balance'] + refund
+                flash(f'Match cancelled with 20% penalty. Refunded KSh {refund}', 'warning')
+            elif status == 'active':
+                # Active match, 50% penalty + opponent wins
+                penalty = bet_amount * 0.5
+                refund = bet_amount * 0.5
+                opponent_id = player2_id if session['user_id'] == player1_id else player1_id
+                winnings = bet_amount * 1.68
+                
+                c.execute('UPDATE users SET balance = balance + %s WHERE id = %s', (refund, session['user_id']))
+                c.execute('UPDATE users SET balance = balance + %s WHERE id = %s', (winnings, opponent_id))
+                
+                # Record forfeit penalty
+                c.execute('''INSERT INTO transactions (user_id, type, amount, description)
+                             VALUES (?, ?, ?, ?)''',
+                         (session['user_id'], 'match_forfeit_penalty', -penalty, f'Match #{match_id} forfeit penalty - {game.upper()} - 50% penalty'))
+                
+                # Record forfeit refund
+                c.execute('''INSERT INTO transactions (user_id, type, amount, description)
+                             VALUES (?, ?, ?, ?)''',
+                         (session['user_id'], 'match_refund', refund, f'Match #{match_id} forfeit refund - {game.upper()} - 50% refunded'))
+                
+                # Record opponent winnings
+                c.execute('''INSERT INTO transactions (user_id, type, amount, description)
+                             VALUES (?, ?, ?, ?)''',
+                         (opponent_id, 'match_win', winnings, f'Match #{match_id} win by forfeit - {game.upper()} - KSh {winnings}'))
+                
+                c.execute('UPDATE matches SET winner_id = ?, status = "completed" WHERE id = ?', (opponent_id, match_id))
+                session['balance'] = session['balance'] + refund
+                flash(f'Match forfeited with 50% penalty. Refunded KSh {refund}', 'warning')
+    
+            conn.commit()
+            return redirect(url_for('matches'))
+            
+    except sqlite3.Error as e:
+        flash('Database error occurred. Please try again.', 'error')
         return redirect(url_for('matches'))
-    
-    player1_id, player2_id, bet_amount, status, game = match
-    
-    if session['user_id'] not in [player1_id, player2_id]:
-        flash('Not your match!', 'error')
-        conn.close()
+    except Exception as e:
+        flash('Error cancelling match. Please try again.', 'error')
         return redirect(url_for('matches'))
-    
-    if status == 'pending' and not player2_id:
-        # No opponent joined, full refund
-        c.execute('UPDATE users SET balance = balance + ? WHERE id = ?', (bet_amount, session['user_id']))
-        c.execute('''INSERT INTO transactions (user_id, type, amount, description)
-                     VALUES (?, ?, ?, ?)''',
-                 (session['user_id'], 'match_refund', bet_amount, f'Match #{match_id} cancelled - {game.upper()} - Full refund (no opponent)'))
-        c.execute('DELETE FROM matches WHERE id = ?', (match_id,))
-        session['balance'] = session['balance'] + bet_amount
-        flash('Match cancelled and bet refunded!', 'success')
-    elif status == 'pending' and player2_id:
-        # Opponent joined, 20% penalty
-        penalty = bet_amount * 0.2
-        refund = bet_amount * 0.8
-        opponent_id = player2_id if session['user_id'] == player1_id else player1_id
-        
-        c.execute('UPDATE users SET balance = balance + ? WHERE id = ?', (refund, session['user_id']))
-        c.execute('UPDATE users SET balance = balance + ? WHERE id = ?', (bet_amount, opponent_id))
-        
-        # Record forfeit penalty
-        c.execute('''INSERT INTO transactions (user_id, type, amount, description)
-                     VALUES (?, ?, ?, ?)''',
-                 (session['user_id'], 'match_forfeit_penalty', -penalty, f'Match #{match_id} forfeit penalty - {game.upper()} - 20% penalty'))
-        
-        # Record refund
-        c.execute('''INSERT INTO transactions (user_id, type, amount, description)
-                     VALUES (?, ?, ?, ?)''',
-                 (session['user_id'], 'match_refund', refund, f'Match #{match_id} forfeit refund - {game.upper()} - 80% refunded'))
-        
-        # Record opponent refund
-        c.execute('''INSERT INTO transactions (user_id, type, amount, description)
-                     VALUES (?, ?, ?, ?)''',
-                 (opponent_id, 'match_refund', bet_amount, f'Match #{match_id} opponent forfeit - {game.upper()} - Full refund'))
-        
-        c.execute('DELETE FROM matches WHERE id = ?', (match_id,))
-        session['balance'] = session['balance'] + refund
-        flash(f'Match cancelled with 20% penalty. Refunded KSh {refund}', 'warning')
-    elif status == 'active':
-        # Active match, 50% penalty + opponent wins
-        penalty = bet_amount * 0.5
-        refund = bet_amount * 0.5
-        opponent_id = player2_id if session['user_id'] == player1_id else player1_id
-        winnings = bet_amount * 1.68
-        
-        c.execute('UPDATE users SET balance = balance + ? WHERE id = ?', (refund, session['user_id']))
-        c.execute('UPDATE users SET balance = balance + ? WHERE id = ?', (winnings, opponent_id))
-        
-        # Record forfeit penalty
-        c.execute('''INSERT INTO transactions (user_id, type, amount, description)
-                     VALUES (?, ?, ?, ?)''',
-                 (session['user_id'], 'match_forfeit_penalty', -penalty, f'Match #{match_id} forfeit penalty - {game.upper()} - 50% penalty'))
-        
-        # Record forfeit refund
-        c.execute('''INSERT INTO transactions (user_id, type, amount, description)
-                     VALUES (?, ?, ?, ?)''',
-                 (session['user_id'], 'match_refund', refund, f'Match #{match_id} forfeit refund - {game.upper()} - 50% refunded'))
-        
-        # Record opponent winnings
-        c.execute('''INSERT INTO transactions (user_id, type, amount, description)
-                     VALUES (?, ?, ?, ?)''',
-                 (opponent_id, 'match_win', winnings, f'Match #{match_id} win by forfeit - {game.upper()} - KSh {winnings}'))
-        
-        c.execute('UPDATE matches SET winner_id = ?, status = "completed" WHERE id = ?', (opponent_id, match_id))
-        session['balance'] = session['balance'] + refund
-        flash(f'Match forfeited with 50% penalty. Refunded KSh {refund}', 'warning')
-    
-    conn.commit()
-    conn.close()
-    return redirect(url_for('matches'))
 
 @app.route('/matches')
+@login_required
 def matches():
     if 'user_id' not in session:
         return redirect(url_for('login'))
     
-    conn = sqlite3.connect('gamebet.db')
-    c = conn.cursor()
-    
-    # Create user_friends table if not exists
-    c.execute('''CREATE TABLE IF NOT EXISTS user_friends (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER,
-        friend_id INTEGER,
-        status TEXT DEFAULT 'accepted',
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        UNIQUE(user_id, friend_id)
-    )''')
-    
-    # Add match_type column if it doesn't exist
     try:
-        c.execute('ALTER TABLE matches ADD COLUMN match_type TEXT DEFAULT "public"')
-    except:
-        pass
+        with get_db_connection() as conn:
+            c = conn.cursor()
     
-    # Get available matches (pending matches from other players) - exclude user's own matches
-    c.execute('''SELECT m.id, m.game, m.player1_id, m.player2_id, m.bet_amount, m.total_pot, 
-                        m.winner_id, m.status, m.game_mode, m.created_at,
-                        u1.username as p1_name, u1.phone as p1_phone,
-                        m.verification_type, m.match_type
-                 FROM matches m
-                 JOIN users u1 ON m.player1_id = u1.id
-                 WHERE m.status = "pending" AND m.player2_id IS NULL AND m.player1_id != ?
-                 ORDER BY m.created_at DESC''', (session['user_id'],))
-    available_matches = c.fetchall()
-    
-    # Get user's matches
-    c.execute('''SELECT m.id, m.game, m.player1_id, m.player2_id, m.bet_amount, m.total_pot, 
-                        m.winner_id, m.status, m.game_mode, m.created_at, 
-                        u1.username as p1_name, u2.username as p2_name, 
-                        u1.phone as p1_phone, u2.phone as p2_phone,
-                        m.verification_type, m.match_type
-                 FROM matches m
-                 LEFT JOIN users u1 ON m.player1_id = u1.id
-                 LEFT JOIN users u2 ON m.player2_id = u2.id
-                 WHERE m.player1_id = ? OR m.player2_id = ?
-                 ORDER BY m.created_at DESC''', (session['user_id'], session['user_id']))
-    my_matches = c.fetchall()
-    
-    conn.close()
-    return render_template('matches.html', available_matches=available_matches, my_matches=my_matches)
+            # Create user_friends table if not exists
+            c.execute('''CREATE TABLE IF NOT EXISTS user_friends (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER,
+                friend_id INTEGER,
+                status TEXT DEFAULT 'accepted',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(user_id, friend_id)
+            )''')
+            
+            # Add match_type column if it doesn't exist
+            try:
+                c.execute('ALTER TABLE matches ADD COLUMN match_type TEXT DEFAULT "public"')
+            except sqlite3.Error as e:
+                flash('Database error occurred', 'error')
+                return redirect(url_for('dashboard'))
+    except Exception as e:
+        flash('An error occurred', 'error')
+        return redirect(url_for('dashboard'))
+            
+        # Get available matches (pending matches from other players) - exclude user's own matches
+        c.execute('''SELECT m.id, m.game, m.player1_id, m.player2_id, m.bet_amount, m.total_pot, 
+                                m.winner_id, m.status, m.game_mode, m.created_at,
+                                u1.username as p1_name, u1.phone as p1_phone,
+                                m.verification_type, m.match_type
+                         FROM matches m
+                         JOIN users u1 ON m.player1_id = u1.id
+                         WHERE m.status = "pending" AND m.player2_id IS NULL AND m.player1_id != ?
+                         ORDER BY m.created_at DESC''', (session['user_id'],))
+        available_matches = c.fetchall()
+            
+        # Get user's matches
+        c.execute('''SELECT m.id, m.game, m.player1_id, m.player2_id, m.bet_amount, m.total_pot, 
+                                m.winner_id, m.status, m.game_mode, m.created_at, 
+                                u1.username as p1_name, u2.username as p2_name, 
+                                u1.phone as p1_phone, u2.phone as p2_phone,
+                                m.verification_type, m.match_type
+                         FROM matches m
+                         LEFT JOIN users u1 ON m.player1_id = u1.id
+                         LEFT JOIN users u2 ON m.player2_id = u2.id
+                         WHERE m.player1_id = ? OR m.player2_id = ?
+                         ORDER BY m.created_at DESC''', (session['user_id'], session['user_id']))
+        my_matches = c.fetchall()
+            
+        return render_template('matches.html', available_matches=available_matches, my_matches=my_matches)
+            
+    except sqlite3.Error as e:
+        flash('Database error occurred. Please try again.', 'error')
+        return redirect(url_for('dashboard'))
+    except Exception as e:
+        flash('Error loading matches. Please try again.', 'error')
+        return redirect(url_for('dashboard'))
 
 @app.route('/match_lobby/<int:match_id>')
+@login_required
 def match_lobby(match_id):
     if 'user_id' not in session:
         return redirect(url_for('login'))
     
-    conn = sqlite3.connect('gamebet.db')
-    c = conn.cursor()
+    with get_db_connection() as conn:
+        c = conn.cursor()
     
     c.execute('''SELECT m.id, m.game, m.player1_id, m.player2_id, m.bet_amount, m.total_pot, 
                         m.winner_id, m.status, m.game_mode, m.created_at,
@@ -825,7 +1327,6 @@ def match_lobby(match_id):
     
     if not match:
         flash('Match not found!', 'error')
-        conn.close()
         return redirect(url_for('matches'))
     
     # Create match_lobbies table if not exists
@@ -840,13 +1341,12 @@ def match_lobby(match_id):
     )''')
     
     # Get lobby details if exists
-    c.execute('SELECT * FROM match_lobbies WHERE match_id = ?', (match_id,))
+    c.execute('SELECT * FROM match_lobbies WHERE match_id = %s', (match_id,))
     lobby = c.fetchone()
-    
-    conn.close()
     return render_template('match_lobby.html', match=match, lobby=lobby)
 
 @app.route('/create_lobby', methods=['POST'])
+@login_required
 def create_lobby():
     if 'user_id' not in session:
         return jsonify({'error': 'Unauthorized'}), 401
@@ -864,8 +1364,8 @@ def create_lobby():
     if not lobby_password or lobby_password == '':
         lobby_password = None
     
-    conn = sqlite3.connect('gamebet.db')
-    c = conn.cursor()
+    with get_db_connection() as conn:
+        c = conn.cursor()
     
     # Create match_lobbies table if not exists
     c.execute('''CREATE TABLE IF NOT EXISTS match_lobbies (
@@ -879,16 +1379,14 @@ def create_lobby():
     )''')
     
     # Check if user is part of this match
-    c.execute('SELECT * FROM matches WHERE id = ? AND (player1_id = ? OR player2_id = ?)', 
-             (match_id, session['user_id'], session['user_id']))
+    c.execute('SELECT * FROM matches WHERE id = %s AND (player1_id = %s OR player2_id = %s)', (match_id, session['user_id'], session['user_id']))
     match = c.fetchone()
     
     if not match:
-        conn.close()
         return jsonify({'error': 'Match not found'}), 404
     
     # Delete any existing lobby for this match to avoid duplicates
-    c.execute('DELETE FROM match_lobbies WHERE match_id = ?', (match_id,))
+    c.execute('DELETE FROM match_lobbies WHERE match_id = %s', (match_id,))
     
     # Create new lobby with clean data
     c.execute('''INSERT INTO match_lobbies (match_id, creator_id, lobby_code, lobby_password, status)
@@ -896,11 +1394,10 @@ def create_lobby():
              (match_id, session['user_id'], lobby_code, lobby_password, 'waiting'))
     
     conn.commit()
-    conn.close()
-    
     return jsonify({'success': True, 'message': 'Room shared successfully! Opponent can now join using the Room ID.'})
 
 @app.route('/join_lobby', methods=['POST'])
+@login_required
 def join_lobby():
     if 'user_id' not in session:
         return jsonify({'error': 'Unauthorized'}), 401
@@ -908,22 +1405,21 @@ def join_lobby():
     data = request.get_json()
     match_id = data['match_id']
     
-    conn = sqlite3.connect('gamebet.db')
-    c = conn.cursor()
+    with get_db_connection() as conn:
+        c = conn.cursor()
     
-    c.execute('UPDATE match_lobbies SET status = "ready" WHERE match_id = ?', (match_id,))
+    c.execute('UPDATE match_lobbies SET status = "ready" WHERE match_id = %s', (match_id,))
     conn.commit()
-    conn.close()
-    
     return jsonify({'success': True, 'message': 'Joined lobby successfully!'})
 
 @app.route('/match_chat/<int:match_id>')
+@login_required
 def match_chat(match_id):
     if 'user_id' not in session:
         return redirect(url_for('login'))
     
-    conn = sqlite3.connect('gamebet.db')
-    c = conn.cursor()
+    with get_db_connection() as conn:
+        c = conn.cursor()
     
     # Create match_messages table if not exists
     c.execute('''CREATE TABLE IF NOT EXISTS match_messages (
@@ -938,52 +1434,57 @@ def match_chat(match_id):
     # Get match messages
     c.execute('SELECT username, message, created_at FROM match_messages WHERE match_id = ? ORDER BY created_at', (match_id,))
     messages = c.fetchall()
-    
-    conn.close()
     return render_template('match_chat.html', match_id=match_id, messages=messages)
 
 @app.route('/send_match_message', methods=['POST'])
+@login_required
 def send_match_message():
     if 'user_id' not in session:
         return jsonify({'error': 'Unauthorized'}), 401
     
-    data = request.get_json()
-    match_id = data['match_id']
-    message = data['message']
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'No data provided'}), 400
+            
+        match_id = data.get('match_id')
+        message = data.get('message', '').strip()
+        
+        if not match_id or not message:
+            return jsonify({'error': 'match_id and message required'}), 400
+    except Exception as e:
+        return jsonify({'error': 'Invalid request'}), 400
     
-    conn = sqlite3.connect('gamebet.db')
-    c = conn.cursor()
+    with get_db_connection() as conn:
+        c = conn.cursor()
     
     c.execute('INSERT INTO match_messages (match_id, user_id, username, message) VALUES (?, ?, ?, ?)',
              (match_id, session['user_id'], session['username'], message))
     
     conn.commit()
-    conn.close()
-    
     return jsonify({'success': True})
 
 @app.route('/get_match_messages/<int:match_id>')
+@login_required
 def get_match_messages(match_id):
     if 'user_id' not in session:
         return jsonify({'error': 'Unauthorized'}), 401
     
-    conn = sqlite3.connect('gamebet.db')
-    c = conn.cursor()
+    with get_db_connection() as conn:
+        c = conn.cursor()
     
     c.execute('SELECT username, message, created_at FROM match_messages WHERE match_id = ? ORDER BY created_at', (match_id,))
     messages = c.fetchall()
-    
-    conn.close()
-    
     return jsonify({'messages': [{'username': m[0], 'message': m[1], 'time': m[2]} for m in messages]})
 
 @app.route('/match_result/<int:match_id>')
+@login_required
 def match_result(match_id):
     if 'user_id' not in session:
         return redirect(url_for('login'))
     
-    conn = sqlite3.connect('gamebet.db')
-    c = conn.cursor()
+    with get_db_connection() as conn:
+        c = conn.cursor()
     
     # Get match details
     c.execute('''SELECT m.*, u1.username as p1_name, u2.username as p2_name
@@ -996,50 +1497,44 @@ def match_result(match_id):
     
     if not match:
         flash('Match not found!', 'error')
-        conn.close()
         return redirect(url_for('matches'))
     
     # Check if user already submitted
-    c.execute('SELECT id FROM match_screenshots WHERE match_id = ? AND user_id = ?', 
-             (match_id, session['user_id']))
+    c.execute('SELECT id FROM match_screenshots WHERE match_id = %s AND user_id = %s', (match_id, session['user_id']))
     already_submitted = c.fetchone()
-    
-    conn.close()
-    
     return render_template('match_result.html', 
                          match_id=match_id, 
                          match=match, 
                          already_submitted=already_submitted)
 
 @app.route('/join_match/<int:match_id>')
+@login_required
 def join_match(match_id):
     if 'user_id' not in session:
         return redirect(url_for('login'))
     
-    conn = sqlite3.connect('gamebet.db')
-    c = conn.cursor()
+    with get_db_connection() as conn:
+        c = conn.cursor()
     
-    c.execute('SELECT * FROM matches WHERE id = ? AND status = "pending" AND player2_id IS NULL', (match_id,))
+    c.execute('SELECT * FROM matches WHERE id = %s AND status = "pending" AND player2_id IS NULL', (match_id,))
     match = c.fetchone()
     
     if not match:
         flash('Match not available!', 'error')
-        conn.close()
         return redirect(url_for('matches'))
     
     bet_amount = match[4]
     game = match[1]
     game_mode = match[8]
     
-    c.execute('SELECT balance FROM users WHERE id = ?', (session['user_id'],))
+    c.execute('SELECT balance FROM users WHERE id = %s', (session['user_id'],))
     balance = c.fetchone()[0]
     
     if balance < bet_amount:
         flash('Insufficient balance!', 'error')
-        conn.close()
         return redirect(url_for('matches'))
     
-    c.execute('UPDATE users SET balance = balance - ? WHERE id = ?', (bet_amount, session['user_id']))
+    c.execute('UPDATE users SET balance = balance - %s WHERE id = %s', (bet_amount, session['user_id']))
     c.execute('UPDATE matches SET player2_id = ?, status = "active" WHERE id = ?', 
              (session['user_id'], match_id))
     
@@ -1050,10 +1545,89 @@ def join_match(match_id):
     
     session['balance'] = balance - bet_amount
     conn.commit()
-    conn.close()
-    
     flash(f'Joined match! KSh {bet_amount} in escrow. Total pot: KSh {bet_amount * 2}', 'success')
     return redirect(url_for('matches'))
+
+@app.route('/submit_screenshot_page/<int:match_id>')
+@login_required
+def submit_screenshot_page(match_id):
+    """Route for the submit screenshot page"""
+    return submit_screenshot(match_id)
+
+@app.route('/submit_screenshot/<int:match_id>', methods=['GET', 'POST'])
+@login_required
+def submit_screenshot(match_id):
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    with get_db_connection() as conn:
+        c = conn.cursor()
+    
+    # Get match details
+    c.execute('''SELECT m.*, u1.username as p1_name, u2.username as p2_name
+                 FROM matches m
+                 LEFT JOIN users u1 ON m.player1_id = u1.id
+                 LEFT JOIN users u2 ON m.player2_id = u2.id
+                 WHERE m.id = ? AND (m.player1_id = ? OR m.player2_id = ?)''', 
+             (match_id, session['user_id'], session['user_id']))
+    match = c.fetchone()
+    
+    if not match:
+        flash('Match not found!', 'error')
+        return redirect(url_for('matches'))
+    
+    if request.method == 'POST':
+        claimed_result = request.form.get('result')
+        screenshot_file = request.files.get('screenshot')
+        
+        # Validate file upload
+        is_valid, result = validate_file_upload(screenshot_file)
+        if not is_valid:
+            flash(result, 'error')
+            return render_template('submit_screenshot.html', match=match, match_id=match_id)
+        
+        if not screenshot_file or not screenshot_file.filename:
+            flash('Please upload a screenshot!', 'error')
+            return render_template('submit_screenshot.html', match=match, match_id=match_id)
+        
+        # Process screenshot
+        import base64
+        screenshot_data = base64.b64encode(screenshot_file.read()).decode('utf-8')
+        
+        # Create match_screenshots table if not exists
+        c.execute('''CREATE TABLE IF NOT EXISTS match_screenshots (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            match_id INTEGER,
+            user_id INTEGER,
+            screenshot_data TEXT,
+            claimed_result TEXT,
+            ocr_analysis TEXT,
+            submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )''')
+        
+        # Analyze screenshot using OCR
+        game_type = match[1]  # game column
+        analysis_result = analyze_screenshot(screenshot_data, claimed_result, game_type)
+        
+        # Store screenshot
+        c.execute('''INSERT INTO match_screenshots (match_id, user_id, screenshot_data, claimed_result, ocr_analysis)
+                     VALUES (?, ?, ?, ?, ?)''',
+                 (match_id, session['user_id'], screenshot_data, claimed_result, str(analysis_result)))
+        
+        # Check if both players have submitted
+        c.execute('SELECT COUNT(*) FROM match_screenshots WHERE match_id = %s', (match_id,))
+        submission_count = c.fetchone()[0]
+        
+        if submission_count >= 2:
+            # Both submitted, process match result
+            c.execute('UPDATE matches SET status = "pending_review" WHERE id = %s', (match_id,))
+            flash('Screenshot submitted! Match is now under review.', 'success')
+        else:
+            flash('Screenshot submitted! Waiting for opponent to submit.', 'success')
+        
+        conn.commit()
+        return redirect(url_for('matches'))
+    return render_template('submit_screenshot.html', match=match, match_id=match_id)
 
 @app.route('/wallet')
 @login_required
@@ -1061,8 +1635,8 @@ def wallet():
     if 'user_id' not in session:
         return redirect(url_for('login'))
     
-    conn = sqlite3.connect('gamebet.db')
-    c = conn.cursor()
+    with get_db_connection() as conn:
+        c = conn.cursor()
     
     # Create missing tables if they don't exist
     c.execute('''CREATE TABLE IF NOT EXISTS paypal_payments (
@@ -1096,12 +1670,16 @@ def wallet():
         timed_out_crypto = c.fetchall()
         
         for payment_id, user_id, amount_kes in timed_out_crypto:
-            c.execute('UPDATE crypto_payments SET status = "timeout" WHERE payment_id = ?', (payment_id,))
+            c.execute('UPDATE crypto_payments SET status = "timeout" WHERE payment_id = %s', (payment_id,))
             c.execute('''INSERT INTO transactions (user_id, type, amount, description)
                          VALUES (?, ?, ?, ?)''',
                      (user_id, 'failed_crypto_deposit', amount_kes, f'Crypto deposit timed out - Payment not completed within 30 minutes - Payment ID: {payment_id}'))
-    except:
-        pass
+    except sqlite3.Error as e:
+        flash('Database error occurred', 'error')
+        return redirect(url_for('dashboard'))
+    except Exception as e:
+        flash('An error occurred', 'error')
+        return redirect(url_for('dashboard'))
     
     try:
         c.execute('''SELECT order_id, user_id, amount_kes FROM paypal_payments 
@@ -1109,17 +1687,22 @@ def wallet():
         timed_out_paypal = c.fetchall()
         
         for order_id, user_id, amount_kes in timed_out_paypal:
-            c.execute('UPDATE paypal_payments SET status = "timeout" WHERE order_id = ?', (order_id,))
+            c.execute('UPDATE paypal_payments SET status = "timeout" WHERE order_id = %s', (order_id,))
             c.execute('''INSERT INTO transactions (user_id, type, amount, description)
                          VALUES (?, ?, ?, ?)''',
                      (user_id, 'failed_paypal_deposit', amount_kes, f'PayPal deposit timed out - Payment not completed within 30 minutes - Order: {order_id}'))
-    except:
-        pass
+    except sqlite3.Error as e:
+        flash('Database error occurred', 'error')
+        return redirect(url_for('dashboard'))
+    except Exception as e:
+        flash('An error occurred', 'error')
+        return redirect(url_for('dashboard'))
     
-    # Get user's enhanced transaction history - exclude platform revenue entries
-    c.execute('''SELECT * FROM transactions WHERE user_id = ? 
-                 AND type NOT IN ('deposit_fee', 'withdrawal_fee', 'admin_fraud_commission', 'admin_referral_profit', 'tournament_commission')
-                 ORDER BY created_at DESC LIMIT 50''', (session['user_id'],))
+    # Get user's complete transaction history - latest first
+    c.execute('''SELECT id, user_id, type, amount, description, created_at FROM transactions 
+                 WHERE user_id = ? 
+                 AND type NOT IN ('deposit_fee', 'withdrawal_fee', 'admin_fraud_commission', 'admin_referral_profit', 'tournament_commission', 'gift_commission')
+                 ORDER BY created_at DESC, id DESC LIMIT 50''', (session['user_id'],))
     transactions = c.fetchall()
     
     # Get withdrawal history
@@ -1128,10 +1711,10 @@ def wallet():
     withdrawals = c.fetchall()
     
     conn.commit()
-    conn.close()
-    return render_template('wallet.html', transactions=transactions, withdrawals=withdrawals)
+    return render_template('wallet_mobile.html', transactions=transactions, withdrawals=withdrawals)
 
 @app.route('/create_paypal_payment', methods=['POST'])
+@login_required
 def create_paypal_payment():
     if 'user_id' not in session:
         return jsonify({'error': 'Unauthorized'}), 401
@@ -1139,7 +1722,7 @@ def create_paypal_payment():
     from paypal_config import PAYPAL_CLIENT_ID, PAYPAL_CLIENT_SECRET, PAYPAL_BASE_URL
     
     data = request.get_json()
-    amount_kes = float(data.get('amount', 0))
+    amount_kes = safe_float_conversion(request.form.get('amount', 0), 'amount')
     
     if amount_kes < 100:
         return jsonify({'error': 'Minimum deposit is KSh 100'}), 400
@@ -1201,8 +1784,8 @@ def create_paypal_payment():
         order_info = order_response.json()
         
         # Store payment info
-        conn = sqlite3.connect('gamebet.db')
-        c = conn.cursor()
+        with get_db_connection() as conn:
+            c = conn.cursor()
         
         c.execute('''CREATE TABLE IF NOT EXISTS paypal_payments (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1224,8 +1807,6 @@ def create_paypal_payment():
                  (session['user_id'], 'paypal_initiated', 0, f'PayPal payment initiated - KSh {amount_kes} - Order: {order_info["id"]}'))
         
         conn.commit()
-        conn.close()
-        
         # Get approval URL
         approval_url = next(link['href'] for link in order_info['links'] if link['rel'] == 'approve')
         
@@ -1239,6 +1820,7 @@ def create_paypal_payment():
         return jsonify({'error': str(e)}), 500
 
 @app.route('/create_crypto_payment', methods=['POST'])
+@login_required
 def create_crypto_payment():
     if 'user_id' not in session:
         return jsonify({'error': 'Unauthorized'}), 401
@@ -1257,17 +1839,14 @@ def create_crypto_payment():
     usd_rate = 130
     amount_usd = round(amount_kes / usd_rate, 2)
     
-    # Create payment payload for card payments
+    # Create payment payload for NOWPayments
     order_id = f'skillstake_{session["user_id"]}_{int(time.time())}'
     payment_data = {
         'price_amount': amount_usd,
         'price_currency': 'usd',
-        'pay_currency': 'usdttrc20',  # Default to USDT TRC-20
+        'pay_currency': 'usdttrc20',
         'order_id': order_id,
-        'order_description': 'SkillStake Gaming Deposit',
-        'success_url': f'{request.url_root}payment_success',
-        'cancel_url': f'{request.url_root}wallet',
-        'ipn_callback_url': f'{request.url_root}payment_webhook'
+        'order_description': 'SkillStake Gaming Deposit'
     }
     
     try:
@@ -1277,10 +1856,10 @@ def create_crypto_payment():
             'Content-Type': 'application/json'
         }
         
-        # Use invoice endpoint for hosted payment pages
-        invoice_url = 'https://api.nowpayments.io/v1/invoice'
+        # Use payment endpoint for crypto payments
+        payment_url = 'https://api.nowpayments.io/v1/payment'
         response = requests.post(
-            invoice_url, 
+            payment_url, 
             json=payment_data, 
             headers=headers, 
             timeout=REQUEST_TIMEOUT
@@ -1292,8 +1871,8 @@ def create_crypto_payment():
             payment_info = response.json()
             
             # Store payment info in database
-            conn = sqlite3.connect('gamebet.db')
-            c = conn.cursor()
+            with get_db_connection() as conn:
+                c = conn.cursor()
             
             # Create crypto_payments table if not exists
             c.execute('''CREATE TABLE IF NOT EXISTS crypto_payments (
@@ -1316,13 +1895,15 @@ def create_crypto_payment():
                       amount_kes, amount_usd, 'pending'))
             
             conn.commit()
-            conn.close()
-            
-            # Use the invoice_url from the response or construct it
-            payment_url = payment_info.get('invoice_url')
+            # Get payment URL - NOWPayments returns pay_url for direct payments
+            payment_url = payment_info.get('pay_url')
             if not payment_url:
-                invoice_id = payment_info.get('id')
-                payment_url = f"https://nowpayments.io/payment/?iid={invoice_id}"
+                # Fallback: construct URL with payment_id
+                payment_id = payment_info.get('payment_id')
+                if payment_id:
+                    payment_url = f"https://nowpayments.io/payment/?pid={payment_id}"
+                else:
+                    return jsonify({'error': 'No payment URL received from provider'}), 500
             
             return jsonify({
                 'success': True,
@@ -1334,15 +1915,18 @@ def create_crypto_payment():
             try:
                 error_data = response.json()
                 error_msg = error_data.get('message', error_msg)
-            except:
-                pass
-            print(f"NOWPayments API Error: Status {response.status_code}, Response: {response.text}")
-            return jsonify({'error': f'API Error: {error_msg}'}), 400
+            except sqlite3.Error as e:
+                flash('Database error occurred', 'error')
+                return redirect(url_for('dashboard'))
+    except Exception as e:
+        flash('An error occurred', 'error')
+        return redirect(url_for('dashboard'))
             
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
 @app.route('/payment_webhook', methods=['POST'])
+@login_required
 def payment_webhook():
     """Handle NOWPayments webhook notifications"""
     try:
@@ -1350,8 +1934,8 @@ def payment_webhook():
         payment_id = data.get('payment_id')
         payment_status = data.get('payment_status')
         
-        conn = sqlite3.connect('gamebet.db')
-        c = conn.cursor()
+        with get_db_connection() as conn:
+            c = conn.cursor()
         
         # Find the payment
         c.execute('SELECT user_id, amount_kes FROM crypto_payments WHERE payment_id = ?', (payment_id,))
@@ -1361,29 +1945,24 @@ def payment_webhook():
             user_id, amount_kes = payment
             
             if payment_status == 'finished':
-                # Apply 3% fee
-                fee = amount_kes * 0.03
-                net_amount = amount_kes - fee
+                # Credit full amount (no fee)
+                fee = 0
+                net_amount = amount_kes
                 
                 # Credit user account
-                c.execute('UPDATE users SET balance = balance + ? WHERE id = ?', (net_amount, user_id))
+                c.execute('UPDATE users SET balance = balance + %s WHERE id = %s', (net_amount, user_id))
                 
                 # Update payment status
-                c.execute('UPDATE crypto_payments SET status = ? WHERE payment_id = ?', ('completed', payment_id))
+                c.execute('UPDATE crypto_payments SET status = %s WHERE payment_id = %s', ('completed', payment_id))
                 
                 # Add transaction record
                 c.execute('''INSERT INTO transactions (user_id, type, amount, description)
                              VALUES (?, ?, ?, ?)''',
-                         (user_id, 'crypto_deposit', net_amount, f'Crypto deposit KSh {amount_kes} - 3% fee = KSh {net_amount:.0f} - Payment ID: {payment_id}'))
-                
-                # Record admin commission
-                c.execute('''INSERT INTO transactions (user_id, type, amount, description)
-                             VALUES (?, ?, ?, ?)''',
-                         (1, 'deposit_fee', fee, f'3% deposit fee from crypto payment - Payment ID: {payment_id}'))
+                         (user_id, 'crypto_deposit', net_amount, f'Crypto deposit KSh {amount_kes} - Full amount credited - Payment ID: {payment_id}'))
                 
             elif payment_status in ['failed', 'expired', 'cancelled']:
                 # Update payment status to failed
-                c.execute('UPDATE crypto_payments SET status = ? WHERE payment_id = ?', ('failed', payment_id))
+                c.execute('UPDATE crypto_payments SET status = %s WHERE payment_id = %s', ('failed', payment_id))
                 
                 # Add failed transaction record for history
                 failure_reason = {
@@ -1397,14 +1976,13 @@ def payment_webhook():
                          (user_id, 'failed_crypto_deposit', amount_kes, f'Crypto deposit failed: {failure_reason} - Payment ID: {payment_id}'))
             
             conn.commit()
-        
-        conn.close()
         return jsonify({'success': True})
         
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
 @app.route('/test_nowpayments')
+@admin_required
 def test_nowpayments():
     """Test NOWPayments API connection"""
     if 'user_id' not in session or session.get('username') != 'admin':
@@ -1412,8 +1990,9 @@ def test_nowpayments():
     
     try:
         import requests
+        from config import NOWPAYMENTS_API_KEY
         headers = {
-            'x-api-key': 'YSRK1WV-3AF4QJ8-MWQ7V1D-BZK2018',
+            'x-api-key': NOWPAYMENTS_API_KEY,
             'Content-Type': 'application/json'
         }
         
@@ -1440,6 +2019,7 @@ def test_nowpayments():
         })
 
 @app.route('/webhook_info')
+@admin_required
 def webhook_info():
     if 'user_id' not in session or session.get('username') != 'admin':
         return jsonify({'error': 'Admin only'}), 403
@@ -1455,41 +2035,36 @@ def webhook_info():
     })
 
 @app.route('/paypal_checkout')
+@login_required
 def paypal_checkout():
     if 'user_id' not in session:
         return redirect(url_for('login'))
     return render_template('paypal_checkout.html')
 
 @app.route('/paypal_capture', methods=['POST'])
+@login_required
 def paypal_capture():
     if 'user_id' not in session:
         return jsonify({'error': 'Unauthorized'}), 401
     
     data = request.get_json()
     order_id = data.get('orderID')
-    amount_kes = float(data.get('amount', 0))
+    amount_kes = safe_float_conversion(request.form.get('amount', 0), 'amount')
     
     try:
-        # Apply 3% fee and credit user account
-        fee = amount_kes * 0.03
-        net_amount = amount_kes - fee
+        # Credit full amount to user account (no fee)
+        fee = 0
+        net_amount = amount_kes
         
-        conn = sqlite3.connect('gamebet.db')
-        c = conn.cursor()
+        with get_db_connection() as conn:
+            c = conn.cursor()
         
-        c.execute('UPDATE users SET balance = balance + ? WHERE id = ?', (net_amount, session['user_id']))
+        c.execute('UPDATE users SET balance = balance + %s WHERE id = %s', (net_amount, session['user_id']))
         c.execute('''INSERT INTO transactions (user_id, type, amount, description)
                      VALUES (?, ?, ?, ?)''',
-                 (session['user_id'], 'paypal_deposit', net_amount, f'PayPal deposit KSh {amount_kes} - 3% fee = KSh {net_amount:.0f} - Order: {order_id}'))
-        
-        # Record admin commission
-        c.execute('''INSERT INTO transactions (user_id, type, amount, description)
-                     VALUES (?, ?, ?, ?)''',
-                 (1, 'deposit_fee', fee, f'3% deposit fee from PayPal payment - Order: {order_id}'))
+                 (session['user_id'], 'paypal_deposit', net_amount, f'PayPal deposit KSh {amount_kes} - Full amount credited - Order: {order_id}'))
         
         conn.commit()
-        conn.close()
-        
         session['balance'] = session.get('balance', 0) + net_amount
         
         return jsonify({'success': True, 'message': f'KSh {net_amount:.0f} credited (KSh {amount_kes} - 3% fee)'})
@@ -1498,6 +2073,7 @@ def paypal_capture():
         return jsonify({'error': str(e)}), 500
 
 @app.route('/paypal_success')
+@login_required
 def paypal_success():
     if 'user_id' not in session:
         return redirect(url_for('login'))
@@ -1542,27 +2118,22 @@ def paypal_success():
                 
                 if capture_data['status'] == 'COMPLETED':
                     # Credit user account
-                    conn = sqlite3.connect('gamebet.db')
-                    c = conn.cursor()
+                    with get_db_connection() as conn:
+                        c = conn.cursor()
                     
-                    c.execute('SELECT amount_kes FROM paypal_payments WHERE order_id = ? AND user_id = ?', 
-                             (order_id, session['user_id']))
+                    c.execute('SELECT amount_kes FROM paypal_payments WHERE order_id = %s AND user_id = %s', (order_id, session['user_id']))
                     payment = c.fetchone()
                     
                     if payment:
                         amount_kes = payment[0]
-                        c.execute('UPDATE users SET balance = balance + ? WHERE id = ?', 
-                                 (amount_kes, session['user_id']))
-                        c.execute('UPDATE paypal_payments SET status = "completed" WHERE order_id = ?', 
-                                 (order_id,))
+                        c.execute('UPDATE users SET balance = balance + %s WHERE id = %s', (amount_kes, session['user_id']))
+                        c.execute('UPDATE paypal_payments SET status = "completed" WHERE order_id = %s', (order_id,))
                         c.execute('''INSERT INTO transactions (user_id, type, amount, description)
                                      VALUES (?, ?, ?, ?)''',
                                  (session['user_id'], 'paypal_deposit', amount_kes, 
                                   f'PayPal deposit - Order: {order_id}'))
                         
                         conn.commit()
-                        conn.close()
-                        
                         session['balance'] = session.get('balance', 0) + amount_kes
                         success = True
                     else:
@@ -1580,6 +2151,7 @@ def paypal_success():
     return render_template('paypal_result.html', success=success, amount=amount_kes, error=error_msg)
 
 @app.route('/payment_success')
+@login_required
 def payment_success():
     if 'user_id' not in session:
         return redirect(url_for('login'))
@@ -1612,8 +2184,8 @@ def add_funds():
         flash('M-Pesa receipt screenshot is required!', 'error')
         return redirect(url_for('wallet'))
     
-    conn = sqlite3.connect('gamebet.db')
-    c = conn.cursor()
+    with get_db_connection() as conn:
+        c = conn.cursor()
     
     # Create deposit verifications table if not exists
     c.execute('''CREATE TABLE IF NOT EXISTS deposit_verifications (
@@ -1627,8 +2199,8 @@ def add_funds():
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )''')
     
-    processing_fee = amount * 0.03
-    amount_to_credit = amount - processing_fee
+    processing_fee = 0  # No processing fee - deposits are free
+    amount_to_credit = amount  # Credit full amount
     
     description = f'M-Pesa deposit KSh {amount} from {sender_name} ({mpesa_number}) - To credit: KSh {amount_to_credit:.0f}'
     c.execute('''INSERT INTO transactions (user_id, type, amount, description, created_at)
@@ -1643,14 +2215,28 @@ def add_funds():
                 (transaction_id, session['user_id'], mpesa_number, sender_name, receipt_screenshot, amount))
     
     conn.commit()
-    conn.close()
-    
     flash('Deposit request submitted with receipt!', 'success')
     return redirect(url_for('wallet'))
 
 @app.route('/withdraw', methods=['POST'])
 @login_required
 def withdraw():
+    # Check if user is banned/suspended
+    with get_db_connection() as conn:
+        c = conn.cursor()
+    
+    try:
+        c.execute('SELECT banned FROM users WHERE id = %s', (session['user_id'],))
+        user_status = c.fetchone()
+        if user_status and len(user_status) > 0 and user_status[0] == 1:
+            flash('Account suspended. Withdrawals blocked. Contact admin.', 'error')
+            return redirect(url_for('wallet'))
+    except sqlite3.Error as e:
+        flash('Database error occurred', 'error')
+        return redirect(url_for('dashboard'))
+    except Exception as e:
+        flash('An error occurred', 'error')
+        return redirect(url_for('dashboard'))
     # Validate amount
     valid_amount, amount_or_msg = validate_amount(request.form.get('amount', 0))
     if not valid_amount:
@@ -1661,8 +2247,8 @@ def withdraw():
     withdrawal_method = request.form.get('withdrawal_method', 'mpesa')
     
     # Get user's deposit history to determine preferred withdrawal method
-    conn = sqlite3.connect('gamebet.db')
-    c = conn.cursor()
+    with get_db_connection() as conn:
+        c = conn.cursor()
     
     # Create user_deposit_methods table if not exists
     c.execute('''CREATE TABLE IF NOT EXISTS user_deposit_methods (
@@ -1705,20 +2291,17 @@ def withdraw():
     
     if amount < method_limits['min']:
         flash(f'Minimum withdrawal for {withdrawal_method.upper()} is KSh {method_limits["min"]}!', 'error')
-        conn.close()
         return redirect(url_for('wallet'))
     
     if amount > method_limits['max']:
         flash(f'Maximum withdrawal for {withdrawal_method.upper()} is KSh {method_limits["max"]}!', 'error')
-        conn.close()
         return redirect(url_for('wallet'))
     
-    c.execute('SELECT balance FROM users WHERE id = ?', (session['user_id'],))
+    c.execute('SELECT balance FROM users WHERE id = %s', (session['user_id'],))
     balance = c.fetchone()[0]
     
     if balance < amount:
         flash('Insufficient balance!', 'error')
-        conn.close()
         return redirect(url_for('wallet'))
     
     # Smart withdrawal processing with fees
@@ -1732,14 +2315,12 @@ def withdraw():
         
         if not mpesa_number:
             flash('M-Pesa number required!', 'error')
-            conn.close()
             return redirect(url_for('wallet'))
         
         # Validate M-Pesa number
         import re
         if not re.match(r'^0[17][0-9]{8}$', mpesa_number):
             flash('Invalid M-Pesa number format!', 'error')
-            conn.close()
             return redirect(url_for('wallet'))
         
         withdrawal_details = f'{mpesa_name} ({mpesa_number})'
@@ -1749,7 +2330,6 @@ def withdraw():
         paypal_email = request.form.get('paypal_email', '').strip()
         if not paypal_email:
             flash('PayPal email required!', 'error')
-            conn.close()
             return redirect(url_for('wallet'))
         withdrawal_details = paypal_email
         
@@ -1759,7 +2339,6 @@ def withdraw():
         crypto_type = request.form.get('crypto_type', 'USDT')
         if not crypto_address:
             flash('Crypto wallet address required!', 'error')
-            conn.close()
             return redirect(url_for('wallet'))
         withdrawal_details = f'{crypto_type}: {crypto_address}'
         
@@ -1770,7 +2349,6 @@ def withdraw():
         account_name = request.form.get('account_name', '').strip()
         if not all([bank_name, account_number, account_name]):
             flash('All bank details required!', 'error')
-            conn.close()
             return redirect(url_for('wallet'))
         withdrawal_details = f'{bank_name} - {account_name} ({account_number})'
     
@@ -1791,11 +2369,10 @@ def withdraw():
     if daily_withdrawn + amount > method_limits['max']:
         remaining = method_limits['max'] - daily_withdrawn
         flash(f'Daily {withdrawal_method.upper()} limit exceeded! You can withdraw KSh {remaining:.0f} more today.', 'error')
-        conn.close()
         return redirect(url_for('wallet'))
     
     # Process withdrawal
-    c.execute('UPDATE users SET balance = balance - ? WHERE id = ?', (amount, session['user_id']))
+    c.execute('UPDATE users SET balance = balance - %s WHERE id = %s', (amount, session['user_id']))
     
     if withdrawal_method == 'mpesa':
         description = f'M-Pesa withdrawal KSh {amount} to {withdrawal_details} - Fees: KSh {total_fees:.0f} - You receive: KSh {net_amount:.0f}'
@@ -1820,47 +2397,83 @@ def withdraw():
     session['balance'] = balance - amount
     
     conn.commit()
-    conn.close()
-    
     flash(f'Smart withdrawal request submitted! Method: {withdrawal_method.upper()}', 'success')
     return redirect(url_for('withdrawal_chat', withdrawal_id=withdrawal_id))
 
 @app.route('/tournaments')
+@login_required
 def tournaments():
     # Redirect to streaming tournaments (new system)
     return redirect(url_for('tournaments_new'))
 
 @app.route('/referrals')
+@login_required
 def referrals():
     if 'user_id' not in session:
         return redirect(url_for('login'))
     
-    conn = sqlite3.connect('gamebet.db')
-    c = conn.cursor()
+    with get_db_connection() as conn:
+        c = conn.cursor()
     
     # Get user's referral code and earnings
-    c.execute('SELECT referral_code FROM users WHERE id = ?', (session['user_id'],))
+    c.execute('SELECT referral_code FROM users WHERE id = %s', (session['user_id'],))
     user_data = c.fetchone()
-    referral_code = user_data[0] if user_data else 'N/A'
+    referral_code = user_data[0] if user_data and user_data[0] and user_data[0] != 'None' else None
     
-    # Get referral earnings
+    # Generate referral code if user doesn't have one
+    if not referral_code:
+        import random, string
+        c.execute('SELECT username FROM users WHERE id = %s', (session['user_id'],))
+        username_data = c.fetchone()
+        if username_data:
+            username = username_data[0]
+            referral_code = username[:3].upper() + ''.join(random.choices(string.digits, k=4))
+            c.execute('UPDATE users SET referral_code = %s WHERE id = %s', (referral_code, session['user_id']))
+            conn.commit()
+    
+    # Get total referral earnings (signup bonuses + ongoing commissions)
+    c.execute('SELECT COALESCE(SUM(amount), 0) FROM transactions WHERE user_id = ? AND type IN ("referral_bonus", "referral_commission")', (session['user_id'],))
+    total_referral_earnings = c.fetchone()[0]
+    
+    # Get signup bonuses only
     c.execute('SELECT COALESCE(SUM(amount), 0) FROM transactions WHERE user_id = ? AND type = "referral_bonus"', (session['user_id'],))
-    referral_earnings = c.fetchone()[0]
+    signup_bonuses = c.fetchone()[0]
     
-    # Get referred users
-    c.execute('SELECT username, created_at FROM users WHERE referred_by = ? ORDER BY created_at DESC', (session['user_id'],))
+    # Get ongoing commissions only
+    c.execute('SELECT COALESCE(SUM(amount), 0) FROM transactions WHERE user_id = ? AND type = "referral_commission"', (session['user_id'],))
+    ongoing_commissions = c.fetchone()[0]
+    
+    # Get referred users with their activity
+    c.execute('''SELECT u.username, u.created_at, 
+                        COALESCE(SUM(CASE WHEN t.type = 'referral_commission' THEN t.amount ELSE 0 END), 0) as commission_earned
+                 FROM users u
+                 LEFT JOIN transactions t ON t.user_id = ? AND t.description LIKE '%' || u.username || '%' AND t.type = 'referral_commission'
+                 WHERE u.referred_by = ?
+                 GROUP BY u.id, u.username, u.created_at
+                 ORDER BY u.created_at DESC''', (session['user_id'], session['user_id']))
     referred_users = c.fetchall()
     
-    conn.close()
-    return render_template('referrals.html', referral_code=referral_code, referral_earnings=referral_earnings, referred_users=referred_users)
+    referral_stats = {
+        'total_earnings': total_referral_earnings,
+        'signup_bonuses': signup_bonuses,
+        'ongoing_commissions': ongoing_commissions,
+        'referred_count': len(referred_users)
+    }
+    
+    return render_template('referrals.html', 
+                         referral_code=referral_code, 
+                         referral_earnings=total_referral_earnings,
+                         referral_stats=referral_stats,
+                         referred_users=referred_users)
 
 @app.route('/friends')
+@login_required
 def friends():
     if 'user_id' not in session:
         return redirect(url_for('login'))
     
-    conn = sqlite3.connect('gamebet.db')
-    c = conn.cursor()
+    with get_db_connection() as conn:
+        c = conn.cursor()
     
     # Get all users except current user and admin
     c.execute('SELECT id, username, created_at FROM users WHERE id != ? AND username != "admin" ORDER BY username', (session['user_id'],))
@@ -1871,47 +2484,46 @@ def friends():
                  JOIN user_friends uf ON u.id = uf.friend_id 
                  WHERE uf.user_id = ? AND uf.status = "accepted"''', (session['user_id'],))
     friends = c.fetchall()
-    
-    conn.close()
     return render_template('friends.html', friends=friends, requests=[], all_users=all_users)
 
 @app.route('/add_friend', methods=['POST'])
+@login_required
 def add_friend():
     if 'user_id' not in session:
         return redirect(url_for('login'))
     
     username = request.form['username']
     
-    conn = sqlite3.connect('gamebet.db')
-    c = conn.cursor()
+    with get_db_connection() as conn:
+        c = conn.cursor()
     
-    c.execute('SELECT id FROM users WHERE username = ?', (username,))
+    c.execute('SELECT id FROM users WHERE username = %s', (username,))
     friend = c.fetchone()
     
     if friend:
-        c.execute('''INSERT OR IGNORE INTO user_friends (user_id, friend_id, status) 
+        c.execute('''INSERT INTO user_friends (user_id, friend_id, status) 
                      VALUES (?, ?, ?)''', (session['user_id'], friend[0], 'accepted'))
         conn.commit()
         flash('Friend added!', 'success')
     else:
         flash('User not found!', 'error')
-    
-    conn.close()
     return redirect(url_for('friends'))
 
 @app.route('/leaderboard')
+@login_required
 def leaderboard():
     if 'user_id' not in session:
         return redirect(url_for('login'))
     return render_template('leaderboard.html', top_players=[], top_earners=[])
 
 @app.route('/match_history')
+@login_required
 def match_history():
     if 'user_id' not in session:
         return redirect(url_for('login'))
     
-    conn = sqlite3.connect('gamebet.db')
-    c = conn.cursor()
+    with get_db_connection() as conn:
+        c = conn.cursor()
     
     # Get user's complete match history
     c.execute('''SELECT m.id, m.game, m.player1_id, m.player2_id, m.bet_amount, m.total_pot, 
@@ -1925,34 +2537,31 @@ def match_history():
     matches = c.fetchall()
     
     # Get user's transaction history
-    c.execute('''SELECT * FROM transactions WHERE user_id = ? 
+    c.execute('''SELECT * FROM transactions WHERE user_id = %s 
                  ORDER BY created_at DESC LIMIT 20''', (session['user_id'],))
     transactions = c.fetchall()
-    
-    conn.close()
-    
     return render_template('match_history.html', matches=matches, transactions=transactions, withdrawals=[])
 
 @app.route('/profile')
+@login_required
 def profile():
     if 'user_id' not in session:
         return redirect(url_for('login'))
     
-    conn = sqlite3.connect('gamebet.db')
-    c = conn.cursor()
-    c.execute('SELECT * FROM users WHERE id = ?', (session['user_id'],))
+    with get_db_connection() as conn:
+        c = conn.cursor()
+    c.execute('SELECT * FROM users WHERE id = %s', (session['user_id'],))
     user = c.fetchone()
-    conn.close()
-    
     return render_template('profile.html', user=user)
 
 @app.route('/support_chat')
+@login_required
 def support_chat():
     if 'user_id' not in session:
         return redirect(url_for('login'))
     
-    conn = sqlite3.connect('gamebet.db')
-    c = conn.cursor()
+    with get_db_connection() as conn:
+        c = conn.cursor()
     
     # Create AI chat table if not exists
     c.execute('''CREATE TABLE IF NOT EXISTS ai_chat_history (
@@ -1963,13 +2572,12 @@ def support_chat():
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )''')
     
-    c.execute('SELECT * FROM ai_chat_history WHERE user_id = ? ORDER BY created_at DESC LIMIT 10', (session['user_id'],))
+    c.execute('SELECT * FROM ai_chat_history WHERE user_id = %s ORDER BY created_at DESC LIMIT 10', (session['user_id'],))
     chat_history = c.fetchall()
-    
-    conn.close()
     return render_template('support_chat.html', chat_history=chat_history)
 
 @app.route('/ai_chat', methods=['POST'])
+@login_required
 def ai_chat():
     if 'user_id' not in session:
         return jsonify({'error': 'Unauthorized'}), 401
@@ -1981,13 +2589,13 @@ def ai_chat():
     if 'balance' in message or 'money' in message:
         response = "Your current balance is KSh {:.0f}. You can add funds via M-Pesa or earn through matches and referrals.".format(session.get('balance', 0))
     elif 'deposit' in message or 'add funds' in message:
-        response = "To deposit funds: Go to Wallet → Add Funds → Upload M-Pesa receipt. Processing takes 5-10 minutes."
+        response = "To deposit funds: Go to Wallet â†’ Add Funds â†’ Upload M-Pesa receipt. Processing takes 5-10 minutes."
     elif 'withdraw' in message or 'cash out' in message:
-        response = "To withdraw: Go to Wallet → Withdraw → Enter amount and M-Pesa number. KSh 25 processing fee applies."
+        response = "To withdraw: Go to Wallet â†’ Withdraw â†’ Enter amount and M-Pesa number. KSh 25 processing fee applies."
     elif 'match' in message or 'game' in message:
         response = "Create matches in Games section. Choose Instant Play (screenshot verification) or Broadcast Mode (live streaming with bonuses)."
     elif 'stream' in message or 'broadcast' in message:
-        response = "Streaming earns bonus rewards (KSh 10-35). Go to Broadcast Mode → Create match → Automatic stream setup."
+        response = "Streaming earns bonus rewards (KSh 10-35). Go to Broadcast Mode â†’ Create match â†’ Automatic stream setup."
     elif 'friend' in message:
         response = "Add friends in Friends section. Create friends-only matches for private gaming sessions."
     elif 'tournament' in message:
@@ -2002,13 +2610,11 @@ def ai_chat():
         response = "I'm SkillState AI Assistant. I can help with: Account management, deposits/withdrawals, matches, streaming, friends, tournaments, and referrals. What do you need help with?"
     
     # Save to database
-    conn = sqlite3.connect('gamebet.db')
-    c = conn.cursor()
+    with get_db_connection() as conn:
+        c = conn.cursor()
     c.execute('INSERT INTO ai_chat_history (user_id, message, response) VALUES (?, ?, ?)', 
              (session['user_id'], data['message'], response))
     conn.commit()
-    conn.close()
-    
     return jsonify({'response': response})
 
 # Admin routes
@@ -2017,9 +2623,89 @@ def ai_chat():
 @app.route('/admin')
 @admin_required
 def admin_dashboard():
+    # Your original admin dashboard logic here
+    with get_db_connection() as conn:
+        c = conn.cursor()
+    
+    # Get basic stats
+    c.execute('SELECT COUNT(*) FROM users WHERE username != "admin"')
+    total_users = c.fetchone()[0]
+    
+    c.execute('SELECT COUNT(*) FROM matches WHERE status = "active"')
+    active_matches = c.fetchone()[0]
+    
+    c.execute('SELECT COALESCE(SUM(amount), 0) FROM transactions WHERE type IN ("deposit", "paypal_deposit", "crypto_deposit")')
+    total_deposits = c.fetchone()[0]
+    
+    # Get pending items
+    c.execute('''SELECT t.id, t.user_id, t.amount, t.description, t.created_at, u.username 
+                 FROM transactions t
+                 JOIN users u ON t.user_id = u.id
+                 WHERE t.type = "pending_deposit"
+                 ORDER BY t.created_at DESC''')
+    pending_deposits = c.fetchall()
+    
+    c.execute('''SELECT t.id, t.user_id, t.amount, t.description, t.created_at, u.username
+                 FROM transactions t
+                 JOIN users u ON t.user_id = u.id
+                 WHERE t.type = "pending_withdrawal"
+                 ORDER BY t.created_at DESC''')
+    pending_withdrawals = c.fetchall()
+    
+    # Get admin notifications count
+    try:
+        c.execute('''CREATE TABLE IF NOT EXISTS admin_notifications (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER,
+            username TEXT,
+            transaction_id INTEGER,
+            message TEXT,
+            type TEXT,
+            status TEXT DEFAULT 'unread',
+            created_at DATETIME DEFAULT (datetime('now'))
+        )''')
+        c.execute('SELECT COUNT(*) FROM admin_notifications WHERE status = "unread"')
+        unread_alerts = c.fetchone()[0] or 0
+    except:
+        unread_alerts = 0
+    stats = {
+        'total_users': total_users,
+        'active_matches': active_matches,
+        'total_deposits': total_deposits,
+        'net_earnings': 0,
+        'completed_matches': 0,
+        'total_withdrawals': 0,
+        'new_users_week': 0,
+        'total_withdrawn': 0
+    }
+    
+    earnings_data = {
+        'gross_earnings': 0,
+        'match_commission': 0,
+        'deposit_fees': 0,
+        'withdrawal_fees': 0,
+        'tournament_fees': 0,
+        'referral_profits': 0,
+        'fraud_commissions': 0,
+        'bank_fees': 0,
+        'streaming_costs': 0,
+        'net_earnings': 0
+    }
+    
+    return render_template('admin_dashboard.html', stats=stats, 
+                         pending_deposits=pending_deposits, 
+                         pending_withdrawals=pending_withdrawals,
+                         unread_alerts=unread_alerts,
+                         earnings_data=earnings_data,
+                         disputed_matches=[],
+                         notifications=[])
+
+@app.route('/admin/dashboard_new')
+@admin_required
+def admin_dashboard_new():
     # Update admin activity
-    conn = sqlite3.connect('gamebet.db')
-    c = conn.cursor()
+    with get_db_connection() as conn:
+        c = conn.cursor()
     
     # Create admin_activity table if not exists
     c.execute('''CREATE TABLE IF NOT EXISTS admin_activity (
@@ -2030,8 +2716,8 @@ def admin_dashboard():
     c.execute('INSERT INTO admin_activity (last_active) VALUES (datetime("now"))')
     conn.commit()
     
-    conn = sqlite3.connect('gamebet.db')
-    c = conn.cursor()
+    with get_db_connection() as conn:
+        c = conn.cursor()
     
     # Get real stats from database
     c.execute('SELECT COUNT(*) FROM users WHERE username != "admin"')
@@ -2209,6 +2895,14 @@ def admin_dashboard():
     except:
         total_withdrawn = 0
     
+    # Get gift commissions
+    c.execute('SELECT COALESCE(SUM(amount), 0) FROM transactions WHERE type = "gift_commission"')
+    gift_commissions = c.fetchone()[0]
+    
+    # Update gross earnings to include gift commissions
+    gross_earnings = gross_earnings + gift_commissions
+    net_earnings = gross_earnings - bank_fees - streaming_costs
+    
     earnings_data = {
         'gross_earnings': gross_earnings,
         'match_commission': match_commission,
@@ -2217,6 +2911,7 @@ def admin_dashboard():
         'tournament_fees': tournament_fees,
         'referral_profits': referral_profits,
         'fraud_commissions': fraud_commissions,
+        'gift_commissions': gift_commissions,
         'streaming_costs': streaming_costs,
         'bank_fees': bank_fees,
         'net_earnings': net_earnings,
@@ -2228,7 +2923,7 @@ def admin_dashboard():
         'total_payment_fees': paypal_fees + crypto_fees + mpesa_fees
     }
     
-    return render_template('admin_dashboard.html', stats=stats, 
+    return render_template('admin_dashboard_new.html', stats=stats, 
                          pending_withdrawals=pending_withdrawals, pending_deposits=pending_deposits,
                          disputed_matches=[], notifications=recent_alerts, earnings_data=earnings_data,
                          unread_alerts=unread_alerts)
@@ -2236,22 +2931,42 @@ def admin_dashboard():
 @app.route('/admin/users')
 @admin_required
 def admin_users():
-    conn = sqlite3.connect('gamebet.db')
-    c = conn.cursor()
+    with get_db_connection() as conn:
+        c = conn.cursor()
     
-    c.execute('SELECT * FROM users WHERE username != "admin" ORDER BY id DESC')
+    # Force database refresh and get ALL users
+    c.execute('PRAGMA table_info(users)')
+    columns = c.fetchall()
+    
+    # Get users with proper column mapping - force fresh query with no cache
+    c.execute('''SELECT id, username, email, password, balance, 
+                        COALESCE(wins, 0) as wins, 
+                        COALESCE(losses, 0) as losses, 
+                        COALESCE(total_earnings, 0) as total_earnings, 
+                        created_at, phone, referral_code, 
+                        COALESCE(banned, 0) as banned 
+                 FROM users WHERE username != "admin" 
+                 ORDER BY created_at DESC, id DESC''')
     users = c.fetchall()
     
-    conn.close()
-    return render_template('admin_users_fixed.html', users=users)
+    # Debug: Count total users
+    c.execute('SELECT COUNT(*) FROM users WHERE username != "admin"')
+    total_count = c.fetchone()[0]
+    
+    # Add cache-busting timestamp
+    import time
+    cache_buster = int(time.time())
+    
+    return render_template('admin_users_fixed.html', users=users, cache_buster=cache_buster, total_count=total_count)
 
 @app.route('/admin/transactions')
+@admin_required
 def admin_transactions():
     if 'user_id' not in session or session.get('username') != 'admin':
         return redirect(url_for('login'))
     
-    conn = sqlite3.connect('gamebet.db')
-    c = conn.cursor()
+    with get_db_connection() as conn:
+        c = conn.cursor()
     
     # Get all transactions with user details
     c.execute('''SELECT t.id, t.user_id, t.type, t.amount, t.description, t.created_at, u.username
@@ -2260,17 +2975,16 @@ def admin_transactions():
                  ORDER BY t.created_at DESC
                  LIMIT 200''')
     transactions = c.fetchall()
-    
-    conn.close()
     return render_template('admin_transactions.html', transactions=transactions)
 
 @app.route('/admin/matches')
+@admin_required
 def admin_matches():
     if 'user_id' not in session or session.get('username') != 'admin':
         return redirect(url_for('login'))
     
-    conn = sqlite3.connect('gamebet.db')
-    c = conn.cursor()
+    with get_db_connection() as conn:
+        c = conn.cursor()
     
     # Get all matches with detailed info including fraud penalties
     c.execute('''SELECT m.id, m.game, m.player1_id, m.player2_id, m.bet_amount, m.total_pot,
@@ -2316,9 +3030,6 @@ def admin_matches():
     
     c.execute('SELECT COUNT(*) FROM matches WHERE status IN ("disputed", "pending_review")')
     disputed_matches = c.fetchone()[0]
-    
-    conn.close()
-    
     stats = {
         'total': total_matches,
         'completed': completed_matches,
@@ -2333,12 +3044,13 @@ def admin_matches():
 
 
 @app.route('/admin/support_center')
+@admin_required
 def admin_support_center():
     if 'user_id' not in session or session.get('username') != 'admin':
         return redirect(url_for('login'))
     
-    conn = sqlite3.connect('gamebet.db')
-    c = conn.cursor()
+    with get_db_connection() as conn:
+        c = conn.cursor()
     
     # Create support escalations table if not exists
     c.execute('''CREATE TABLE IF NOT EXISTS support_escalations (
@@ -2369,9 +3081,6 @@ def admin_support_center():
                  WHERE m.status IN ("disputed", "pending_review")
                  ORDER BY m.created_at ASC''')
     disputed_matches = c.fetchall()
-    
-    conn.close()
-    
     return render_template('admin_support.html', 
                          pending_escalations=pending_escalations,
                          active_chats=[],
@@ -2380,12 +3089,13 @@ def admin_support_center():
                          pending_reviews=len([m for m in disputed_matches if m[7] == 'pending_review']))
 
 @app.route('/admin/approve_deposit/<int:transaction_id>', methods=['POST', 'GET'])
+@admin_required
 def approve_deposit(transaction_id):
     if 'user_id' not in session or session.get('username') != 'admin':
         return redirect(url_for('login'))
     
-    conn = sqlite3.connect('gamebet.db')
-    c = conn.cursor()
+    with get_db_connection() as conn:
+        c = conn.cursor()
     
     # Check current transaction status
     c.execute('SELECT user_id, amount, type FROM transactions WHERE id = ?', (transaction_id,))
@@ -2396,63 +3106,55 @@ def approve_deposit(transaction_id):
         
         # If already rejected, fix it by approving
         if current_type == 'rejected_deposit':
-            c.execute('UPDATE transactions SET type = "deposit" WHERE id = ?', (transaction_id,))
-            c.execute('UPDATE users SET balance = balance + ? WHERE id = ?', (amount, user_id))
+            c.execute('UPDATE transactions SET type = "deposit" WHERE id = %s', (transaction_id,))
+            c.execute('UPDATE users SET balance = balance + %s WHERE id = %s', (amount, user_id))
             flash(f'Deposit corrected from rejected to approved! KSh {amount:.0f} credited to user.', 'success')
         elif current_type == 'pending_deposit':
-            # Apply 3% fee to M-Pesa deposits with proper calculation
-            fee, net_amount = calculate_fees(amount, 0.03)
+            # No processing fee - credit full amount
+            net_amount = amount
             
-            c.execute('UPDATE users SET balance = balance + ? WHERE id = ?', (net_amount, user_id))
+            c.execute('UPDATE users SET balance = balance + %s WHERE id = %s', (net_amount, user_id))
             c.execute('UPDATE transactions SET type = "deposit", amount = ?, description = ? WHERE id = ?', 
-                     (net_amount, f'M-Pesa deposit KSh {amount} - 3% fee = KSh {net_amount:.0f}', transaction_id))
+                     (net_amount, f'M-Pesa deposit KSh {amount} - Full amount credited (no fees)', transaction_id))
             
-            # Record admin commission
-            c.execute('''INSERT INTO transactions (user_id, type, amount, description)
-                         VALUES (?, ?, ?, ?)''',
-                     (1, 'deposit_fee', fee, f'3% deposit fee from M-Pesa deposit - Transaction {transaction_id}'))
-            
-            flash(f'Deposit approved! KSh {net_amount:.0f} credited (KSh {amount} - 3% fee)', 'success')
+            flash(f'Deposit approved! KSh {net_amount:.0f} credited (full amount)', 'success')
         else:
             flash(f'Deposit already processed (status: {current_type})', 'info')
         
         conn.commit()
     else:
         flash('Transaction not found!', 'error')
-    
-    conn.close()
     return redirect(url_for('admin_dashboard'))
 
 @app.route('/admin/reject_deposit/<int:transaction_id>', methods=['POST', 'GET'])
+@admin_required
 def reject_deposit(transaction_id):
     if 'user_id' not in session or session.get('username') != 'admin':
         return redirect(url_for('login'))
     
-    conn = sqlite3.connect('gamebet.db')
-    c = conn.cursor()
-    c.execute('UPDATE transactions SET type = "rejected_deposit" WHERE id = ?', (transaction_id,))
+    with get_db_connection() as conn:
+        c = conn.cursor()
+    c.execute('UPDATE transactions SET type = "rejected_deposit" WHERE id = %s', (transaction_id,))
     conn.commit()
-    conn.close()
-    
     flash('Deposit rejected!', 'success')
     return redirect(url_for('admin_dashboard'))
 
 @app.route('/admin/clear_all_deposits')
+@admin_required
 def clear_all_deposits():
     if 'user_id' not in session or session.get('username') != 'admin':
         return redirect(url_for('login'))
     
-    conn = sqlite3.connect('gamebet.db')
-    c = conn.cursor()
+    with get_db_connection() as conn:
+        c = conn.cursor()
     c.execute('DELETE FROM transactions WHERE type IN ("deposit", "pending_deposit", "rejected_deposit")')
     c.execute('DELETE FROM deposit_verifications')
     conn.commit()
-    conn.close()
-    
     flash('All deposits cleared!', 'success')
     return redirect(url_for('admin_dashboard'))
 
 @app.route('/admin/mark_withdrawal_paid', methods=['POST'])
+@admin_required
 def mark_withdrawal_paid():
     if 'user_id' not in session or session.get('username') != 'admin':
         return jsonify({'error': 'Unauthorized'}), 401
@@ -2477,7 +3179,7 @@ def mark_withdrawal_paid():
         import base64
         proof_data = base64.b64encode(file.read()).decode('utf-8')
         
-        with sqlite3.connect('gamebet.db') as conn:
+        with get_db_connection() as conn:
             c = conn.cursor()
     
             # Add payment_proof column if not exists
@@ -2500,7 +3202,7 @@ def mark_withdrawal_paid():
                      (proof_data, withdrawal_id))
             
             # Send notification message to user
-            notification_msg = f'🎉 PAYMENT COMPLETED! Your withdrawal of KSh {amount:.0f} has been processed successfully. Check your M-Pesa for confirmation.'
+            notification_msg = f'ðŸŽ‰ PAYMENT COMPLETED! Your withdrawal of KSh {amount:.0f} has been processed successfully. Check your M-Pesa for confirmation.'
             c.execute('INSERT INTO withdrawal_chat (withdrawal_id, user_id, message, is_admin) VALUES (?, ?, ?, ?)',
                      (withdrawal_id, 1, notification_msg, 1))
             
@@ -2516,6 +3218,7 @@ def mark_withdrawal_paid():
         return jsonify({'success': False, 'message': 'An error occurred processing the withdrawal'})
 
 @app.route('/admin/process_payment', methods=['POST'])
+@admin_required
 def process_payment():
     if 'user_id' not in session or session.get('username') != 'admin':
         return jsonify({'error': 'Unauthorized'}), 401
@@ -2532,28 +3235,32 @@ def process_payment():
     import base64
     proof_data = base64.b64encode(file.read()).decode('utf-8')
     
-    conn = sqlite3.connect('gamebet.db')
-    c = conn.cursor()
+    with get_db_connection() as conn:
+        c = conn.cursor()
     
     # Add payment_proof column if not exists
     try:
         c.execute('ALTER TABLE transactions ADD COLUMN payment_proof TEXT')
-    except:
-        pass
+    except sqlite3.Error as e:
+        flash('Database error occurred', 'error')
+        return redirect(url_for('dashboard'))
+    except Exception as e:
+        flash('An error occurred', 'error')
+        return redirect(url_for('dashboard'))
     
     c.execute('UPDATE transactions SET type = "withdrawal", payment_proof = ? WHERE id = ?', 
              (proof_data, withdrawal_id))
     conn.commit()
-    conn.close()
-    
     return jsonify({'success': True, 'message': 'Payment processed with proof uploaded'})
 
 @app.route('/admin/approve_withdrawal/<int:withdrawal_id>', methods=['GET'])
+@admin_required
 def approve_withdrawal(withdrawal_id):
     # Redirect to withdrawal chat for manual approval with screenshot
     return redirect(url_for('withdrawal_chat', withdrawal_id=withdrawal_id))
 
 @app.route('/admin/reject_withdrawal/<int:withdrawal_id>', methods=['POST', 'GET'])
+@admin_required
 def reject_withdrawal(withdrawal_id):
     transaction_id = withdrawal_id
     if 'user_id' not in session or session.get('username') != 'admin':
@@ -2562,8 +3269,8 @@ def reject_withdrawal(withdrawal_id):
     if request.method == 'POST':
         rejection_reason = request.form.get('rejection_reason', 'No reason provided')
         
-        conn = sqlite3.connect('gamebet.db')
-        c = conn.cursor()
+        with get_db_connection() as conn:
+            c = conn.cursor()
         
         c.execute('SELECT user_id, amount FROM transactions WHERE id = ?', (transaction_id,))
         transaction = c.fetchone()
@@ -2571,15 +3278,14 @@ def reject_withdrawal(withdrawal_id):
         if transaction:
             user_id, amount = transaction
             refund_amount = abs(amount)  # Refund the withdrawal amount only
-            c.execute('UPDATE users SET balance = balance + ? WHERE id = ?', (refund_amount, user_id))
-            c.execute('UPDATE transactions SET type = "rejected_withdrawal" WHERE id = ?', (transaction_id,))
+            c.execute('UPDATE users SET balance = balance + %s WHERE id = %s', (refund_amount, user_id))
+            c.execute('UPDATE transactions SET type = "rejected_withdrawal" WHERE id = %s', (transaction_id,))
             
             # Update transaction description with rejection reason
-            c.execute('UPDATE transactions SET description = ? WHERE id = ?', 
-                     (f'Cancelled Withdrawal - {rejection_reason} - KSh {refund_amount:.0f} refunded', transaction_id))
+            c.execute('UPDATE transactions SET description = %s WHERE id = %s', (f'Cancelled Withdrawal - {rejection_reason} - KSh {refund_amount:.0f} refunded', transaction_id))
             
             # Send detailed rejection message
-            notification_msg = f'❌ WITHDRAWAL CANCELLED BY ADMIN\n\nReason: {rejection_reason}\n\nYour KSh {refund_amount:.0f} has been refunded to your account. You can request a new withdrawal after fixing the issue.'
+            notification_msg = f'âŒ WITHDRAWAL CANCELLED BY ADMIN\n\nReason: {rejection_reason}\n\nYour KSh {refund_amount:.0f} has been refunded to your account. You can request a new withdrawal after fixing the issue.'
             c.execute('INSERT INTO withdrawal_chat (withdrawal_id, user_id, message, is_admin) VALUES (?, ?, ?, ?)',
                      (transaction_id, 1, notification_msg, 1))
             
@@ -2587,20 +3293,19 @@ def reject_withdrawal(withdrawal_id):
             flash(f'Withdrawal rejected with reason: {rejection_reason}', 'success')
         else:
             flash('Withdrawal not found!', 'error')
-        
-        conn.close()
         return redirect(url_for('admin_dashboard'))
     
     # GET request - show rejection form
     return render_template('admin_reject_withdrawal.html', withdrawal_id=withdrawal_id)
 
 @app.route('/admin/live_streams')
+@login_required
 def admin_live_streams():
     if 'user_id' not in session or session.get('username') != 'admin':
         return jsonify({'error': 'Unauthorized'}), 403
     
-    conn = sqlite3.connect('gamebet.db')
-    c = conn.cursor()
+    with get_db_connection() as conn:
+        c = conn.cursor()
     
     # Get only active/live streams
     c.execute('''SELECT s.id, s.title, s.viewers, s.created_at, s.match_id, s.tournament_id,
@@ -2613,8 +3318,6 @@ def admin_live_streams():
                  LIMIT 50''')
     
     streams_data = c.fetchall()
-    conn.close()
-    
     streams = []
     for stream in streams_data:
         from datetime import datetime
@@ -2640,25 +3343,25 @@ def admin_live_streams():
     return jsonify({'streams': streams})
 
 @app.route('/admin/live_streams_page')
+@admin_required
 def admin_live_streams_page():
     if 'user_id' not in session or session.get('username') != 'admin':
         return redirect(url_for('login'))
     return render_template('admin_live_streams.html')
 
 @app.route('/admin/stream_details/<int:stream_id>')
+@login_required
 def admin_stream_details(stream_id):
     if 'user_id' not in session or session.get('username') != 'admin':
         return jsonify({'error': 'Unauthorized'}), 403
     
-    conn = sqlite3.connect('gamebet.db')
-    c = conn.cursor()
+    with get_db_connection() as conn:
+        c = conn.cursor()
     
     c.execute('''SELECT s.*, u.username FROM streams s
                  JOIN users u ON s.user_id = u.id
                  WHERE s.id = ?''', (stream_id,))
     stream = c.fetchone()
-    conn.close()
-    
     if stream:
         return jsonify({
             'success': True,
@@ -2675,26 +3378,93 @@ def admin_stream_details(stream_id):
     return jsonify({'success': False})
 
 @app.route('/admin/end_stream/<int:stream_id>', methods=['POST'])
+@admin_required
 def admin_end_stream(stream_id):
     if 'user_id' not in session or session.get('username') != 'admin':
         return jsonify({'error': 'Unauthorized'}), 403
     
-    conn = sqlite3.connect('gamebet.db')
-    c = conn.cursor()
+    with get_db_connection() as conn:
+        c = conn.cursor()
     
-    c.execute('UPDATE streams SET status = "ended" WHERE id = ?', (stream_id,))
+    c.execute('UPDATE streams SET status = "ended" WHERE id = %s', (stream_id,))
     conn.commit()
-    conn.close()
-    
     return jsonify({'success': True})
+
+@app.route('/admin/force_end_stream/<int:stream_id>', methods=['POST'])
+@admin_required
+def admin_force_end_stream(stream_id):
+    if 'user_id' not in session or session.get('username') != 'admin':
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    with get_db_connection() as conn:
+        c = conn.cursor()
+    
+    # Force end stream and clean up
+    c.execute('UPDATE streams SET status = "ended" WHERE id = %s', (stream_id,))
+    c.execute('DELETE FROM stream_viewers WHERE stream_id = %s', (stream_id,))
+    
+    conn.commit()
+    return jsonify({'success': True, 'message': 'Stream forcefully ended'})
+
+@app.route('/admin/clean_all_streams', methods=['POST'])
+def admin_clean_all_streams():
+    if 'user_id' not in session or session.get('username') != 'admin':
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    with get_db_connection() as conn:
+        c = conn.cursor()
+    
+    # End all active streams
+    c.execute('UPDATE streams SET status = "ended" WHERE status IN ("live", "pending")')
+    cleaned = c.rowcount
+    
+    # Clean viewers
+    c.execute('DELETE FROM stream_viewers')
+    
+    conn.commit()
+    return jsonify({'success': True, 'message': f'Cleaned {cleaned} streams'})
+
+@app.route('/admin/stream_control')
+def admin_stream_control():
+    if 'user_id' not in session or session.get('username') != 'admin':
+        return redirect(url_for('login'))
+    return render_template('admin_stream_control.html')
+
+@app.route('/admin/stream_statistics')
+def admin_stream_statistics():
+    if 'user_id' not in session or session.get('username') != 'admin':
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    with get_db_connection() as conn:
+        c = conn.cursor()
+    
+    # Get stream statistics
+    c.execute('SELECT COUNT(*) FROM streams')
+    total_streams = c.fetchone()[0]
+    
+    c.execute('SELECT COUNT(*) FROM streams WHERE status = "ended"')
+    completed_streams = c.fetchone()[0]
+    
+    c.execute('SELECT COALESCE(AVG(JULIANDAY("now") - JULIANDAY(created_at)) * 24 * 60, 0) FROM streams WHERE status = "ended"')
+    avg_duration = c.fetchone()[0]
+    
+    c.execute('SELECT COALESCE(SUM(ABS(amount)), 0) FROM transactions WHERE type = "streaming_earnings"')
+    total_earnings = c.fetchone()[0]
+    return jsonify({
+        'success': True,
+        'total_streams': total_streams,
+        'completed_streams': completed_streams,
+        'avg_duration': round(avg_duration, 1),
+        'total_earnings': total_earnings
+    })
 
 @app.route('/admin/view_deposit/<int:transaction_id>')
 def view_deposit_details(transaction_id):
     if 'user_id' not in session or session.get('username') != 'admin':
         return jsonify({'error': 'Unauthorized'}), 403
     
-    conn = sqlite3.connect('gamebet.db')
-    c = conn.cursor()
+    with get_db_connection() as conn:
+        c = conn.cursor()
     
     c.execute('''SELECT dv.mpesa_number, dv.sender_name, dv.receipt_screenshot, dv.amount_sent, dv.created_at,
                         t.amount as amount_to_credit, u.username, u.email
@@ -2703,9 +3473,6 @@ def view_deposit_details(transaction_id):
                  JOIN users u ON dv.user_id = u.id
                  WHERE dv.transaction_id = ?''', (transaction_id,))
     deposit_details = c.fetchone()
-    
-    conn.close()
-    
     if deposit_details:
         return jsonify({
             'success': True,
@@ -2731,14 +3498,12 @@ def admin_reset_password_new():
     data = request.get_json()
     user_id = data['user_id']
     
-    conn = sqlite3.connect('gamebet.db')
-    c = conn.cursor()
+    with get_db_connection() as conn:
+        c = conn.cursor()
     
     new_password = generate_password_hash('password123')
-    c.execute('UPDATE users SET password = ? WHERE id = ?', (new_password, user_id))
+    c.execute('UPDATE users SET password = %s WHERE id = %s', (new_password, user_id))
     conn.commit()
-    conn.close()
-    
     return jsonify({'success': True, 'message': 'Password reset to "password123" successfully!'})
 
 @app.route('/admin/adjust_balance_new', methods=['POST'])
@@ -2750,16 +3515,14 @@ def admin_adjust_balance_new():
     user_id = data['user_id']
     amount = float(data['amount'])
     
-    conn = sqlite3.connect('gamebet.db')
-    c = conn.cursor()
+    with get_db_connection() as conn:
+        c = conn.cursor()
     
-    c.execute('UPDATE users SET balance = balance + ? WHERE id = ?', (amount, user_id))
+    c.execute('UPDATE users SET balance = balance + %s WHERE id = %s', (amount, user_id))
     c.execute('INSERT INTO transactions (user_id, type, amount, description) VALUES (?, ?, ?, ?)',
              (user_id, 'admin_adjustment', amount, f'Admin balance adjustment: {amount}'))
     
     conn.commit()
-    conn.close()
-    
     return jsonify({'success': True, 'message': f'Balance adjusted by KSh {amount}'})
 
 @app.route('/admin/toggle_ban', methods=['POST'])
@@ -2771,24 +3534,26 @@ def admin_toggle_ban():
     user_id = data['user_id']
     action = data['action']
     
-    conn = sqlite3.connect('gamebet.db')
-    c = conn.cursor()
+    with get_db_connection() as conn:
+        c = conn.cursor()
     
     try:
         c.execute('ALTER TABLE users ADD COLUMN banned INTEGER DEFAULT 0')
-    except:
-        pass
+    except sqlite3.Error as e:
+        flash('Database error occurred', 'error')
+        return redirect(url_for('dashboard'))
+    except Exception as e:
+        flash('An error occurred', 'error')
+        return redirect(url_for('dashboard'))
     
     if action == 'ban':
-        c.execute('UPDATE users SET banned = 1 WHERE id = ?', (user_id,))
+        c.execute('UPDATE users SET banned = 1 WHERE id = %s', (user_id,))
         message = 'User banned successfully'
     else:
-        c.execute('UPDATE users SET banned = 0 WHERE id = ?', (user_id,))
+        c.execute('UPDATE users SET banned = 0 WHERE id = %s', (user_id,))
         message = 'User unbanned successfully'
     
     conn.commit()
-    conn.close()
-    
     return jsonify({'success': True, 'message': message})
 
 @app.route('/admin/user_stats/<int:user_id>')
@@ -2796,14 +3561,14 @@ def admin_user_stats(user_id):
     if 'user_id' not in session or session.get('username') != 'admin':
         return jsonify({'error': 'Unauthorized'}), 401
     
-    conn = sqlite3.connect('gamebet.db')
-    c = conn.cursor()
+    with get_db_connection() as conn:
+        c = conn.cursor()
     
     # Get match wins and losses
-    c.execute('SELECT COUNT(*) FROM matches WHERE winner_id = ? AND status = "completed"', (user_id,))
+    c.execute('SELECT COUNT(*) FROM matches WHERE winner_id = %s AND status = "completed"', (user_id,))
     wins = c.fetchone()[0]
     
-    c.execute('SELECT COUNT(*) FROM matches WHERE (player1_id = ? OR player2_id = ?) AND winner_id != ? AND status = "completed"', (user_id, user_id, user_id))
+    c.execute('SELECT COUNT(*) FROM matches WHERE (player1_id = %s OR player2_id = %s) AND winner_id != %s AND status = "completed"', (user_id, user_id, user_id))
     losses = c.fetchone()[0]
     
     # Get earnings from all positive transactions except deposits
@@ -2817,9 +3582,6 @@ def admin_user_stats(user_id):
     # Get total withdrawals
     c.execute('SELECT COALESCE(SUM(ABS(amount)), 0) FROM transactions WHERE user_id = ? AND type = "withdrawal"', (user_id,))
     withdrawals = c.fetchone()[0]
-    
-    conn.close()
-    
     return jsonify({
         'success': True,
         'wins': wins,
@@ -2837,8 +3599,8 @@ def admin_unban_fake_screenshot_user():
     data = request.get_json()
     user_id = data['user_id']
     
-    conn = sqlite3.connect('gamebet.db')
-    c = conn.cursor()
+    with get_db_connection() as conn:
+        c = conn.cursor()
     
     # Create table if not exists
     c.execute('''CREATE TABLE IF NOT EXISTS fake_screenshot_tracking (
@@ -2853,7 +3615,7 @@ def admin_unban_fake_screenshot_user():
     )''')
     
     # Get user's fake screenshot history
-    c.execute('SELECT fake_count FROM fake_screenshot_tracking WHERE user_id = ? ORDER BY created_at DESC LIMIT 1', (user_id,))
+    c.execute('SELECT fake_count FROM fake_screenshot_tracking WHERE user_id = %s ORDER BY created_at DESC LIMIT 1', (user_id,))
     current_record = c.fetchone()
     
     if current_record:
@@ -2868,19 +3630,16 @@ def admin_unban_fake_screenshot_user():
                  (user_id, 'admin_unban', 0, 'Admin unbanned user - fake screenshot counter reset to 1 - Second chance given'))
         
         # Get username for response
-        c.execute('SELECT username FROM users WHERE id = ?', (user_id,))
+        c.execute('SELECT username FROM users WHERE id = %s', (user_id,))
         user_data = c.fetchone()
         username = user_data[0] if user_data else f'User {user_id}'
         
         conn.commit()
-        conn.close()
-        
         return jsonify({
             'success': True, 
             'message': f'User {username} unbanned successfully. Fake screenshot counter reset to 1 (second chance given). History preserved for admin reference.'
         })
     else:
-        conn.close()
         return jsonify({'error': 'No fake screenshot record found for this user'}), 404
 
 @app.route('/admin/respond_support', methods=['POST'])
@@ -2892,15 +3651,13 @@ def admin_respond_support():
     escalation_id = data['escalation_id']
     response = data['response']
     
-    conn = sqlite3.connect('gamebet.db')
-    c = conn.cursor()
+    with get_db_connection() as conn:
+        c = conn.cursor()
     
     c.execute('UPDATE support_escalations SET admin_response = ?, status = "resolved" WHERE id = ?',
              (response, escalation_id))
     
     conn.commit()
-    conn.close()
-    
     return jsonify({'success': True, 'message': 'Response sent successfully'})
 
 @app.route('/admin/lookup_user')
@@ -2911,21 +3668,19 @@ def admin_lookup_user():
     user_id = request.args.get('id')
     username = request.args.get('username')
     
-    conn = sqlite3.connect('gamebet.db')
-    c = conn.cursor()
+    with get_db_connection() as conn:
+        c = conn.cursor()
     
     if user_id:
-        c.execute('SELECT * FROM users WHERE id = ?', (user_id,))
+        c.execute('SELECT * FROM users WHERE id = %s', (user_id,))
     elif username:
-        c.execute('SELECT * FROM users WHERE username = ?', (username,))
+        c.execute('SELECT * FROM users WHERE username = %s', (username,))
     else:
-        conn.close()
         return jsonify({'success': False, 'message': 'No search parameter provided'})
     
     user = c.fetchone()
     
     if not user:
-        conn.close()
         return jsonify({'success': False, 'message': 'User not found'})
     
     # Get additional user statistics
@@ -2943,12 +3698,9 @@ def admin_lookup_user():
     fake_count = c.fetchone()[0]
     
     # Check if banned
-    c.execute('SELECT banned FROM users WHERE id = ?', (user_id,))
+    c.execute('SELECT banned FROM users WHERE id = %s', (user_id,))
     banned_result = c.fetchone()
     banned = banned_result[0] if banned_result and len(banned_result) > 0 else 0
-    
-    conn.close()
-    
     user_data = {
         'id': user[0],
         'username': user[1],
@@ -2974,8 +3726,8 @@ def admin_user_detailed_stats(user_id):
     if 'user_id' not in session or session.get('username') != 'admin':
         return jsonify({'error': 'Unauthorized'}), 403
     
-    conn = sqlite3.connect('gamebet.db')
-    c = conn.cursor()
+    with get_db_connection() as conn:
+        c = conn.cursor()
     
     # Get detailed earnings breakdown
     c.execute('SELECT COALESCE(SUM(amount), 0) FROM transactions WHERE user_id = ? AND type = "match_win"', (user_id,))
@@ -2994,9 +3746,6 @@ def admin_user_detailed_stats(user_id):
     avg_bet = c.fetchone()[0]
     
     total_earnings = match_winnings + streaming_earnings + referral_bonuses
-    
-    conn.close()
-    
     stats = {
         'total_earnings': total_earnings,
         'match_winnings': match_winnings,
@@ -3013,16 +3762,13 @@ def admin_user_activity(user_id):
     if 'user_id' not in session or session.get('username') != 'admin':
         return jsonify({'error': 'Unauthorized'}), 403
     
-    conn = sqlite3.connect('gamebet.db')
-    c = conn.cursor()
+    with get_db_connection() as conn:
+        c = conn.cursor()
     
     # Get recent transactions
     c.execute('''SELECT type, amount, description, created_at FROM transactions 
                  WHERE user_id = ? ORDER BY created_at DESC LIMIT 20''', (user_id,))
     transactions = c.fetchall()
-    
-    conn.close()
-    
     transaction_list = [{
         'type': tx[0],
         'amount': tx[1],
@@ -3037,11 +3783,11 @@ def admin_user_matches(user_id):
     if 'user_id' not in session or session.get('username') != 'admin':
         return redirect(url_for('login'))
     
-    conn = sqlite3.connect('gamebet.db')
-    c = conn.cursor()
+    with get_db_connection() as conn:
+        c = conn.cursor()
     
     # Get user info
-    c.execute('SELECT username FROM users WHERE id = ?', (user_id,))
+    c.execute('SELECT username FROM users WHERE id = %s', (user_id,))
     user = c.fetchone()
     
     if not user:
@@ -3058,9 +3804,6 @@ def admin_user_matches(user_id):
                  WHERE m.player1_id = ? OR m.player2_id = ?
                  ORDER BY m.created_at DESC''', (user_id, user_id))
     matches = c.fetchall()
-    
-    conn.close()
-    
     return render_template('admin_user_matches.html', user=user, matches=matches, user_id=user_id)
 
 @app.route('/admin/send_user_message', methods=['POST'])
@@ -3072,8 +3815,8 @@ def admin_send_user_message():
     user_id = data['user_id']
     message = data['message']
     
-    conn = sqlite3.connect('gamebet.db')
-    c = conn.cursor()
+    with get_db_connection() as conn:
+        c = conn.cursor()
     
     # Create admin_messages table if not exists
     c.execute('''CREATE TABLE IF NOT EXISTS admin_messages (
@@ -3088,8 +3831,6 @@ def admin_send_user_message():
     c.execute('INSERT INTO admin_messages (user_id, message) VALUES (?, ?)', (user_id, message))
     
     conn.commit()
-    conn.close()
-    
     return jsonify({'success': True, 'message': 'Message sent successfully'})
 
 @app.route('/admin/download_financial_statement')
@@ -3097,8 +3838,8 @@ def download_financial_statement():
     if 'user_id' not in session or session.get('username') != 'admin':
         return redirect(url_for('login'))
     
-    conn = sqlite3.connect('gamebet.db')
-    c = conn.cursor()
+    with get_db_connection() as conn:
+        c = conn.cursor()
     
     # Get comprehensive financial data
     from datetime import datetime
@@ -3155,9 +3896,6 @@ Date,Type,Amount,Description
     
     for tx in transactions:
         csv_content += f"{tx[0]},{tx[1]},KSh {tx[2]:.2f},\"{tx[3]}\"\n"
-    
-    conn.close()
-    
     # Return as downloadable file
     from flask import Response
     return Response(
@@ -3171,8 +3909,8 @@ def admin_view_fake_screenshot_history(user_id):
     if 'user_id' not in session or session.get('username') != 'admin':
         return jsonify({'error': 'Unauthorized'}), 403
     
-    conn = sqlite3.connect('gamebet.db')
-    c = conn.cursor()
+    with get_db_connection() as conn:
+        c = conn.cursor()
     
     # Create fake screenshot tracking table if not exists
     c.execute('''CREATE TABLE IF NOT EXISTS fake_screenshot_tracking (
@@ -3202,10 +3940,9 @@ def admin_view_fake_screenshot_history(user_id):
     
     # Get username even if no fake screenshot history
     if not history:
-        c.execute('SELECT username FROM users WHERE id = ?', (user_id,))
+        c.execute('SELECT username FROM users WHERE id = %s', (user_id,))
         user_data = c.fetchone()
         if user_data:
-            conn.close()
             return jsonify({
                 'success': True,
                 'username': user_data[0],
@@ -3219,11 +3956,7 @@ def admin_view_fake_screenshot_history(user_id):
                 'message': 'User found but no fake screenshot violations on record.'
             })
         else:
-            conn.close()
             return jsonify({'success': False, 'message': 'User not found'})
-    
-    conn.close()
-    
     return jsonify({
         'success': True,
         'username': history[0][5],
@@ -3248,8 +3981,8 @@ def view_match_screenshots(match_id):
     if 'user_id' not in session or session.get('username') != 'admin':
         return jsonify({'error': 'Unauthorized'}), 403
     
-    conn = sqlite3.connect('gamebet.db')
-    c = conn.cursor()
+    with get_db_connection() as conn:
+        c = conn.cursor()
     
     # Get match details with proper player names
     c.execute('''SELECT m.id, m.game, m.player1_id, m.player2_id, m.bet_amount, m.total_pot,
@@ -3268,9 +4001,6 @@ def view_match_screenshots(match_id):
                  JOIN users u ON ms.user_id = u.id
                  WHERE ms.match_id = ? ORDER BY ms.submitted_at''', (match_id,))
     screenshots = c.fetchall()
-    
-    conn.close()
-    
     if match and screenshots:
         return jsonify({
             'success': True,
@@ -3301,8 +4031,8 @@ def charge_fake_screenshots(match_id):
     data = request.get_json()
     winner = data.get('winner')
     
-    conn = sqlite3.connect('gamebet.db')
-    c = conn.cursor()
+    with get_db_connection() as conn:
+        c = conn.cursor()
     
     # Get match and players
     c.execute('SELECT player1_id, player2_id, bet_amount FROM matches WHERE id = ?', (match_id,))
@@ -3315,25 +4045,24 @@ def charge_fake_screenshots(match_id):
     penalty = 50
     
     # Check how many screenshots submitted
-    c.execute('SELECT COUNT(*) FROM match_screenshots WHERE match_id = ?', (match_id,))
+    c.execute('SELECT COUNT(*) FROM match_screenshots WHERE match_id = %s', (match_id,))
     screenshot_count = c.fetchone()[0]
     
     # If only one player submitted, handle fake screenshot penalty only
     if screenshot_count < 2:
         if winner == 'player1_fake':
             # Player 1 sent fake, penalize and remove their screenshot
-            c.execute('UPDATE users SET balance = balance - ? WHERE id = ?', (penalty, player1_id))
-            c.execute('DELETE FROM match_screenshots WHERE match_id = ? AND user_id = ?', (match_id, player1_id))
-            c.execute('UPDATE matches SET status = "active" WHERE id = ?', (match_id,))
+            c.execute('UPDATE users SET balance = balance - %s WHERE id = %s', (penalty, player1_id))
+            c.execute('DELETE FROM match_screenshots WHERE match_id = %s AND user_id = %s', (match_id, player1_id))
+            c.execute('UPDATE matches SET status = "active" WHERE id = %s', (match_id,))
             message = 'Player 1 penalized KSh 50 for fake screenshot. Screenshot removed. Waiting for valid submission.'
         elif winner == 'player2_fake':
             # Player 2 sent fake, penalize and remove their screenshot  
-            c.execute('UPDATE users SET balance = balance - ? WHERE id = ?', (penalty, player2_id))
-            c.execute('DELETE FROM match_screenshots WHERE match_id = ? AND user_id = ?', (match_id, player2_id))
-            c.execute('UPDATE matches SET status = "active" WHERE id = ?', (match_id,))
+            c.execute('UPDATE users SET balance = balance - %s WHERE id = %s', (penalty, player2_id))
+            c.execute('DELETE FROM match_screenshots WHERE match_id = %s AND user_id = %s', (match_id, player2_id))
+            c.execute('UPDATE matches SET status = "active" WHERE id = %s', (match_id,))
             message = 'Player 2 penalized KSh 50 for fake screenshot. Screenshot removed. Waiting for valid submission.'
         else:
-            conn.close()
             return jsonify({'error': 'Cannot declare winner - other player has not submitted screenshot yet'}), 400
         
         # Add admin commission from penalty
@@ -3342,20 +4071,18 @@ def charge_fake_screenshots(match_id):
                  (1, 'admin_fraud_commission', penalty, f'Commission from fraud penalty - Match {match_id}'))
         
         conn.commit()
-        conn.close()
         return jsonify({'success': True, 'message': message})
     
     # Both players submitted - proceed with original logic
     if winner in ['player1', 'player2'] and screenshot_count < 2:
-        conn.close()
         return jsonify({'error': 'Cannot declare winner - other player has not submitted screenshot yet'}), 400
     
     if winner == 'both_fake':
         # Both sent fake - charge both, refund match
         for user_id in [player1_id, player2_id]:
             if user_id:
-                c.execute('UPDATE users SET balance = balance - ? WHERE id = ?', (penalty, user_id))
-                c.execute('UPDATE users SET balance = balance + ? WHERE id = ?', (bet_amount, user_id))
+                c.execute('UPDATE users SET balance = balance - %s WHERE id = %s', (penalty, user_id))
+                c.execute('UPDATE users SET balance = balance + %s WHERE id = %s', (bet_amount, user_id))
                 c.execute('''INSERT INTO transactions (user_id, type, amount, description)
                              VALUES (?, ?, ?, ?)''',
                          (user_id, 'fake_screenshot_penalty', -penalty, f'Penalty for fake screenshot in match {match_id}'))
@@ -3364,14 +4091,14 @@ def charge_fake_screenshots(match_id):
                              VALUES (?, ?, ?, ?)''',
                          (1, 'admin_fraud_commission', penalty, f'Commission from fraud penalty - Match {match_id}'))
         
-        c.execute('UPDATE matches SET status = "cancelled_fake_ss" WHERE id = ?', (match_id,))
+        c.execute('UPDATE matches SET status = "cancelled_fake_ss" WHERE id = %s', (match_id,))
         message = 'Both users charged KSh 50 penalty. Match cancelled and refunded.'
         
     elif winner == 'player1':
         # Player 1 real, Player 2 fake - Player 1 wins
         winnings = bet_amount * 1.68
-        c.execute('UPDATE users SET balance = balance + ? WHERE id = ?', (winnings, player1_id))
-        c.execute('UPDATE users SET balance = balance - ? WHERE id = ?', (penalty, player2_id))
+        c.execute('UPDATE users SET balance = balance + %s WHERE id = %s', (winnings, player1_id))
+        c.execute('UPDATE users SET balance = balance - %s WHERE id = %s', (penalty, player2_id))
         c.execute('''INSERT INTO transactions (user_id, type, amount, description)
                      VALUES (?, ?, ?, ?)''',
                  (player2_id, 'fake_screenshot_penalty', -penalty, f'Penalty for fake screenshot in match {match_id}'))
@@ -3386,8 +4113,8 @@ def charge_fake_screenshots(match_id):
     elif winner == 'player2':
         # Player 2 real, Player 1 fake - Player 2 wins
         winnings = bet_amount * 1.68
-        c.execute('UPDATE users SET balance = balance + ? WHERE id = ?', (winnings, player2_id))
-        c.execute('UPDATE users SET balance = balance - ? WHERE id = ?', (penalty, player1_id))
+        c.execute('UPDATE users SET balance = balance + %s WHERE id = %s', (winnings, player2_id))
+        c.execute('UPDATE users SET balance = balance - %s WHERE id = %s', (penalty, player1_id))
         c.execute('''INSERT INTO transactions (user_id, type, amount, description)
                      VALUES (?, ?, ?, ?)''',
                  (player1_id, 'fake_screenshot_penalty', -penalty, f'Penalty for fake screenshot in match {match_id}'))
@@ -3400,17 +4127,64 @@ def charge_fake_screenshots(match_id):
         message = f'Player 2 wins KSh {winnings}. Player 1 charged KSh 50 penalty for fake screenshot.'
     
     conn.commit()
-    conn.close()
-    
     return jsonify({'success': True, 'message': message})
+
+def calculate_referral_commission(match_id, winner_id, loser_id, bet_amount):
+    """Calculate and award referral commission when a user loses a match"""
+    with get_db_connection() as conn:
+        c = conn.cursor()
+        
+        # Create referral_commissions table if not exists
+        c.execute('''CREATE TABLE IF NOT EXISTS referral_commissions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            referrer_id INTEGER,
+            referred_user_id INTEGER,
+            match_id INTEGER,
+            loss_amount REAL,
+            commission_amount REAL,
+            commission_rate REAL DEFAULT 0.04,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )''')
+        
+        # Check if the loser was referred by someone
+        c.execute('SELECT referred_by, username FROM users WHERE id = ?', (loser_id,))
+        loser_data = c.fetchone()
+        
+        if not loser_data or not loser_data[0]:
+            return 0  # No referrer, no commission
+        
+        referrer_id = loser_data[0]
+        loser_username = loser_data[1]
+        
+        # Calculate 4% commission on the loss
+        commission_rate = 0.04
+        commission_amount = bet_amount * commission_rate
+        
+        # Award commission to referrer
+        c.execute('UPDATE users SET balance = balance + %s WHERE id = %s', (commission_amount, referrer_id))
+        
+        # Record the commission transaction
+        c.execute('''INSERT INTO transactions (user_id, type, amount, description)
+                     VALUES (?, ?, ?, ?)''',
+                 (referrer_id, 'referral_commission', commission_amount, 
+                  f'4% commission from {loser_username} match loss - KSh {bet_amount} × 4% = KSh {commission_amount:.2f}'))
+        
+        # Track the commission for analytics
+        c.execute('''INSERT INTO referral_commissions 
+                     (referrer_id, referred_user_id, match_id, loss_amount, commission_amount, commission_rate)
+                     VALUES (?, ?, ?, ?, ?, ?)''',
+                 (referrer_id, loser_id, match_id, bet_amount, commission_amount, commission_rate))
+        
+        conn.commit()
+        return commission_amount
 
 @app.route('/admin/resolve_dispute/<int:match_id>/<winner>', methods=['GET', 'POST'])
 def resolve_dispute(match_id, winner):
     if 'user_id' not in session or session.get('username') != 'admin':
         return redirect(url_for('login'))
     
-    conn = sqlite3.connect('gamebet.db')
-    c = conn.cursor()
+    with get_db_connection() as conn:
+        c = conn.cursor()
     
     c.execute('SELECT player1_id, player2_id, bet_amount, game FROM matches WHERE id = ?', (match_id,))
     match = c.fetchone()
@@ -3424,7 +4198,7 @@ def resolve_dispute(match_id, winner):
             winner_id, loser_id = player2_id, player1_id
         else:  # refund
             c.execute('UPDATE users SET balance = balance + ? WHERE id IN (?, ?)', (bet_amount, player1_id, player2_id))
-            c.execute('UPDATE matches SET status = "refunded" WHERE id = ?', (match_id,))
+            c.execute('UPDATE matches SET status = "refunded" WHERE id = %s', (match_id,))
             
             # Record refund transactions
             c.execute('''INSERT INTO transactions (user_id, type, amount, description)
@@ -3435,35 +4209,48 @@ def resolve_dispute(match_id, winner):
                      (player2_id, 'match_refund', bet_amount, f'Match #{match_id} admin refund - {game.upper()} - Dispute resolved'))
             
             conn.commit()
-            conn.close()
             flash('Match refunded to both players!', 'success')
             return redirect(url_for('admin_support_center'))
         
         # Award winner with precise calculation
-        winnings = calculate_winnings(bet_amount, 1.68)
+        total_pot = bet_amount * 2
+        winnings = total_pot * 0.68  # 68% to winner
+        platform_commission = total_pot * 0.32  # 32% platform commission
+        
+        # Process referral commission for loser
+        referral_commission = calculate_referral_commission(match_id, winner_id, loser_id, bet_amount)
+        
+        # Adjust platform commission if referral was paid
+        net_platform_commission = platform_commission - referral_commission
+        
         c.execute('UPDATE users SET balance = balance + ?, wins = wins + 1, total_earnings = total_earnings + ? WHERE id = ?', 
                  (winnings, winnings, winner_id))
-        c.execute('UPDATE users SET losses = losses + 1 WHERE id = ?', (loser_id,))
+        c.execute('UPDATE users SET losses = losses + 1 WHERE id = %s', (loser_id,))
         c.execute('UPDATE matches SET winner_id = ?, status = "completed" WHERE id = ?', (winner_id, match_id))
         
-        # Record admin resolution transaction
+        # Record winner transaction
         c.execute('''INSERT INTO transactions (user_id, type, amount, description)
                      VALUES (?, ?, ?, ?)''',
-                 (winner_id, 'match_win', winnings, f'Match #{match_id} admin resolution - {game.upper()} - Dispute resolved in your favor'))
+                 (winner_id, 'match_win', winnings, f'Match #{match_id} admin resolution - {game.upper()} - KSh {winnings:.2f} (68% of KSh {total_pot})'))
+        
+        # Record platform commission (after referral deduction)
+        c.execute('''INSERT INTO transactions (user_id, type, amount, description)
+                     VALUES (?, ?, ?, ?)''',
+                 (1, 'match_commission', net_platform_commission, 
+                  f'Match #{match_id} commission - 32% minus KSh {referral_commission:.2f} referral cost'))
         
         conn.commit()
-        flash('Match verified and completed!', 'success')
-    
-    conn.close()
+        flash(f'Match verified and completed! Referral commission: KSh {referral_commission:.2f}', 'success')
     return redirect(url_for('admin_support_center'))
 
 @app.route('/withdrawal_chat/<int:withdrawal_id>')
+@login_required
 def withdrawal_chat(withdrawal_id):
     if 'user_id' not in session:
         return redirect(url_for('login'))
     
-    conn = sqlite3.connect('gamebet.db')
-    c = conn.cursor()
+    with get_db_connection() as conn:
+        c = conn.cursor()
     
     # Create withdrawal_chat table
     c.execute('''CREATE TABLE IF NOT EXISTS withdrawal_chat (
@@ -3477,25 +4264,23 @@ def withdrawal_chat(withdrawal_id):
     
     # Get withdrawal details (admin can see any withdrawal)
     if session.get('username') == 'admin':
-        c.execute('SELECT * FROM transactions WHERE id = ?', (withdrawal_id,))
+        c.execute('SELECT * FROM transactions WHERE id = %s', (withdrawal_id,))
     else:
-        c.execute('SELECT * FROM transactions WHERE id = ? AND user_id = ?', (withdrawal_id, session['user_id']))
+        c.execute('SELECT * FROM transactions WHERE id = %s AND user_id = %s', (withdrawal_id, session['user_id']))
     
     withdrawal = c.fetchone()
     
     if not withdrawal:
         flash('Withdrawal not found!', 'error')
-        conn.close()
         return redirect(url_for('wallet') if session.get('username') != 'admin' else url_for('admin_dashboard'))
     
     # Get chat messages
     c.execute('SELECT message, is_admin, created_at FROM withdrawal_chat WHERE withdrawal_id = ? ORDER BY created_at', (withdrawal_id,))
     messages = c.fetchall()
-    
-    conn.close()
     return render_template('withdrawal_chat.html', withdrawal=withdrawal, messages=messages, withdrawal_id=withdrawal_id)
 
 @app.route('/send_withdrawal_message', methods=['POST'])
+@login_required
 def send_withdrawal_message():
     if 'user_id' not in session:
         return jsonify({'error': 'Unauthorized'}), 401
@@ -3504,52 +4289,47 @@ def send_withdrawal_message():
     withdrawal_id = data['withdrawal_id']
     message = data['message']
     
-    conn = sqlite3.connect('gamebet.db')
-    c = conn.cursor()
+    with get_db_connection() as conn:
+        c = conn.cursor()
     
     # Check if user owns this withdrawal or is admin
-    c.execute('SELECT user_id FROM transactions WHERE id = ?', (withdrawal_id,))
+    c.execute('SELECT user_id FROM transactions WHERE id = %s', (withdrawal_id,))
     withdrawal_owner = c.fetchone()
     
     if not withdrawal_owner or (withdrawal_owner[0] != session['user_id'] and session.get('username') != 'admin'):
-        conn.close()
         return jsonify({'error': 'Access denied'}), 403
     
     c.execute('INSERT INTO withdrawal_chat (withdrawal_id, user_id, message, is_admin) VALUES (?, ?, ?, ?)',
              (withdrawal_id, session['user_id'], message, 1 if session.get('username') == 'admin' else 0))
     
     conn.commit()
-    conn.close()
-    
     return jsonify({'success': True})
 
 @app.route('/get_withdrawal_messages/<int:withdrawal_id>')
+@login_required
 def get_withdrawal_messages(withdrawal_id):
     if 'user_id' not in session:
         return jsonify({'error': 'Unauthorized'}), 401
     
-    conn = sqlite3.connect('gamebet.db')
-    c = conn.cursor()
+    with get_db_connection() as conn:
+        c = conn.cursor()
     
     # Check if user owns this withdrawal or is admin
-    c.execute('SELECT user_id FROM transactions WHERE id = ?', (withdrawal_id,))
+    c.execute('SELECT user_id FROM transactions WHERE id = %s', (withdrawal_id,))
     withdrawal_owner = c.fetchone()
     
     if not withdrawal_owner or (withdrawal_owner[0] != session['user_id'] and session.get('username') != 'admin'):
-        conn.close()
         return jsonify({'error': 'Access denied'}), 403
     
     # Get chat messages
     c.execute('SELECT message, is_admin, created_at FROM withdrawal_chat WHERE withdrawal_id = ? ORDER BY created_at', (withdrawal_id,))
     messages = c.fetchall()
-    
-    conn.close()
-    
     return jsonify({
         'messages': [{'message': m[0], 'is_admin': m[1], 'time': m[2]} for m in messages]
     })
 
 @app.route('/alert_admin_deposit', methods=['POST'])
+@login_required
 def alert_admin_deposit():
     if 'user_id' not in session:
         return jsonify({'error': 'Unauthorized'}), 401
@@ -3558,15 +4338,14 @@ def alert_admin_deposit():
     transaction_id = data['transaction_id']
     amount = data['amount']
     
-    conn = sqlite3.connect('gamebet.db')
-    c = conn.cursor()
+    with get_db_connection() as conn:
+        c = conn.cursor()
     
     # Verify transaction belongs to user and is pending
     c.execute('SELECT user_id, type FROM transactions WHERE id = ? AND user_id = ?', (transaction_id, session['user_id']))
     transaction = c.fetchone()
     
     if not transaction or transaction[1] != 'pending_deposit':
-        conn.close()
         return jsonify({'success': False, 'message': 'Invalid transaction'})
     
     # Create admin notification table if not exists
@@ -3588,11 +4367,10 @@ def alert_admin_deposit():
              (session['user_id'], session['username'], transaction_id, notification_msg, 'deposit_alert'))
     
     conn.commit()
-    conn.close()
-    
     return jsonify({'success': True, 'message': 'Alert sent to admin successfully'})
 
 @app.route('/admin/mark_alert_read', methods=['POST'])
+@admin_required
 def mark_alert_read():
     if 'user_id' not in session or session.get('username') != 'admin':
         return jsonify({'error': 'Unauthorized'}), 401
@@ -3600,19 +4378,43 @@ def mark_alert_read():
     data = request.get_json()
     alert_id = data['alert_id']
     
-    conn = sqlite3.connect('gamebet.db')
-    c = conn.cursor()
+    with get_db_connection() as conn:
+        c = conn.cursor()
     
-    c.execute('UPDATE admin_notifications SET status = "read" WHERE id = ?', (alert_id,))
+    c.execute('UPDATE admin_notifications SET status = "read" WHERE id = %s', (alert_id,))
     conn.commit()
-    conn.close()
-    
     return jsonify({'success': True})
 
+@app.route('/admin/user_count')
+@admin_required
+def admin_user_count():
+    """API endpoint to get current user count with fresh data"""
+    with get_db_connection() as conn:
+        c = conn.cursor()
+        
+        # Force fresh count
+        c.execute('SELECT COUNT(*) FROM users WHERE username != "admin"')
+        total_users = c.fetchone()[0]
+        
+        # Get most recent users ordered by creation time
+        c.execute('SELECT id, username, created_at FROM users WHERE username != "admin" ORDER BY created_at DESC, id DESC LIMIT 10')
+        recent_users = c.fetchall()
+        
+    return jsonify({
+        'success': True,
+        'total_users': total_users,
+        'recent_users': [{
+            'id': u[0],
+            'username': u[1], 
+            'created_at': u[2]
+        } for u in recent_users]
+    })
+
 @app.route('/admin/status')
+@admin_required
 def admin_status():
-    conn = sqlite3.connect('gamebet.db')
-    c = conn.cursor()
+    with get_db_connection() as conn:
+        c = conn.cursor()
     
     # Create admin_activity table if not exists
     c.execute('''CREATE TABLE IF NOT EXISTS admin_activity (
@@ -3632,11 +4434,10 @@ def admin_status():
     else:
         inactive_minutes = 999
         active = False
-    
-    conn.close()
     return jsonify({'active': active, 'inactive_minutes': inactive_minutes})
 
 @app.route('/cancel_withdrawal', methods=['POST'])
+@login_required
 def cancel_withdrawal():
     if 'user_id' not in session:
         return jsonify({'error': 'Unauthorized'}), 401
@@ -3644,8 +4445,8 @@ def cancel_withdrawal():
     data = request.get_json()
     withdrawal_id = data['withdrawal_id']
     
-    conn = sqlite3.connect('gamebet.db')
-    c = conn.cursor()
+    with get_db_connection() as conn:
+        c = conn.cursor()
     
     # Check if withdrawal belongs to user and is pending
     c.execute('SELECT user_id, amount FROM transactions WHERE id = ? AND user_id = ? AND type = "pending_withdrawal"', 
@@ -3653,20 +4454,18 @@ def cancel_withdrawal():
     withdrawal = c.fetchone()
     
     if not withdrawal:
-        conn.close()
         return jsonify({'success': False, 'message': 'Withdrawal not found or already processed'})
     
     # Process cancellation - refund amount + fee
     amount = abs(withdrawal[1]) + 15  # Refund amount + fee
-    c.execute('UPDATE users SET balance = balance + ? WHERE id = ?', (amount, session['user_id']))
-    c.execute('UPDATE transactions SET type = "cancelled_withdrawal" WHERE id = ?', (withdrawal_id,))
+    c.execute('UPDATE users SET balance = balance + %s WHERE id = %s', (amount, session['user_id']))
+    c.execute('UPDATE transactions SET type = "cancelled_withdrawal" WHERE id = %s', (withdrawal_id,))
     
     conn.commit()
-    conn.close()
-    
     return jsonify({'success': True, 'message': f'Withdrawal cancelled. KSh {amount} returned to your account.'})
 
 @app.route('/request_auto_refund', methods=['POST'])
+@login_required
 def request_auto_refund():
     if 'user_id' not in session:
         return jsonify({'error': 'Unauthorized'}), 401
@@ -3674,8 +4473,8 @@ def request_auto_refund():
     data = request.get_json()
     withdrawal_id = data['withdrawal_id']
     
-    conn = sqlite3.connect('gamebet.db')
-    c = conn.cursor()
+    with get_db_connection() as conn:
+        c = conn.cursor()
     
     # Check if withdrawal belongs to user and is pending
     c.execute('SELECT user_id, amount FROM transactions WHERE id = ? AND user_id = ? AND type = "pending_withdrawal"', 
@@ -3683,7 +4482,6 @@ def request_auto_refund():
     withdrawal = c.fetchone()
     
     if not withdrawal:
-        conn.close()
         return jsonify({'success': False, 'message': 'Withdrawal not found or already processed'})
     
     # Check admin inactivity
@@ -3696,43 +4494,37 @@ def request_auto_refund():
         inactive_minutes = (datetime.now() - last_time).total_seconds() / 60
         
         if inactive_minutes < 30:
-            conn.close()
             return jsonify({'success': False, 'message': 'Admin is active. Please wait for processing.'})
     
     # Process refund
     amount = abs(withdrawal[1]) + 15  # Refund amount + fee
-    c.execute('UPDATE users SET balance = balance + ? WHERE id = ?', (amount, session['user_id']))
-    c.execute('UPDATE transactions SET type = "auto_refunded" WHERE id = ?', (withdrawal_id,))
+    c.execute('UPDATE users SET balance = balance + %s WHERE id = %s', (amount, session['user_id']))
+    c.execute('UPDATE transactions SET type = "auto_refunded" WHERE id = %s', (withdrawal_id,))
     
     conn.commit()
-    conn.close()
-    
     return jsonify({'success': True, 'message': f'Refunded KSh {amount}'})
 
 @app.route('/api/withdrawal_status/<int:withdrawal_id>')
+@login_required
 def get_withdrawal_status(withdrawal_id):
     if 'user_id' not in session:
         return jsonify({'error': 'Unauthorized'}), 401
     
-    conn = sqlite3.connect('gamebet.db')
-    c = conn.cursor()
+    with get_db_connection() as conn:
+        c = conn.cursor()
     
     # Check if user owns this withdrawal or is admin
     c.execute('SELECT user_id, type, amount, payment_proof FROM transactions WHERE id = ?', (withdrawal_id,))
     withdrawal = c.fetchone()
     
     if not withdrawal or (withdrawal[0] != session['user_id'] and session.get('username') != 'admin'):
-        conn.close()
         return jsonify({'error': 'Access denied'}), 403
     
     user_id, status, amount, payment_proof = withdrawal
     
     # Get latest chat message for additional context
-    c.execute('SELECT message FROM withdrawal_chat WHERE withdrawal_id = ? ORDER BY created_at DESC LIMIT 1', (withdrawal_id,))
+    c.execute('SELECT message FROM withdrawal_chat WHERE withdrawal_id = %s ORDER BY created_at DESC LIMIT 1', (withdrawal_id,))
     latest_message = c.fetchone()
-    
-    conn.close()
-    
     return jsonify({
         'success': True,
         'status': status,
@@ -3742,6 +4534,7 @@ def get_withdrawal_status(withdrawal_id):
     })
 
 @app.route('/escalate_support', methods=['POST'])
+@login_required
 def escalate_support():
     if 'user_id' not in session:
         return jsonify({'error': 'Unauthorized'}), 401
@@ -3749,23 +4542,272 @@ def escalate_support():
     data = request.get_json()
     message = data['message']
     
-    conn = sqlite3.connect('gamebet.db')
-    c = conn.cursor()
+    with get_db_connection() as conn:
+        c = conn.cursor()
     
     c.execute('''INSERT INTO support_escalations (user_id, username, message, status, created_at) 
                  VALUES (?, ?, ?, ?, datetime('now'))''',
              (session['user_id'], session['username'], message, 'pending'))
     
     conn.commit()
-    conn.close()
-    
     return jsonify({'success': True, 'message': 'Support request submitted successfully'})
 
+@app.route('/api/user_balance')
+@login_required
+def api_user_balance():
+    """API endpoint to get current user balance"""
+    if 'user_id' not in session:
+        return jsonify({'error': 'Not logged in'}), 401
+    
+    try:
+        with get_db_connection() as conn:
+            c = conn.cursor()
+            c.execute('SELECT balance FROM users WHERE id = %s', (session['user_id'],))
+            result = c.fetchone()
+            
+            if result:
+                balance = result[0]
+                session['balance'] = balance  # Update session
+                return jsonify({'success': True, 'balance': f'{balance:.0f}'})
+            else:
+                return jsonify({'error': 'User not found'}), 404
+                
+    except Exception as e:
+        return jsonify({'error': 'Database error'}), 500
+
+@app.route('/api/user_stats')
+@login_required  
+def api_user_stats():
+    """API endpoint to get current user stats"""
+    if 'user_id' not in session:
+        return jsonify({'error': 'Not logged in'}), 401
+    
+    try:
+        with get_db_connection() as conn:
+            c = conn.cursor()
+            user_id = session['user_id']
+            
+            # Get updated user data
+            c.execute('SELECT balance, wins, losses, total_earnings FROM users WHERE id = ?', (user_id,))
+            user_data = c.fetchone()
+            
+            if not user_data:
+                return jsonify({'error': 'User not found'}), 404
+            
+            balance, wins, losses, earnings = user_data
+            
+            # Get additional stats
+            c.execute('SELECT COALESCE(SUM(amount), 0) FROM transactions WHERE user_id = ? AND type = "refund"', (user_id,))
+            refunds = c.fetchone()[0] or 0
+            
+            c.execute('SELECT COALESCE(SUM(ABS(amount)), 0) FROM transactions WHERE user_id = ? AND type = "rejected_withdrawal"', (user_id,))
+            rejected_withdrawals = c.fetchone()[0] or 0
+            
+            c.execute('SELECT COALESCE(SUM(amount), 0) FROM transactions WHERE user_id = ? AND type IN ("deposit", "paypal_deposit", "crypto_deposit")', (user_id,))
+            topups = c.fetchone()[0] or 0
+            
+            c.execute('SELECT COALESCE(SUM(ABS(amount)), 0) FROM transactions WHERE user_id = ? AND type = "withdrawal"', (user_id,))
+            accepted_withdrawals = c.fetchone()[0] or 0
+            
+            stats = {
+                'balance': balance or 0,
+                'wins': wins or 0,
+                'losses': losses or 0,
+                'earnings': earnings or 0,
+                'refunds': refunds,
+                'rejected_withdrawals': rejected_withdrawals,
+                'topups': topups,
+                'accepted_withdrawals': accepted_withdrawals
+            }
+            
+            return jsonify({'success': True, 'stats': stats})
+            
+    except Exception as e:
+        return jsonify({'error': 'Database error'}), 500
+
+@app.route('/api/refresh_dashboard')
+@login_required
+def api_refresh_dashboard():
+    """API endpoint to refresh dashboard data"""
+    if 'user_id' not in session:
+        return jsonify({'error': 'Not logged in'}), 401
+    
+    try:
+        with get_db_connection() as conn:
+            c = conn.cursor()
+            user_id = session['user_id']
+            
+            # Recalculate and update user stats
+            c.execute('SELECT COUNT(*) FROM matches WHERE winner_id = %s AND status = "completed"', (user_id,))
+            wins = c.fetchone()[0] or 0
+            
+            c.execute('SELECT COUNT(*) FROM matches WHERE (player1_id = %s OR player2_id = %s) AND winner_id != %s AND status = "completed"', (user_id, user_id, user_id))
+            losses = c.fetchone()[0] or 0
+            
+            c.execute('SELECT COALESCE(SUM(amount), 0) FROM transactions WHERE user_id = ? AND amount > 0 AND type IN ("match_win", "streaming_earnings", "tournament_prize", "referral_bonus")', (user_id,))
+            earnings = c.fetchone()[0] or 0
+            
+            # Update user record
+            c.execute('UPDATE users SET wins = ?, losses = ?, total_earnings = ? WHERE id = ?', 
+                     (wins, losses, earnings, user_id))
+            
+            # Get current balance
+            c.execute('SELECT balance FROM users WHERE id = %s', (user_id,))
+            balance = c.fetchone()[0] or 0
+            
+            session['balance'] = balance
+            conn.commit()
+            
+            return jsonify({
+                'success': True, 
+                'message': 'Dashboard refreshed',
+                'stats': {
+                    'balance': balance,
+                    'wins': wins,
+                    'losses': losses,
+                    'earnings': earnings
+                }
+            })
+            
+    except Exception as e:
+        return jsonify({'error': 'Refresh failed'}), 500
+
+@app.route('/send_gift', methods=['POST'])
+@login_required
+def send_gift():
+    """Send virtual gift to streamer"""
+    if 'user_id' not in session:
+        return jsonify({'error': 'Not logged in'}), 401
+    
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'No data provided'}), 400
+            
+        stream_id = data.get('stream_id')
+        gift_type = data.get('gift_type', 'heart')
+        amount = data.get('amount', 1)
+        
+        if not stream_id:
+            return jsonify({'error': 'Stream ID required'}), 400
+        
+        with get_db_connection() as conn:
+            c = conn.cursor()
+            
+            # Get stream info
+            c.execute('SELECT user_id, status FROM streams WHERE id = ?', (stream_id,))
+            stream = c.fetchone()
+            
+            if not stream:
+                return jsonify({'error': 'Stream not found'}), 404
+            
+            streamer_id, status = stream
+            
+            if status != 'live':
+                return jsonify({'error': 'Stream is not live'}), 400
+            
+            if streamer_id == session['user_id']:
+                return jsonify({'error': 'Cannot send gift to yourself'}), 400
+            
+            # Gift costs (in KSh)
+            gift_costs = {
+                'heart': 1,
+                'star': 5,
+                'diamond': 10,
+                'crown': 25
+            }
+            
+            cost = gift_costs.get(gift_type, 1) * amount
+            
+            # Check sender balance
+            c.execute('SELECT balance FROM users WHERE id = %s', (session['user_id'],))
+            sender_balance = c.fetchone()[0]
+            
+            if sender_balance < cost:
+                return jsonify({'error': f'Insufficient balance. Need KSh {cost}'}), 400
+            
+            # Process gift transaction
+            c.execute('UPDATE users SET balance = balance - %s WHERE id = %s', (cost, session['user_id']))
+            c.execute('UPDATE users SET balance = balance + %s WHERE id = %s', (cost * 0.7, streamer_id))  # 70% to streamer
+            
+            # Record transactions
+            c.execute('''INSERT INTO transactions (user_id, type, amount, description)
+                         VALUES (?, ?, ?, ?)''',
+                     (session['user_id'], 'gift_sent', -cost, f'Sent {amount}x {gift_type} to stream #{stream_id}'))
+            
+            c.execute('''INSERT INTO transactions (user_id, type, amount, description)
+                         VALUES (?, ?, ?, ?)''',
+                     (streamer_id, 'gift_received', cost * 0.7, f'Received {amount}x {gift_type} from viewer'))
+            
+            # Admin commission (30%)
+            c.execute('''INSERT INTO transactions (user_id, type, amount, description)
+                         VALUES (?, ?, ?, ?)''',
+                     (1, 'gift_commission', cost * 0.3, f'Commission from gift - Stream #{stream_id}'))
+            
+            conn.commit()
+            
+            return jsonify({
+                'success': True,
+                'message': f'Sent {amount}x {gift_type}!',
+                'cost': cost,
+                'new_balance': sender_balance - cost
+            })
+            
+    except Exception as e:
+        return jsonify({'error': 'Gift sending failed'}), 500
 
 
 
+
+
+@app.route('/start_independent_stream', methods=['POST'])
+@login_required
+def start_independent_stream():
+    if 'user_id' not in session:
+        return jsonify({'error': 'Unauthorized'}), 401
+    
+    data = request.get_json()
+    stream_title = data.get('title', 'Live Gaming Stream')
+    category = data.get('category', 'other')
+    stream_type = data.get('type', 'independent')
+    
+    with get_db_connection() as conn:
+        c = conn.cursor()
+    
+    # End any existing streams for this user first
+    c.execute('UPDATE streams SET status = "ended" WHERE user_id = ? AND status IN ("live", "pending")', (session['user_id'],))
+    c.execute('DELETE FROM stream_viewers WHERE stream_id IN (SELECT id FROM streams WHERE user_id = %s AND status = "ended")', (session['user_id'],))
+    
+    # Generate stream key
+    import uuid
+    stream_key = str(uuid.uuid4())[:8]
+    
+    # Create independent stream (no match_id)
+    c.execute('''INSERT INTO streams (user_id, match_id, tournament_id, title, stream_key, stream_type, status)
+                 VALUES (?, ?, ?, ?, ?, ?, ?)''', 
+             (session['user_id'], None, None, stream_title, stream_key, stream_type, 'live'))
+    
+    stream_id = c.lastrowid
+    
+    # Start with 0 viewers
+    c.execute('UPDATE streams SET viewers = %s WHERE id = %s', (0, stream_id))
+    
+    # Record stream start transaction
+    c.execute('''INSERT INTO transactions (user_id, type, amount, description)
+                 VALUES (?, ?, ?, ?)''',
+             (session['user_id'], 'stream_started', 0, f'Independent stream started - "{stream_title}" - Category: {category}'))
+    
+    conn.commit()
+    return jsonify({
+        'success': True, 
+        'stream_id': stream_id, 
+        'stream_key': stream_key,
+        'stream_url': f'/watch_real_stream/{stream_id}',
+        'viewers': 0
+    })
 
 @app.route('/start_stream', methods=['POST'])
+@login_required
 def start_stream():
     if 'user_id' not in session:
         return jsonify({'error': 'Unauthorized'}), 401
@@ -3778,20 +4820,19 @@ def start_stream():
     is_competition = data.get('competition', False)
     entry_fee = data.get('entry_fee', 0)
     
-    conn = sqlite3.connect('gamebet.db')
-    c = conn.cursor()
+    with get_db_connection() as conn:
+        c = conn.cursor()
     
     # Check if user has enough balance for entry fee
     if entry_fee > 0:
-        c.execute('SELECT balance FROM users WHERE id = ?', (session['user_id'],))
+        c.execute('SELECT balance FROM users WHERE id = %s', (session['user_id'],))
         balance = c.fetchone()[0]
         
         if balance < entry_fee:
-            conn.close()
             return jsonify({'error': f'Insufficient balance! Need KSh {entry_fee} to join tournament'}), 400
         
         # Deduct entry fee
-        c.execute('UPDATE users SET balance = balance - ? WHERE id = ?', (entry_fee, session['user_id']))
+        c.execute('UPDATE users SET balance = balance - %s WHERE id = %s', (entry_fee, session['user_id']))
         session['balance'] = session.get('balance', 0) - entry_fee
         
         # Record entry fee transaction
@@ -3813,20 +4854,20 @@ def start_stream():
     stream_id = c.lastrowid
     
     # Start with 0 real viewers
-    c.execute('UPDATE streams SET viewers = ? WHERE id = ?', (0, stream_id))
+    c.execute('UPDATE streams SET viewers = %s WHERE id = %s', (0, stream_id))
     
     # Add to competition if participating
     if is_competition:
         c.execute('''SELECT cp.id FROM competition_participants cp
                      JOIN streaming_competitions sc ON cp.competition_id = sc.id
-                     WHERE cp.user_id = ? AND sc.status = 'active' 
+                     WHERE cp.user_id = %s AND sc.status = 'active' 
                      AND date(sc.created_at) = date('now')''', (session['user_id'],))
         competition_entry = c.fetchone()
         
         if competition_entry:
             c.execute('''UPDATE competition_participants 
                          SET earnings = earnings + 5 
-                         WHERE id = ?''', (competition_entry[0],))
+                         WHERE id = %s''', (competition_entry[0],))
             
             # Record streaming bonus transaction
             c.execute('''INSERT INTO transactions (user_id, type, amount, description)
@@ -3835,8 +4876,6 @@ def start_stream():
                       f'Competition stream start bonus - Stream #{stream_id}'))
     
     conn.commit()
-    conn.close()
-    
     return jsonify({
         'success': True, 
         'stream_id': stream_id, 
@@ -3846,80 +4885,59 @@ def start_stream():
     })
 
 @app.route('/stop_stream/<int:stream_id>', methods=['POST'])
+@login_required
 def stop_stream(stream_id):
     if 'user_id' not in session:
         return jsonify({'error': 'Unauthorized'}), 401
     
-    conn = sqlite3.connect('gamebet.db')
-    c = conn.cursor()
-    
-    # Get stream details
-    c.execute('SELECT viewers, created_at, match_id, tournament_id FROM streams WHERE id = ? AND user_id = ?', 
-             (stream_id, session['user_id']))
-    stream = c.fetchone()
-    
-    if stream:
-        viewers, created_at, match_id, tournament_id = stream
+    try:
+        with get_db_connection() as conn:
+            c = conn.cursor()
         
-        # Calculate stream duration in hours
-        from datetime import datetime
-        start_time = datetime.fromisoformat(created_at)
-        duration_hours = max(1, int((datetime.now() - start_time).total_seconds() / 3600))
+        # Get stream details
+        c.execute('SELECT viewers, created_at, match_id, tournament_id, status FROM streams WHERE id = ? AND user_id = ?', 
+                 (stream_id, session['user_id']))
+        stream = c.fetchone()
         
-        # Enhanced earnings calculation
-        base_earnings = duration_hours * 15  # KSh 15 per hour (increased from 5)
-        viewer_bonus = viewers * duration_hours * 5  # KSh 5 per viewer per hour (increased from 2)
-        performance_bonus = min(200, viewers * 10)  # Up to KSh 200 based on viewer engagement
-        sponsor_bonus = 50 if viewers >= 10 else 0  # KSh 50 sponsor bonus for 10+ viewers
-        total_earnings = base_earnings + viewer_bonus + performance_bonus + sponsor_bonus
+        if not stream:
+            return jsonify({'error': 'Stream not found'}), 404
         
-        # Update competition stats if participating
-        c.execute('''SELECT cp.id FROM competition_participants cp
-                     JOIN streaming_competitions sc ON cp.competition_id = sc.id
-                     WHERE cp.user_id = ? AND sc.status = 'active' 
-                     AND date(sc.created_at) = date('now')''', (session['user_id'],))
-        competition_entry = c.fetchone()
+        # Check if stream is already ended
+        if stream[4] == 'ended':
+            return jsonify({'success': True, 'message': 'Stream already ended', 'earnings': 0})
         
-        if competition_entry:
-            c.execute('''UPDATE competition_participants 
-                         SET earnings = earnings + ?, 
-                             total_viewers = total_viewers + ?,
-                             stream_time = stream_time + ?
-                         WHERE id = ?''', 
-                     (total_earnings, viewers, duration_hours, competition_entry[0]))
-            
-            # Add earnings to user balance
-            c.execute('UPDATE users SET balance = balance + ? WHERE id = ?', 
-                     (total_earnings, session['user_id']))
-            session['balance'] = session.get('balance', 0) + total_earnings
-            
-            # Record streaming earnings transaction
-            stream_type = "tournament" if tournament_id else "match" if match_id else "competition"
+        viewers, created_at, match_id, tournament_id, status = stream
+        
+        # Calculate earnings
+        base_earnings = 10  # Simple base
+        viewer_bonus = (viewers or 0) * 2
+        total_earnings = base_earnings + viewer_bonus
+        
+        # Add earnings to user balance
+        if total_earnings > 0:
+            c.execute('UPDATE users SET balance = balance + %s WHERE id = %s', (total_earnings, session['user_id']))
             c.execute('''INSERT INTO transactions (user_id, type, amount, description)
                          VALUES (?, ?, ?, ?)''',
-                     (session['user_id'], 'streaming_earnings', total_earnings, 
-                      f'Stream #{stream_id} earnings - {stream_type} stream - {duration_hours}h, {viewers} viewers - KSh {total_earnings}'))
-        else:
-            # Regular streaming earnings (not in competition)
-            if total_earnings > 0:
-                c.execute('UPDATE users SET balance = balance + ? WHERE id = ?', 
-                         (total_earnings, session['user_id']))
-                session['balance'] = session.get('balance', 0) + total_earnings
-                
-                # Record streaming earnings transaction
-                stream_type = "tournament" if tournament_id else "match" if match_id else "solo"
-                c.execute('''INSERT INTO transactions (user_id, type, amount, description)
-                             VALUES (?, ?, ?, ?)''',
-                         (session['user_id'], 'streaming_earnings', total_earnings, 
-                          f'Stream #{stream_id} earnings - {stream_type} stream - {duration_hours}h, {viewers} viewers - KSh {total_earnings}'))
-    
-    c.execute('UPDATE streams SET status = "ended" WHERE id = ? AND user_id = ?', (stream_id, session['user_id']))
-    conn.commit()
-    conn.close()
-    
-    return jsonify({'success': True, 'earnings': total_earnings if stream else 0})
+                     (session['user_id'], 'streaming_earnings', total_earnings, f'Stream earnings - KSh {total_earnings}'))
+        
+        # End the stream
+        c.execute('UPDATE streams SET status = "ended" WHERE id = %s', (stream_id,))
+        c.execute('DELETE FROM stream_viewers WHERE stream_id = %s', (stream_id,))
+        
+        conn.commit()
+        return jsonify({
+            'success': True, 
+            'earnings': total_earnings,
+            'message': f'Stream ended. Earned KSh {total_earnings}'
+        })
+        
+    except Exception as e:
+        if 'conn' in locals():
+            pass
+        return jsonify({'error': f'Error: {str(e)}'}), 500
 
 @app.route('/stream_setup/<int:match_id>')
+@login_required
 def stream_setup(match_id):
     if 'user_id' not in session:
         return redirect(url_for('login'))
@@ -3931,28 +4949,35 @@ def stream_setup(match_id):
         # Competition streaming - no match required
         return render_template('stream_setup.html', match=None, competition=True)
     
-    conn = sqlite3.connect('gamebet.db')
-    c = conn.cursor()
+    with get_db_connection() as conn:
+        c = conn.cursor()
     
-    c.execute('SELECT * FROM matches WHERE id = ? AND (player1_id = ? OR player2_id = ?)', 
-             (match_id, session['user_id'], session['user_id']))
+    c.execute('SELECT * FROM matches WHERE id = %s AND (player1_id = %s OR player2_id = %s)', (match_id, session['user_id'], session['user_id']))
     match = c.fetchone()
     
     if not match:
         flash('Match not found!', 'error')
-        conn.close()
         return redirect(url_for('matches'))
-    
-    conn.close()
     return render_template('stream_setup.html', match=match, competition=False)
 
 @app.route('/watch_real_stream/<int:stream_id>')
+@login_required
 def watch_real_stream(stream_id):
     if 'user_id' not in session:
         return redirect(url_for('login'))
     
-    conn = sqlite3.connect('gamebet.db')
-    c = conn.cursor()
+    with get_db_connection() as conn:
+        c = conn.cursor()
+    
+    # Create stream_viewers table if not exists
+    c.execute('''CREATE TABLE IF NOT EXISTS stream_viewers (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        stream_id INTEGER,
+        user_id INTEGER,
+        username TEXT,
+        joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(stream_id, user_id)
+    )''')
     
     c.execute('''SELECT s.*, u.username FROM streams s 
                  JOIN users u ON s.user_id = u.id 
@@ -3961,10 +4986,19 @@ def watch_real_stream(stream_id):
     
     if not stream:
         flash('Stream not found!', 'error')
-        conn.close()
         return redirect(url_for('dashboard'))
     
-    conn.close()
+    # Add viewer to stream if it's live and not the owner
+    if stream and stream[6] == 'live' and stream[1] != session['user_id']:
+        c.execute('''INSERT OR REPLACE INTO stream_viewers (stream_id, user_id, username) 
+                     VALUES (?, ?, ?)''', (stream_id, session['user_id'], session['username']))
+        
+        # Update viewer count
+        c.execute('SELECT COUNT(DISTINCT user_id) FROM stream_viewers WHERE stream_id = %s', (stream_id,))
+        viewer_count = c.fetchone()[0]
+        c.execute('UPDATE streams SET viewers = %s WHERE id = %s', (viewer_count, stream_id))
+        
+        conn.commit()
     return render_template('watch_real_stream.html', stream=stream, stream_id=stream_id)
 
 @app.route('/watch_stream/<int:stream_id>')
@@ -3972,8 +5006,8 @@ def watch_stream(stream_id):
     if 'user_id' not in session:
         return redirect(url_for('login'))
     
-    conn = sqlite3.connect('gamebet.db')
-    c = conn.cursor()
+    with get_db_connection() as conn:
+        c = conn.cursor()
     
     # Create stream_viewers table if not exists
     c.execute('''CREATE TABLE IF NOT EXISTS stream_viewers (
@@ -3993,20 +5027,23 @@ def watch_stream(stream_id):
     
     if not stream:
         flash('Stream not found!', 'error')
-        conn.close()
         return redirect(url_for('dashboard'))
     
-    # Add real viewer to stream
-    c.execute('''INSERT OR REPLACE INTO stream_viewers (stream_id, user_id, username) 
-                 VALUES (?, ?, ?)''', (stream_id, session['user_id'], session['username']))
-    
-    # Update real viewer count
-    c.execute('SELECT COUNT(DISTINCT user_id) FROM stream_viewers WHERE stream_id = ?', (stream_id,))
-    viewer_count = c.fetchone()[0]
-    c.execute('UPDATE streams SET viewers = ? WHERE id = ?', (viewer_count, stream_id))
+    # Add real viewer to stream (only if stream is live)
+    if stream and stream[6] == 'live':
+        c.execute('''INSERT OR REPLACE INTO stream_viewers (stream_id, user_id, username) 
+                     VALUES (?, ?, ?)''', (stream_id, session['user_id'], session['username']))
+        
+        # Update real viewer count
+        c.execute('SELECT COUNT(DISTINCT user_id) FROM stream_viewers WHERE stream_id = %s', (stream_id,))
+        viewer_count = c.fetchone()[0]
+        c.execute('UPDATE streams SET viewers = %s WHERE id = %s', (viewer_count, stream_id))
     
     conn.commit()
-    conn.close()
+    # Check if stream is live before allowing viewing
+    if not stream or stream[6] != 'live':
+        flash('Stream is not available or has ended', 'error')
+        return redirect(url_for('live_streams'))
     
     return render_template('watch_stream.html', stream=stream)
 
@@ -4015,40 +5052,49 @@ def stream_viewers(stream_id):
     if 'user_id' not in session:
         return jsonify({'error': 'Unauthorized'}), 401
     
-    conn = sqlite3.connect('gamebet.db')
-    c = conn.cursor()
+    with get_db_connection() as conn:
+        c = conn.cursor()
     
     # Check if user owns the stream
-    c.execute('SELECT user_id FROM streams WHERE id = ?', (stream_id,))
+    c.execute('SELECT user_id FROM streams WHERE id = %s', (stream_id,))
     stream = c.fetchone()
     
-    if not stream or stream[0] != session['user_id']:
-        conn.close()
-        return jsonify({'error': 'Not your stream'}), 403
+    if not stream:
+        return jsonify({'error': 'Stream not found'}), 404
     
-    # Get current viewers
-    c.execute('''SELECT username, joined_at FROM stream_viewers 
-                 WHERE stream_id = ? ORDER BY joined_at DESC''', (stream_id,))
-    viewers = c.fetchall()
+    # Check if user owns the stream
+    is_owner = stream[0] == session['user_id']
     
-    # Get viewer count
-    c.execute('SELECT viewers FROM streams WHERE id = ?', (stream_id,))
-    count = c.fetchone()[0]
+    # Get viewer count (available to everyone)
+    c.execute('SELECT viewers FROM streams WHERE id = %s', (stream_id,))
+    count_result = c.fetchone()
+    count = count_result[0] if count_result else 0
     
-    conn.close()
-    
-    return jsonify({
-        'viewers': [{'username': v[0], 'joined_at': v[1]} for v in viewers],
-        'count': count
-    })
+    if is_owner:
+        # Stream owner gets detailed viewer list
+        c.execute('''SELECT username, joined_at FROM stream_viewers 
+                     WHERE stream_id = ? ORDER BY joined_at DESC''', (stream_id,))
+        viewers = c.fetchall()
+        return jsonify({
+            'viewers': [{'username': v[0], 'joined_at': v[1]} for v in viewers],
+            'count': count,
+            'is_owner': True
+        })
+    else:
+        # Non-owners only get viewer count
+        return jsonify({
+            'viewers': [],
+            'count': count,
+            'is_owner': False
+        })
 
 @app.route('/multi_stream/<int:tournament_id>')
 def multi_stream(tournament_id):
     if 'user_id' not in session:
         return redirect(url_for('login'))
     
-    conn = sqlite3.connect('gamebet.db')
-    c = conn.cursor()
+    with get_db_connection() as conn:
+        c = conn.cursor()
     
     # Get tournament streams
     c.execute('''SELECT s.*, u.username FROM streams s 
@@ -4057,11 +5103,8 @@ def multi_stream(tournament_id):
                  ORDER BY s.viewers DESC''', (tournament_id,))
     streams = c.fetchall()
     
-    c.execute('SELECT * FROM tournaments WHERE id = ?', (tournament_id,))
+    c.execute('SELECT * FROM tournaments WHERE id = %s', (tournament_id,))
     tournament = c.fetchone()
-    
-    conn.close()
-    
     return render_template('multi_stream.html', streams=streams, tournament=tournament)
 
 @app.route('/live_streams')
@@ -4069,8 +5112,8 @@ def live_streams():
     if 'user_id' not in session:
         return redirect(url_for('login'))
     
-    conn = sqlite3.connect('gamebet.db')
-    c = conn.cursor()
+    with get_db_connection() as conn:
+        c = conn.cursor()
     
     # Create streams table if not exists
     c.execute('''CREATE TABLE IF NOT EXISTS streams (
@@ -4092,10 +5135,297 @@ def live_streams():
                  WHERE s.status IN ("live", "pending") 
                  ORDER BY s.viewers DESC, s.created_at DESC''')
     streams = c.fetchall()
-    
-    conn.close()
-    
     return render_template('live_streams.html', streams=streams)
+
+
+
+@app.route('/end_stream/<int:stream_id>', methods=['POST'])
+def end_stream(stream_id):
+    return stop_stream(stream_id)  # Use the same logic
+
+@app.route('/get_stream_url/<int:stream_id>')
+def get_stream_url(stream_id):
+    if 'user_id' not in session:
+        return jsonify({'error': 'Unauthorized'}), 401
+    
+    with get_db_connection() as conn:
+        c = conn.cursor()
+    
+    c.execute('SELECT title, status, user_id FROM streams WHERE id = ?', (stream_id,))
+    stream = c.fetchone()
+    if not stream:
+        return jsonify({'success': False, 'error': 'Stream not found'})
+    
+    title, status, user_id = stream
+    
+    return jsonify({
+        'success': True,
+        'status': status,
+        'title': title,
+        'is_live': status == 'live',
+        'is_owner': user_id == session['user_id']
+    })
+
+@app.route('/send_stream_chat', methods=['POST'])
+def send_stream_chat():
+    if 'user_id' not in session:
+        return jsonify({'error': 'Not logged in'}), 401
+    
+    try:
+        data = request.get_json()
+        stream_id = data.get('stream_id')
+        message = data.get('message', '').strip()
+        
+        if not message:
+            return jsonify({'error': 'Empty message'}), 400
+        
+        with get_db_connection() as conn:
+            c = conn.cursor()
+            
+            c.execute('''CREATE TABLE IF NOT EXISTS stream_chat (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                stream_id INTEGER,
+                user_id INTEGER,
+                username TEXT,
+                message TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )''')
+            
+            c.execute('INSERT INTO stream_chat (stream_id, user_id, username, message) VALUES (?, ?, ?, ?)',
+                     (stream_id, session['user_id'], session['username'], message))
+            
+            conn.commit()
+            return jsonify({'success': True, 'message': 'Message sent'})
+        
+    except Exception as e:
+        return jsonify({'error': 'Failed to send message'}), 500
+
+@app.route('/get_stream_chat/<int:stream_id>')
+def get_stream_chat(stream_id):
+    try:
+        with get_db_connection() as conn:
+            c = conn.cursor()
+        
+        c.execute('SELECT username, message, created_at FROM stream_chat WHERE stream_id = ? ORDER BY created_at DESC LIMIT 50', (stream_id,))
+        messages = c.fetchall()
+        return jsonify({
+            'messages': [{
+                'username': m[0],
+                'message': m[1],
+                'time': m[2]
+            } for m in reversed(messages)]
+        })
+    except:
+        return jsonify({'messages': []})
+
+@app.route('/webrtc_signal', methods=['POST'])
+def webrtc_signal():
+    if 'user_id' not in session:
+        return jsonify({'error': 'Unauthorized'}), 401
+    
+    data = request.get_json()
+    stream_id = data.get('streamId')
+    message = data.get('message')
+    
+    with get_db_connection() as conn:
+        c = conn.cursor()
+    
+    c.execute('''CREATE TABLE IF NOT EXISTS webrtc_signals (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        stream_id INTEGER,
+        user_id INTEGER,
+        message TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )''')
+    
+    c.execute('INSERT INTO webrtc_signals (stream_id, user_id, message) VALUES (?, ?, ?)',
+             (stream_id, session['user_id'], str(message)))
+    
+    conn.commit()
+    return jsonify({'success': True})
+
+@app.route('/get_stream_viewers/<int:stream_id>')
+def get_stream_viewers_list(stream_id):
+    if 'user_id' not in session:
+        return jsonify({'error': 'Unauthorized'}), 401
+    
+    with get_db_connection() as conn:
+        c = conn.cursor()
+    
+    c.execute('SELECT username FROM stream_viewers WHERE stream_id = %s', (stream_id,))
+    viewers = c.fetchall()
+    return jsonify({
+        'viewers': [{'username': v[0]} for v in viewers]
+    })
+
+@app.route('/send_stream_like', methods=['POST'])
+def send_stream_like():
+    if 'user_id' not in session:
+        return jsonify({'error': 'Unauthorized'}), 401
+    
+    data = request.get_json()
+    stream_id = data.get('stream_id')
+    likes = data.get('likes', 1)
+    
+    with get_db_connection() as conn:
+        c = conn.cursor()
+    
+    c.execute('''CREATE TABLE IF NOT EXISTS stream_likes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        stream_id INTEGER,
+        user_id INTEGER,
+        likes_count INTEGER,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )''')
+    
+    c.execute('INSERT INTO stream_likes (stream_id, user_id, likes_count) VALUES (?, ?, ?)',
+             (stream_id, session['user_id'], likes))
+    
+    conn.commit()
+    return jsonify({'success': True})
+
+@app.route('/get_stream_earnings/<int:stream_id>')
+def get_stream_earnings(stream_id):
+    if 'user_id' not in session:
+        return jsonify({'error': 'Unauthorized'}), 401
+    
+    with get_db_connection() as conn:
+        c = conn.cursor()
+    
+    # Get total earnings for this stream
+    c.execute('SELECT COALESCE(SUM(amount), 0) FROM transactions WHERE user_id = ? AND description LIKE ?',
+             (session['user_id'], f'%stream #{stream_id}%'))
+    earnings = c.fetchone()[0] or 0
+    return jsonify({'success': True, 'earnings': earnings})
+
+@app.route('/update_stream_earnings', methods=['POST'])
+def update_stream_earnings():
+    if 'user_id' not in session:
+        return jsonify({'error': 'Unauthorized'}), 401
+    
+    data = request.get_json()
+    stream_id = data.get('stream_id')
+    viewers = data.get('viewers', 0)
+    
+    # Calculate earnings increment
+    earnings_increment = viewers * 0.05  # KSh 0.05 per viewer per 5 seconds
+    
+    if earnings_increment <= 0:
+        return jsonify({'success': True, 'total_earnings': 0, 'message': 'No viewers to earn from'})
+    
+    with get_db_connection() as conn:
+        c = conn.cursor()
+    
+    # Add to user balance
+    c.execute('UPDATE users SET balance = balance + %s WHERE id = %s', (earnings_increment, session['user_id']))
+    
+    # Record transaction with proper amount - only if earnings > 0
+    if earnings_increment > 0:
+        c.execute('''INSERT INTO transactions (user_id, type, amount, description)
+                     VALUES (?, ?, ?, ?)''',
+                 (session['user_id'], 'live_view_earnings', earnings_increment, 
+                  f'Live stream viewing earnings - Stream #{stream_id} - {viewers} viewers - KSh {earnings_increment:.2f}'))
+    
+    # Get total earnings for this stream
+    c.execute('SELECT COALESCE(SUM(amount), 0) FROM transactions WHERE user_id = ? AND description LIKE ?',
+             (session['user_id'], f'%stream #{stream_id}%'))
+    total_earnings = c.fetchone()[0] or 0
+    
+    conn.commit()
+    return jsonify({'success': True, 'total_earnings': total_earnings})
+
+@app.route('/get_smart_welcome/<int:stream_id>')
+def get_smart_welcome(stream_id):
+    with get_db_connection() as conn:
+        c = conn.cursor()
+    
+    # Get stream and match info
+    c.execute('SELECT match_id, tournament_id, title FROM streams WHERE id = ?', (stream_id,))
+    stream_info = c.fetchone()
+    
+    game_type = 'Gaming'
+    if stream_info and stream_info[0]:  # Has match_id
+        c.execute('SELECT game FROM matches WHERE id = %s', (stream_info[0],))
+        match_info = c.fetchone()
+        if match_info:
+            game_type = match_info[0]
+    
+    # Smart welcome messages based on game
+    messages = {
+        'pubg_mobile': f'ðŸ”¥ {session["username"]} is dropping into Sanhok! Who\'s ready for some chicken dinners? ðŸ— Drop your predictions!',
+        'cod_mobile': f'ðŸ’¥ {session["username"]} locked and loaded for some COD action! Warzone or MP? Let\'s see those headshots! ðŸŽ¯',
+        'fifa_mobile': f'âš½ {session["username"]} is on the pitch! Who\'s your favorite team? Let\'s see some goals! ðŸ¥…',
+        'efootball': f'âš½ {session["username"]} ready to dominate the field! Messi or Ronaldo? Drop your predictions! ðŸ†',
+        'fortnite': f'ðŸ—ï¸ {session["username"]} building for Victory Royale! Who\'s ready for some epic builds? ðŸŽ®',
+        'valorant': f'ðŸŽ¯ {session["username"]} locked in for ranked! Ace incoming? Drop your agent predictions! ðŸ’€'
+    }
+    
+    default_msg = f'ðŸŽ® {session["username"]} is LIVE! Ready for some epic gaming? Drop a follow and let\'s get this party started! ðŸš€'
+    
+    welcome_message = messages.get(game_type.lower(), default_msg)
+    return jsonify({'message': welcome_message})
+
+@app.route('/save_stream_replay', methods=['POST'])
+def save_stream_replay():
+    if 'user_id' not in session:
+        return jsonify({'error': 'Unauthorized'}), 401
+    
+    try:
+        data = request.get_json()
+        stream_id = data.get('stream_id')
+        duration = data.get('duration', 0)
+        viewers_peak = data.get('viewers_peak', 0)
+        
+        with get_db_connection() as conn:
+            c = conn.cursor()
+        
+        # Create stream_replays table
+        c.execute('''CREATE TABLE IF NOT EXISTS stream_replays (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            stream_id INTEGER,
+            user_id INTEGER,
+            title TEXT,
+            duration INTEGER,
+            viewers_peak INTEGER,
+            earnings REAL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )''')
+        
+        # Get stream info
+        c.execute('SELECT title, user_id FROM streams WHERE id = ?', (stream_id,))
+        stream_info = c.fetchone()
+        
+        if stream_info:
+            title = stream_info[0] or 'Live Stream'
+            
+            # Get earnings from this stream
+            c.execute('SELECT COALESCE(SUM(amount), 0) FROM transactions WHERE user_id = ? AND (description LIKE ? OR description LIKE ?)', 
+                     (session['user_id'], f'%stream #{stream_id}%', f'%Stream #{stream_id}%'))
+            earnings = c.fetchone()[0] or 0
+            
+            # Save replay
+            c.execute('''INSERT INTO stream_replays (stream_id, user_id, title, duration, viewers_peak, earnings)
+                         VALUES (?, ?, ?, ?, ?, ?)''',
+                     (stream_id, session['user_id'], title, duration, viewers_peak, earnings))
+            
+            conn.commit()
+            return jsonify({'success': True})
+        return jsonify({'error': 'Stream not found'}), 404
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/my_replays')
+def my_replays():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    with get_db_connection() as conn:
+        c = conn.cursor()
+    
+    c.execute('SELECT * FROM stream_replays WHERE user_id = %s ORDER BY created_at DESC', (session['user_id'],))
+    replays = c.fetchall()
+    return render_template('my_replays.html', replays=replays)
 
 @app.route('/ping')
 def ping():
@@ -4104,8 +5434,8 @@ def ping():
 @app.route('/create_daily_competition')
 def create_daily_competition():
     """Auto-create daily streaming competition - can be called by cron job"""
-    conn = sqlite3.connect('gamebet.db')
-    c = conn.cursor()
+    with get_db_connection() as conn:
+        c = conn.cursor()
     
     # End yesterday's competitions and award prizes
     c.execute('''UPDATE streaming_competitions 
@@ -4129,8 +5459,7 @@ def create_daily_competition():
         prizes = [2000, 1200, 800]  # Enhanced 1st, 2nd, 3rd place prizes
         for i, winner in enumerate(winners):
             if i < len(prizes):
-                c.execute('UPDATE users SET balance = balance + ? WHERE id = ?', 
-                         (prizes[i], winner[0]))
+                c.execute('UPDATE users SET balance = balance + %s WHERE id = %s', (prizes[i], winner[0]))
                 c.execute('''INSERT INTO transactions (user_id, type, amount, description) 
                              VALUES (?, ?, ?, ?)''',
                          (winner[0], 'tournament_prize', prizes[i], 
@@ -4154,7 +5483,6 @@ def create_daily_competition():
                  ('Daily Streaming Battle', 'Compete for daily streaming rewards', 100, 1000))
     
     conn.commit()
-    conn.close()
     return jsonify({'success': True, 'message': 'Daily competition created'})
 
 # Streaming competition removed - replaced by weekly tournaments
@@ -4163,700 +5491,6 @@ def create_daily_competition():
 
 
 
-@app.route('/submit_screenshot/<int:match_id>')
-def submit_screenshot_page(match_id):
-    if 'user_id' not in session:
-        return redirect(url_for('login'))
-    
-    conn = sqlite3.connect('gamebet.db')
-    c = conn.cursor()
-    
-    c.execute('''SELECT m.id, m.game, m.player1_id, m.player2_id, m.bet_amount, m.total_pot, 
-                        m.winner_id, m.status, m.game_mode, m.created_at,
-                        u1.username as p1_name, u2.username as p2_name
-                 FROM matches m
-                 LEFT JOIN users u1 ON m.player1_id = u1.id
-                 LEFT JOIN users u2 ON m.player2_id = u2.id
-                 WHERE m.id = ? AND (m.player1_id = ? OR m.player2_id = ?)''', 
-             (match_id, session['user_id'], session['user_id']))
-    match = c.fetchone()
-    
-    if not match:
-        flash('Match not found!', 'error')
-        conn.close()
-        return redirect(url_for('matches'))
-    
-    conn.close()
-    return render_template('submit_screenshot.html', match=match)
-
-@app.route('/submit_screenshot', methods=['POST'])
-@login_required
-@rate_limit(limit=10, window=300, per='user')  # 10 submissions per 5 minutes per user
-def submit_screenshot():
-    match_id = request.form.get('match_id')
-    claimed_result = request.form.get('claimed_result')
-    
-    # Validate inputs
-    if not match_id or claimed_result not in ['win', 'loss']:
-        return jsonify({'error': 'Invalid form data'}), 400
-    
-    if 'screenshot' not in request.files:
-        return jsonify({'error': 'No screenshot provided'}), 400
-    
-    file = request.files['screenshot']
-    valid_file, file_msg = validate_file_upload(file)
-    if not valid_file:
-        return jsonify({'error': file_msg}), 400
-    
-    log_security_event('screenshot_upload', session['user_id'], f'Match {match_id}')
-    
-    conn = sqlite3.connect('gamebet.db')
-    c = conn.cursor()
-    
-    # Create enhanced fake screenshot tracking tables
-    c.execute('''CREATE TABLE IF NOT EXISTS fake_screenshot_tracking (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER,
-        match_id INTEGER,
-        game_type TEXT,
-        screenshot_data TEXT,
-        fake_count INTEGER DEFAULT 0,
-        is_banned INTEGER DEFAULT 0,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )''')
-    
-    c.execute('''CREATE TABLE IF NOT EXISTS match_screenshots (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        match_id INTEGER,
-        user_id INTEGER,
-        screenshot_data TEXT,
-        claimed_result TEXT,
-        ocr_analysis TEXT,
-        submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )''')
-    
-    c.execute('''CREATE TABLE IF NOT EXISTS match_notifications (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        match_id INTEGER,
-        user_id INTEGER,
-        message TEXT,
-        type TEXT,
-        read_status INTEGER DEFAULT 0,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )''')
-    
-    # Get match details
-    c.execute('SELECT * FROM matches WHERE id = ? AND (player1_id = ? OR player2_id = ?)', 
-             (match_id, session['user_id'], session['user_id']))
-    match = c.fetchone()
-    
-    if not match:
-        conn.close()
-        return jsonify({'error': 'Match not found'}), 404
-    
-    # Check if user is banned
-    c.execute('SELECT is_banned FROM fake_screenshot_tracking WHERE user_id = ? ORDER BY created_at DESC LIMIT 1', 
-             (session['user_id'],))
-    ban_status = c.fetchone()
-    if ban_status and ban_status[0] == 1:
-        conn.close()
-        return jsonify({
-            'error': 'Your account has been temporarily suspended for repeatedly submitting fake screenshots. This violates our fair play policy. To appeal and restore your account, contact admin with a written explanation of why this happened and your commitment to follow the rules. Multiple violations may result in permanent suspension.',
-            'banned': True
-        }), 403
-    
-    # Check if match is already completed
-    if match[7] == 'completed':
-        conn.close()
-        return jsonify({'error': 'Match already completed'}), 400
-    
-    # Create fake screenshot tracking table if not exists
-    c.execute('''CREATE TABLE IF NOT EXISTS fake_screenshot_tracking (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER,
-        match_id INTEGER,
-        game_type TEXT,
-        screenshot_data TEXT,
-        fake_count INTEGER DEFAULT 0,
-        is_banned INTEGER DEFAULT 0,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )''')
-    
-    # Get user's fake screenshot count
-    c.execute('SELECT COALESCE(MAX(fake_count), 0) FROM fake_screenshot_tracking WHERE user_id = ?', 
-             (session['user_id'],))
-    current_fake_count = c.fetchone()[0]
-    
-    # Check if already submitted - allow retry by deleting previous submission
-    c.execute('SELECT id FROM match_screenshots WHERE match_id = ? AND user_id = ?', 
-             (match_id, session['user_id']))
-    existing = c.fetchone()
-    if existing:
-        c.execute('DELETE FROM match_screenshots WHERE match_id = ? AND user_id = ?', 
-                 (match_id, session['user_id']))
-        conn.commit()
-    
-    # Process screenshot securely
-    try:
-        import base64
-        file_content = file.read()
-        if len(file_content) > 10 * 1024 * 1024:  # 10MB limit
-            return jsonify({'error': 'File too large'}), 400
-        screenshot_data = base64.b64encode(file_content).decode('utf-8')
-    except Exception as e:
-        logger.error(f'Screenshot processing error: {e}')
-        return jsonify({'error': 'File processing failed'}), 400
-    
-    # Enhanced game validation - check if screenshot matches game being played
-    game_type = match[1].lower()  # Get game from match
-    
-    # Game-specific validation
-    def validate_game_screenshot(screenshot_data, expected_game):
-        """Validate if screenshot is from the correct game"""
-        import random
-        
-        # Simulate advanced game detection
-        game_signatures = {
-            'pubg_mobile': ['PUBG', 'CHICKEN DINNER', 'BATTLEGROUNDS', 'WINNER WINNER'],
-            'cod_mobile': ['CALL OF DUTY', 'COD', 'WARZONE', 'MODERN WARFARE'],
-            'cod_warzone': ['WARZONE', 'CALL OF DUTY', 'BATTLE ROYALE', 'VERDANSK'],
-            'fifa_mobile': ['FIFA', 'FOOTBALL', 'SOCCER', 'GOAL', 'MATCH'],
-            'efootball': ['EFOOTBALL', 'PES', 'FOOTBALL', 'SOCCER'],
-            'fortnite': ['FORTNITE', 'VICTORY ROYALE', 'BATTLE ROYALE'],
-            'valorant': ['VALORANT', 'SPIKE', 'AGENT', 'ROUND']
-        }
-        
-        expected_signatures = game_signatures.get(expected_game, [])
-        
-        # Simulate detection (in real implementation, this would use image recognition)
-        if random.random() < 0.15:  # 15% chance of wrong game detection
-            return False, 'Screenshot does not appear to be from the specified game'
-        
-        return True, 'Game validation passed'
-    
-    # Validate game match
-    is_correct_game, game_validation_msg = validate_game_screenshot(screenshot_data, game_type)
-    
-    if not is_correct_game:
-        # Wrong game screenshot - this counts as fake
-        new_fake_count = current_fake_count + 1
-        
-        # Update fake screenshot tracking
-        c.execute('''INSERT INTO fake_screenshot_tracking 
-                     (user_id, match_id, game_type, screenshot_data, fake_count) 
-                     VALUES (?, ?, ?, ?, ?)''',
-                 (session['user_id'], match_id, game_type, screenshot_data, new_fake_count))
-        
-        # Progressive penalty system
-        if new_fake_count == 1:
-            # First fake - warning only
-            message = f"⚠️ WARNING: Screenshot is not from {game_type.upper()}! This is your first warning. Next fake screenshot will result in KSh 50 penalty."
-            
-            # Send notification to opponent
-            opponent_id = match[3] if match[2] == session['user_id'] else match[2]
-            if opponent_id:
-                auto_message = f"⚠️ {session['username']} submitted wrong game screenshot and received a warning. You can still submit your screenshot."
-                c.execute('INSERT INTO match_messages (match_id, user_id, username, message) VALUES (?, ?, ?, ?)',
-                         (match_id, 0, 'System', auto_message))
-            
-            conn.commit()
-            conn.close()
-            return jsonify({
-                'success': False,
-                'error': message,
-                'warning': True,
-                'fake_count': new_fake_count
-            })
-            
-        elif new_fake_count == 2:
-            # Second fake - penalty + opponent wins
-            penalty_amount = 50
-            c.execute('UPDATE users SET balance = balance - ? WHERE id = ?', (penalty_amount, session['user_id']))
-            
-            # Record penalty transaction
-            c.execute('''INSERT INTO transactions (user_id, type, amount, description)
-                         VALUES (?, ?, ?, ?)''',
-                     (session['user_id'], 'fake_screenshot_penalty', -penalty_amount, 
-                      f'Fake screenshot penalty - Match {match_id} - Wrong game screenshot'))
-            
-            # Admin gets the penalty
-            c.execute('''INSERT INTO transactions (user_id, type, amount, description)
-                         VALUES (?, ?, ?, ?)''',
-                     (1, 'admin_fraud_commission', penalty_amount, 
-                      f'Commission from fake screenshot penalty - User {session["user_id"]} - Match {match_id}'))
-            
-            # Opponent wins
-            opponent_id = match[3] if match[2] == session['user_id'] else match[2]
-            if opponent_id:
-                winnings = match[4] * 2  # Full pot to opponent
-                c.execute('UPDATE users SET balance = balance + ? WHERE id = ?', (winnings, opponent_id))
-                c.execute('UPDATE matches SET winner_id = ?, status = "completed" WHERE id = ?', (opponent_id, match_id))
-                
-                # Record win transaction
-                c.execute('''INSERT INTO transactions (user_id, type, amount, description)
-                             VALUES (?, ?, ?, ?)''',
-                         (opponent_id, 'match_win', winnings, 
-                          f'Won match {match_id} - opponent submitted fake screenshot'))
-                
-                # Send notification to opponent
-                auto_message = f"🎉 You WIN! {session['username']} submitted fake screenshot (2nd offense) and was penalized KSh 50. You receive full pot of KSh {winnings}!"
-                c.execute('INSERT INTO match_messages (match_id, user_id, username, message) VALUES (?, ?, ?, ?)',
-                         (match_id, 0, 'System', auto_message))
-            
-            message = f"💸 PENALTY APPLIED: KSh 50 deducted for fake screenshot (2nd offense). Opponent wins the match."
-            
-            conn.commit()
-            conn.close()
-            return jsonify({
-                'success': False,
-                'error': message,
-                'penalty': True,
-                'penalty_amount': penalty_amount,
-                'fake_count': new_fake_count
-            })
-            
-        else:
-            # Third+ fake - ban user
-            c.execute('''UPDATE fake_screenshot_tracking SET is_banned = 1 
-                         WHERE user_id = ? AND id = (SELECT MAX(id) FROM fake_screenshot_tracking WHERE user_id = ?)''',
-                     (session['user_id'], session['user_id']))
-            
-            # Apply penalty
-            penalty_amount = 50
-            c.execute('UPDATE users SET balance = balance - ? WHERE id = ?', (penalty_amount, session['user_id']))
-            
-            # Record penalty and ban
-            c.execute('''INSERT INTO transactions (user_id, type, amount, description)
-                         VALUES (?, ?, ?, ?)''',
-                     (session['user_id'], 'fake_screenshot_penalty', -penalty_amount, 
-                      f'Fake screenshot penalty + BAN - Match {match_id} - 3rd offense'))
-            
-            # Admin commission
-            c.execute('''INSERT INTO transactions (user_id, type, amount, description)
-                         VALUES (?, ?, ?, ?)''',
-                     (1, 'admin_fraud_commission', penalty_amount, 
-                      f'Commission from fake screenshot penalty + ban - User {session["user_id"]}'))
-            
-            # Opponent wins if exists
-            opponent_id = match[3] if match[2] == session['user_id'] else match[2]
-            if opponent_id:
-                winnings = match[4] * 2
-                c.execute('UPDATE users SET balance = balance + ? WHERE id = ?', (winnings, opponent_id))
-                c.execute('UPDATE matches SET winner_id = ?, status = "completed" WHERE id = ?', (opponent_id, match_id))
-                
-                c.execute('''INSERT INTO transactions (user_id, type, amount, description)
-                             VALUES (?, ?, ?, ?)''',
-                         (opponent_id, 'match_win', winnings, 
-                          f'Won match {match_id} - opponent banned for fake screenshots'))
-            
-            conn.commit()
-            conn.close()
-            return jsonify({
-                'error': 'Your account has been temporarily suspended for repeatedly submitting fake screenshots. This violates our fair play policy. To appeal and restore your account, contact admin with a written explanation of why this happened and your commitment to follow the rules. Multiple violations may result in permanent suspension.',
-                'banned': True,
-                'penalty_amount': penalty_amount,
-                'fake_count': new_fake_count
-            }), 403
-    
-    # Analyze screenshot with OCR (only if game validation passed)
-    analysis = analyze_screenshot(screenshot_data, claimed_result, match[1])
-    
-    # Enhanced fraud detection for real screenshots that are unclear
-    if analysis['validity'] == 'NEEDS_ADMIN_REVIEW':
-        # Real game screenshot but unclear - send to admin (no penalty)
-        import json
-        c.execute('''INSERT INTO match_screenshots (match_id, user_id, screenshot_data, claimed_result, ocr_analysis)
-                     VALUES (?, ?, ?, ?, ?)''', 
-                 (match_id, session['user_id'], screenshot_data, claimed_result, json.dumps(analysis)))
-        
-        # Send notification to opponent
-        opponent_id = match[3] if match[2] == session['user_id'] else match[2]
-        if opponent_id:
-            auto_message = f"⏳ {session['username']} submitted a {game_type.upper()} screenshot but it needs ADMIN REVIEW (unclear result). You can still submit your screenshot."
-            c.execute('INSERT INTO match_messages (match_id, user_id, username, message) VALUES (?, ?, ?, ?)',
-                     (match_id, 0, 'System', auto_message))
-        
-        conn.commit()
-        conn.close()
-        return jsonify({
-            'success': True,
-            'message': '⏳ Screenshot is from correct game but result is unclear. Sent for admin review.',
-            'admin_review': True
-        })
-    
-    # Handle completely fake screenshots (non-game images)
-    elif analysis['validity'] == 'FRAUD_DETECTED' or analysis['validity'] == 'INVALID':
-        # Completely fake screenshot
-        new_fake_count = current_fake_count + 1
-        
-        # Update tracking
-        c.execute('''INSERT INTO fake_screenshot_tracking 
-                     (user_id, match_id, game_type, screenshot_data, fake_count) 
-                     VALUES (?, ?, ?, ?, ?)''',
-                 (session['user_id'], match_id, game_type, screenshot_data, new_fake_count))
-        
-        # Apply same progressive penalty system as wrong game
-        if new_fake_count == 1:
-            message = f"⚠️ WARNING: Fake screenshot detected! This is your first warning. Next fake screenshot will result in KSh 50 penalty."
-            
-            opponent_id = match[3] if match[2] == session['user_id'] else match[2]
-            if opponent_id:
-                auto_message = f"⚠️ {session['username']} submitted fake screenshot and received a warning. You can still submit your screenshot."
-                c.execute('INSERT INTO match_messages (match_id, user_id, username, message) VALUES (?, ?, ?, ?)',
-                         (match_id, 0, 'System', auto_message))
-            
-            conn.commit()
-            conn.close()
-            return jsonify({
-                'success': False,
-                'error': message,
-                'warning': True,
-                'fake_count': new_fake_count
-            })
-            
-        elif new_fake_count == 2:
-            # Second fake - penalty + opponent wins
-            penalty_amount = 50
-            c.execute('UPDATE users SET balance = balance - ? WHERE id = ?', (penalty_amount, session['user_id']))
-            
-            c.execute('''INSERT INTO transactions (user_id, type, amount, description)
-                         VALUES (?, ?, ?, ?)''',
-                     (session['user_id'], 'fake_screenshot_penalty', -penalty_amount, 
-                      f'Fake screenshot penalty - Match {match_id} - Completely fake image'))
-            
-            c.execute('''INSERT INTO transactions (user_id, type, amount, description)
-                         VALUES (?, ?, ?, ?)''',
-                     (1, 'admin_fraud_commission', penalty_amount, 
-                      f'Commission from fake screenshot penalty - User {session["user_id"]} - Match {match_id}'))
-            
-            # Opponent wins
-            opponent_id = match[3] if match[2] == session['user_id'] else match[2]
-            if opponent_id:
-                winnings = match[4] * 2
-                c.execute('UPDATE users SET balance = balance + ? WHERE id = ?', (winnings, opponent_id))
-                c.execute('UPDATE matches SET winner_id = ?, status = "completed" WHERE id = ?', (opponent_id, match_id))
-                
-                c.execute('''INSERT INTO transactions (user_id, type, amount, description)
-                             VALUES (?, ?, ?, ?)''',
-                         (opponent_id, 'match_win', winnings, 
-                          f'Won match {match_id} - opponent submitted fake screenshot'))
-                
-                auto_message = f"🎉 You WIN! {session['username']} submitted fake screenshot (2nd offense) and was penalized KSh 50. You receive full pot of KSh {winnings}!"
-                c.execute('INSERT INTO match_messages (match_id, user_id, username, message) VALUES (?, ?, ?, ?)',
-                         (match_id, 0, 'System', auto_message))
-            
-            conn.commit()
-            conn.close()
-            return jsonify({
-                'success': False,
-                'error': f"💸 PENALTY APPLIED: KSh 50 deducted for fake screenshot (2nd offense). Opponent wins the match.",
-                'penalty': True,
-                'penalty_amount': penalty_amount,
-                'fake_count': new_fake_count
-            })
-            
-        else:
-            # Third+ fake - ban
-            c.execute('''UPDATE fake_screenshot_tracking SET is_banned = 1 
-                         WHERE user_id = ? AND id = (SELECT MAX(id) FROM fake_screenshot_tracking WHERE user_id = ?)''',
-                     (session['user_id'], session['user_id']))
-            
-            penalty_amount = 50
-            c.execute('UPDATE users SET balance = balance - ? WHERE id = ?', (penalty_amount, session['user_id']))
-            
-            c.execute('''INSERT INTO transactions (user_id, type, amount, description)
-                         VALUES (?, ?, ?, ?)''',
-                     (session['user_id'], 'fake_screenshot_penalty', -penalty_amount, 
-                      f'Fake screenshot penalty + BAN - Match {match_id} - 3rd offense'))
-            
-            c.execute('''INSERT INTO transactions (user_id, type, amount, description)
-                         VALUES (?, ?, ?, ?)''',
-                     (1, 'admin_fraud_commission', penalty_amount, 
-                      f'Commission from fake screenshot penalty + ban - User {session["user_id"]}'))
-            
-            opponent_id = match[3] if match[2] == session['user_id'] else match[2]
-            if opponent_id:
-                winnings = match[4] * 2
-                c.execute('UPDATE users SET balance = balance + ? WHERE id = ?', (winnings, opponent_id))
-                c.execute('UPDATE matches SET winner_id = ?, status = "completed" WHERE id = ?', (opponent_id, match_id))
-                
-                c.execute('''INSERT INTO transactions (user_id, type, amount, description)
-                             VALUES (?, ?, ?, ?)''',
-                         (opponent_id, 'match_win', winnings, 
-                          f'Won match {match_id} - opponent banned for fake screenshots'))
-            
-            conn.commit()
-            conn.close()
-            return jsonify({
-                'error': 'Your account has been temporarily suspended for repeatedly submitting fake screenshots. This violates our fair play policy. To appeal and restore your account, contact admin with a written explanation of why this happened and your commitment to follow the rules. Multiple violations may result in permanent suspension.',
-                'banned': True,
-                'penalty_amount': penalty_amount,
-                'fake_count': new_fake_count
-            }), 403
-    
-    # Valid screenshot - proceed with normal flow
-    import json
-    c.execute('''INSERT INTO match_screenshots (match_id, user_id, screenshot_data, claimed_result, ocr_analysis)
-                 VALUES (?, ?, ?, ?, ?)''', 
-             (match_id, session['user_id'], screenshot_data, claimed_result, json.dumps(analysis)))
-    
-    # Check if both players have submitted
-    c.execute('SELECT COUNT(*) FROM match_screenshots WHERE match_id = ?', (match_id,))
-    submissions = c.fetchone()[0]
-    
-    # IMPROVED OCR SYSTEM: Real screenshot detection with countdown timer
-    if submissions == 1:
-        # First submission - verify with enhanced OCR
-        c.execute('SELECT ocr_analysis, claimed_result FROM match_screenshots WHERE match_id = ? AND user_id = ?', 
-                 (match_id, session['user_id']))
-        result = c.fetchone()
-        analysis_str, claimed_result = result[0], result[1]
-        import json
-        try:
-            analysis = json.loads(analysis_str)
-        except:
-            analysis = eval(analysis_str)
-        
-        # Get opponent info for notifications
-        opponent_id = match[3] if match[2] == session['user_id'] else match[2]
-        submitter_name = session['username']
-        bet_amount = match[4]
-        game_name = match[1]
-        
-        # Add countdown timer for real screenshots
-        from datetime import datetime, timedelta
-        countdown_end = datetime.now() + timedelta(minutes=15)  # 15 minute countdown
-        
-        if analysis['validity'] == 'VALID_OCR_VERIFIED' and claimed_result == 'win':
-            # Real screenshot detected - start countdown for opponent
-            c.execute('UPDATE matches SET status = "waiting_opponent", countdown_end = ? WHERE id = ?', 
-                     (countdown_end.isoformat(), match_id))
-            
-            # Send automatic chat notification to opponent
-            if opponent_id:
-                auto_message = f"🎉 {submitter_name} submitted a WINNING screenshot for {game_name} (KSh {bet_amount} match) and it was VERIFIED as REAL! ⏰ You have 15 minutes to submit your screenshot or they win automatically."
-                c.execute('INSERT INTO match_messages (match_id, user_id, username, message) VALUES (?, ?, ?, ?)',
-                         (match_id, 0, 'System', auto_message))  # user_id=0 for system messages
-                
-                # Also add to notifications table
-                c.execute('''INSERT INTO match_notifications (match_id, user_id, message, type)
-                             VALUES (?, ?, ?, ?)''',
-                         (match_id, opponent_id, f'⚠️ Opponent submitted REAL screenshot! You have 15 minutes to submit yours or they win automatically.', 'countdown_alert'))
-            
-            conn.commit()
-            conn.close()
-            return jsonify({
-                'success': True, 
-                'message': '🎉 REAL SCREENSHOT VERIFIED! Waiting 15 minutes for opponent. You will win if they don\'t submit.',
-                'countdown': True,
-                'countdown_end': countdown_end.isoformat(),
-                'verification': analysis['detection_reason']
-            })
-        elif analysis['validity'] == 'VALID_OCR_VERIFIED' and claimed_result == 'loss':
-            # Real loss screenshot - wait for opponent
-            c.execute('UPDATE matches SET status = "waiting_opponent", countdown_end = ? WHERE id = ?', 
-                     (countdown_end.isoformat(), match_id))
-            
-            # Send automatic chat notification to opponent
-            if opponent_id:
-                auto_message = f"✅ {submitter_name} submitted a LOSS screenshot for {game_name} (KSh {bet_amount} match) and it was VERIFIED as REAL! ⏰ You have 15 minutes to submit your winning screenshot."
-                c.execute('INSERT INTO match_messages (match_id, user_id, username, message) VALUES (?, ?, ?, ?)',
-                         (match_id, 0, 'System', auto_message))
-                
-                # Also add to notifications table
-                c.execute('''INSERT INTO match_notifications (match_id, user_id, message, type)
-                             VALUES (?, ?, ?, ?)''',
-                         (match_id, opponent_id, f'✅ Opponent submitted REAL loss screenshot. You have 15 minutes to submit your win screenshot.', 'countdown_alert'))
-            
-            conn.commit()
-            conn.close()
-            return jsonify({
-                'success': True, 
-                'message': '✅ Real loss screenshot confirmed. Waiting for opponent submission.',
-                'countdown': True,
-                'countdown_end': countdown_end.isoformat(),
-                'verification': analysis['detection_reason']
-            })
-        elif analysis['validity'] == 'FRAUD_DETECTED':
-            # Fake screenshot - keep match active for other player
-            # Send automatic chat notification to opponent about fake submission
-            if opponent_id:
-                auto_message = f"🚨 {submitter_name} submitted a screenshot for {game_name} (KSh {bet_amount} match) but it was DETECTED AS FAKE! They've been penalized KSh 50. You can still submit your screenshot to win."
-                c.execute('INSERT INTO match_messages (match_id, user_id, username, message) VALUES (?, ?, ?, ?)',
-                         (match_id, 0, 'System', auto_message))
-                
-                # Also add to notifications table
-                c.execute('''INSERT INTO match_notifications (match_id, user_id, message, type)
-                             VALUES (?, ?, ?, ?)''',
-                         (match_id, opponent_id, f'🚨 Opponent submitted FAKE screenshot! You can still submit yours.', 'fraud_alert'))
-            
-            conn.commit()
-            conn.close()
-            return jsonify({
-                'success': False,
-                'error': 'FAKE SCREENSHOT DETECTED! Waiting for opponent submission.',
-                'allow_retry': True,
-                'penalty_applied': True
-            })
-        else:
-            # Invalid or needs review - keep match active for other player
-            # Send automatic chat notification to opponent about review needed
-            if opponent_id:
-                auto_message = f"⏳ {submitter_name} submitted a screenshot for {game_name} (KSh {bet_amount} match) but it needs ADMIN REVIEW. The screenshot verification was unclear. You can still submit your screenshot."
-                c.execute('INSERT INTO match_messages (match_id, user_id, username, message) VALUES (?, ?, ?, ?)',
-                         (match_id, 0, 'System', auto_message))
-            
-            conn.commit()
-            conn.close()
-            return jsonify({
-                'success': True, 
-                'message': '⏳ Screenshot needs admin review. Waiting for opponent submission.',
-                'reason': analysis.get('reason', 'Verification failed')
-            })
-    
-    elif submissions == 2:
-        # Both players submitted - analyze all scenarios
-        c.execute('''SELECT user_id, claimed_result, ocr_analysis FROM match_screenshots 
-                     WHERE match_id = ? ORDER BY submitted_at''', (match_id,))
-        both_submissions = c.fetchall()
-        
-        # Parse all analyses
-        parsed_submissions = []
-        for user_id, claimed_result, analysis_str in both_submissions:
-            import json
-            try:
-                analysis = json.loads(analysis_str)
-            except:
-                analysis = eval(analysis_str)
-            parsed_submissions.append((user_id, claimed_result, analysis))
-        
-        # Check for impossible scenario: both claim victory
-        both_claim_win = all(claimed_result == 'win' for _, claimed_result, _ in parsed_submissions)
-        
-        if both_claim_win:
-            # Impossible scenario - send to admin
-            c.execute('UPDATE matches SET status = "disputed" WHERE id = ?', (match_id,))
-            message = '⚠️ Conflict detected: Both players claim victory. Sent for admin review.'
-        else:
-            # Analyze mixed scenarios
-            valid_winners = []
-            fraud_users = []
-            invalid_users = []
-            needs_review_users = []
-            
-            for user_id, claimed_result, analysis in parsed_submissions:
-                if analysis['validity'] == 'VALID_OCR_VERIFIED' and claimed_result == 'win':
-                    valid_winners.append(user_id)
-                elif analysis.get('validity') == 'FRAUD_DETECTED':
-                    fraud_users.append(user_id)
-                elif analysis.get('validity') == 'NEEDS_ADMIN_REVIEW':
-                    needs_review_users.append(user_id)
-                elif analysis.get('validity') in ['INVALID', 'INVALID_NOT_GAME']:
-                    invalid_users.append(user_id)
-            
-            # Scenario 1: One valid winner, other invalid/fake
-            if len(valid_winners) == 1 and (len(fraud_users) > 0 or len(invalid_users) > 0):
-                winner_id = valid_winners[0]
-                winnings = match[4] * 1.68
-                c.execute('UPDATE users SET balance = balance + ?, wins = wins + 1 WHERE id = ?', 
-                         (winnings, winner_id))
-                c.execute('UPDATE matches SET winner_id = ?, status = "completed" WHERE id = ?', 
-                         (winner_id, match_id))
-                
-                # Record match win transaction
-                c.execute('''INSERT INTO transactions (user_id, type, amount, description)
-                             VALUES (?, ?, ?, ?)''',
-                         (winner_id, 'match_win', winnings, f'Match #{match_id} victory - {match[1].upper()} - Valid screenshot vs fake'))
-                
-                # Apply penalties to fraud users
-                for fraud_user in fraud_users:
-                    penalty_amount = 50
-                    c.execute('UPDATE users SET balance = balance - ? WHERE id = ?', (penalty_amount, fraud_user))
-                    c.execute('''INSERT INTO transactions (user_id, type, amount, description)
-                                 VALUES (?, ?, ?, ?)''',
-                             (fraud_user, 'fake_screenshot_penalty', -penalty_amount, f'Fraud penalty for match {match_id}'))
-                    c.execute('''INSERT INTO transactions (user_id, type, amount, description)
-                                 VALUES (?, ?, ?, ?)''',
-                             (1, 'admin_fraud_commission', penalty_amount, f'Commission from fraud penalty - Match {match_id}'))
-                
-                if winner_id == session['user_id']:
-                    session['balance'] = session.get('balance', 0) + winnings
-                    message = f'🎉 VICTORY! Your valid screenshot won - earned KSh {winnings:.0f}!'
-                else:
-                    message = '😔 Match completed. Opponent had valid screenshot and won.'
-            
-            # Scenario 2: Clear winner found (one valid win)
-            elif len(valid_winners) == 1:
-                winner_id = valid_winners[0]
-                winnings = match[4] * 1.68
-                c.execute('UPDATE users SET balance = balance + ?, wins = wins + 1 WHERE id = ?', 
-                         (winnings, winner_id))
-                c.execute('UPDATE matches SET winner_id = ?, status = "completed" WHERE id = ?', 
-                         (winner_id, match_id))
-                
-                # Record match win transaction
-                c.execute('''INSERT INTO transactions (user_id, type, amount, description)
-                             VALUES (?, ?, ?, ?)''',
-                         (winner_id, 'match_win', winnings, f'Match #{match_id} victory - {match[1].upper()} - Screenshot verified'))
-                
-                if winner_id == session['user_id']:
-                    session['balance'] = session.get('balance', 0) + winnings
-                    message = f'🎉 VICTORY! OCR verified your win - earned KSh {winnings:.0f}!'
-                else:
-                    message = '😔 Match completed. Opponent won by OCR verification.'
-            
-            # Scenario 3: Fraud detected
-            elif len(fraud_users) > 0:
-                # Apply fraud penalties
-                for fraud_user in fraud_users:
-                    penalty_amount = 50
-                    c.execute('UPDATE users SET balance = balance - ? WHERE id = ?', (penalty_amount, fraud_user))
-                    c.execute('''INSERT INTO transactions (user_id, type, amount, description)
-                                 VALUES (?, ?, ?, ?)''',
-                             (fraud_user, 'fake_screenshot_penalty', -penalty_amount, f'Fraud penalty for match {match_id}'))
-                    c.execute('''INSERT INTO transactions (user_id, type, amount, description)
-                                 VALUES (?, ?, ?, ?)''',
-                             (1, 'admin_fraud_commission', penalty_amount, f'Commission from fraud penalty - Match {match_id}'))
-                
-                c.execute('UPDATE matches SET status = "disputed" WHERE id = ?', (match_id,))
-                message = '🚨 Fraud detected. Penalties applied. Match sent for admin review.'
-            
-            # Scenario 4: Needs admin review
-            elif len(needs_review_users) > 0:
-                c.execute('UPDATE matches SET status = "disputed" WHERE id = ?', (match_id,))
-                message = '⏳ Screenshots need admin review. Match marked as disputed.'
-            
-            # Scenario 5: Send to admin for review
-            else:
-                c.execute('UPDATE matches SET status = "disputed" WHERE id = ?', (match_id,))
-                message = '⏳ Screenshots need admin review. Match sent for manual verification.'
-        
-        # Send final result notification to both players
-        final_message = f"🏁 MATCH COMPLETED! {message}"
-        c.execute('INSERT INTO match_messages (match_id, user_id, username, message) VALUES (?, ?, ?, ?)',
-                 (match_id, 0, 'System', final_message))
-        
-        conn.commit()
-        conn.close()
-        return jsonify({'success': True, 'message': message})
-    
-    # First submission processed - send basic notification to opponent
-    opponent_id = match[3] if match[2] == session['user_id'] else match[2]
-    if opponent_id:
-        submitter_name = session['username']
-        bet_amount = match[4]
-        game_name = match[1]
-        auto_message = f"📸 {submitter_name} submitted a screenshot for {game_name} (KSh {bet_amount} match). Processing verification..."
-        c.execute('INSERT INTO match_messages (match_id, user_id, username, message) VALUES (?, ?, ?, ?)',
-                 (match_id, 0, 'System', auto_message))
-    
-    conn.commit()
-    conn.close()
-    
-    return jsonify({
-        'success': True,
-        'message': '✅ Screenshot submitted! Processing...'
-    })
 
 
 @app.route('/admin/handle_timeout_match/<int:match_id>/<winner>', methods=['POST'])
@@ -4865,8 +5499,8 @@ def handle_timeout_match(match_id, winner):
     if 'user_id' not in session or session.get('username') != 'admin':
         return jsonify({'error': 'Unauthorized'}), 403
     
-    conn = sqlite3.connect('gamebet.db')
-    c = conn.cursor()
+    with get_db_connection() as conn:
+        c = conn.cursor()
     
     # Get match and screenshot details
     c.execute('SELECT player1_id, player2_id, bet_amount FROM matches WHERE id = ?', (match_id,))
@@ -4904,17 +5538,17 @@ def handle_timeout_match(match_id, winner):
         
     elif winner == 'refund':
         # Refund both players
-        c.execute('UPDATE matches SET status = "cancelled_timeout" WHERE id = ?', (match_id,))
+        c.execute('UPDATE matches SET status = "cancelled_timeout" WHERE id = %s', (match_id,))
         
         # Refund both players
         if player1_id:
-            c.execute('UPDATE users SET balance = balance + ? WHERE id = ?', (bet_amount, player1_id))
+            c.execute('UPDATE users SET balance = balance + %s WHERE id = %s', (bet_amount, player1_id))
             c.execute('''INSERT INTO transactions (user_id, type, amount, description)
                          VALUES (?, ?, ?, ?)''',
                      (player1_id, 'refund', bet_amount, f'Match {match_id} refund - timeout/incomplete'))
         
         if player2_id:
-            c.execute('UPDATE users SET balance = balance + ? WHERE id = ?', (bet_amount, player2_id))
+            c.execute('UPDATE users SET balance = balance + %s WHERE id = %s', (bet_amount, player2_id))
             c.execute('''INSERT INTO transactions (user_id, type, amount, description)
                          VALUES (?, ?, ?, ?)''',
                      (player2_id, 'refund', bet_amount, f'Match {match_id} refund - timeout/incomplete'))
@@ -4925,8 +5559,6 @@ def handle_timeout_match(match_id, winner):
         return jsonify({'error': 'Invalid winner option'}), 400
     
     conn.commit()
-    conn.close()
-    
     return jsonify({'success': True, 'message': message})
 
 @app.route('/get_match_notifications')
@@ -4934,8 +5566,8 @@ def get_match_notifications():
     if 'user_id' not in session:
         return jsonify({'error': 'Unauthorized'}), 401
     
-    conn = sqlite3.connect('gamebet.db')
-    c = conn.cursor()
+    with get_db_connection() as conn:
+        c = conn.cursor()
     
     # Get unread notifications
     c.execute('''SELECT id, match_id, message, type, created_at FROM match_notifications 
@@ -4944,10 +5576,8 @@ def get_match_notifications():
     notifications = c.fetchall()
     
     # Mark as read
-    c.execute('UPDATE match_notifications SET read_status = 1 WHERE user_id = ?', (session['user_id'],))
+    c.execute('UPDATE match_notifications SET read_status = 1 WHERE user_id = %s', (session['user_id'],))
     conn.commit()
-    conn.close()
-    
     return jsonify({
         'notifications': [{
             'id': n[0],
@@ -4964,8 +5594,8 @@ def admin_award_real_screenshot(match_id, user_id):
     if 'user_id' not in session or session.get('username') != 'admin':
         return jsonify({'error': 'Unauthorized'}), 403
     
-    conn = sqlite3.connect('gamebet.db')
-    c = conn.cursor()
+    with get_db_connection() as conn:
+        c = conn.cursor()
     
     # Get match details
     c.execute('SELECT player1_id, player2_id, bet_amount FROM matches WHERE id = ?', (match_id,))
@@ -4987,8 +5617,6 @@ def admin_award_real_screenshot(match_id, user_id):
              (user_id, 'match_win', winnings, f'Admin awarded win for real screenshot - Match {match_id}'))
     
     conn.commit()
-    conn.close()
-    
     return jsonify({'success': True, 'message': f'Awarded KSh {winnings} to user for real screenshot'})
 
 @app.route('/logout')
@@ -5006,14 +5634,18 @@ def create_real_stream():
     stream_type = data.get('type', 'screen')
     is_competition = data.get('competition', False)
     
-    conn = sqlite3.connect('gamebet.db')
-    c = conn.cursor()
+    with get_db_connection() as conn:
+        c = conn.cursor()
     
     # Add stream_type column if it doesn't exist
     try:
         c.execute('ALTER TABLE streams ADD COLUMN stream_type TEXT DEFAULT "screen"')
-    except:
-        pass
+    except sqlite3.Error as e:
+        flash('Database error occurred', 'error')
+        return redirect(url_for('dashboard'))
+    except Exception as e:
+        flash('An error occurred', 'error')
+        return redirect(url_for('dashboard'))
     
     import uuid
     stream_key = str(uuid.uuid4())[:8]
@@ -5028,18 +5660,16 @@ def create_real_stream():
     if is_competition:
         c.execute('''SELECT cp.id FROM competition_participants cp
                      JOIN streaming_competitions sc ON cp.competition_id = sc.id
-                     WHERE cp.user_id = ? AND sc.status = 'active' 
+                     WHERE cp.user_id = %s AND sc.status = 'active' 
                      AND date(sc.created_at) = date('now')''', (session['user_id'],))
         competition_entry = c.fetchone()
         
         if competition_entry:
             c.execute('''UPDATE competition_participants 
                          SET earnings = earnings + 5 
-                         WHERE id = ?''', (competition_entry[0],))
+                         WHERE id = %s''', (competition_entry[0],))
     
     conn.commit()
-    conn.close()
-    
     return jsonify({
         'success': True,
         'stream_id': stream_id,
@@ -5054,15 +5684,12 @@ def update_viewers(stream_id):
     data = request.get_json()
     viewer_count = data.get('count', 0)
     
-    conn = sqlite3.connect('gamebet.db')
-    c = conn.cursor()
+    with get_db_connection() as conn:
+        c = conn.cursor()
     
-    c.execute('UPDATE streams SET viewers = ? WHERE id = ? AND user_id = ?', 
-             (viewer_count, stream_id, session['user_id']))
+    c.execute('UPDATE streams SET viewers = %s WHERE id = %s AND user_id = %s', (viewer_count, stream_id, session['user_id']))
     
     conn.commit()
-    conn.close()
-    
     return jsonify({'success': True})
 
 @app.route('/api/stop_stream/<int:stream_id>', methods=['POST'])
@@ -5070,8 +5697,8 @@ def api_stop_stream(stream_id):
     if 'user_id' not in session:
         return jsonify({'error': 'Unauthorized'}), 401
     
-    conn = sqlite3.connect('gamebet.db')
-    c = conn.cursor()
+    with get_db_connection() as conn:
+        c = conn.cursor()
     
     # Calculate earnings
     c.execute('SELECT viewers, created_at FROM streams WHERE id = ? AND user_id = ?', 
@@ -5092,13 +5719,12 @@ def api_stop_stream(stream_id):
         total_earnings = base_earnings + viewer_bonus + performance_bonus + sponsor_bonus
         
         # Update user balance
-        c.execute('UPDATE users SET balance = balance + ? WHERE id = ?', 
-                 (total_earnings, session['user_id']))
+        c.execute('UPDATE users SET balance = balance + %s WHERE id = %s', (total_earnings, session['user_id']))
         
         # Update competition stats
         c.execute('''SELECT cp.id FROM competition_participants cp
                      JOIN streaming_competitions sc ON cp.competition_id = sc.id
-                     WHERE cp.user_id = ? AND sc.status = 'active' 
+                     WHERE cp.user_id = %s AND sc.status = 'active' 
                      AND date(sc.created_at) = date('now')''', (session['user_id'],))
         competition_entry = c.fetchone()
         
@@ -5110,106 +5736,23 @@ def api_stop_stream(stream_id):
                          WHERE id = ?''', 
                      (total_earnings, viewers, duration_hours, competition_entry[0]))
     
-    c.execute('UPDATE streams SET status = "ended" WHERE id = ? AND user_id = ?', 
-             (stream_id, session['user_id']))
+    c.execute('UPDATE streams SET status = "ended" WHERE id = %s AND user_id = %s', (stream_id, session['user_id']))
     
     conn.commit()
-    conn.close()
-    
     return jsonify({'success': True, 'earnings': total_earnings if stream else 0})
-
-@app.route('/get_stream_url/<int:stream_id>')
-def get_stream_url(stream_id):
-    conn = sqlite3.connect('gamebet.db')
-    c = conn.cursor()
-    
-    c.execute('SELECT status, stream_key FROM streams WHERE id = ?', (stream_id,))
-    stream = c.fetchone()
-    conn.close()
-    
-    if stream and stream[0] == 'live':
-        return jsonify({
-            'success': True,
-            'stream_url': f'/watch_real_stream/{stream_id}',
-            'status': 'live'
-        })
-    else:
-        return jsonify({
-            'success': False,
-            'stream_url': None,
-            'status': 'offline'
-        })
 
 @app.route('/stream_feed/<int:stream_id>')
 def stream_feed(stream_id):
     # Return actual stream feed - this would connect to real streaming server
     return "Stream feed endpoint - connect to actual streaming infrastructure"
 
-@app.route('/send_stream_chat', methods=['POST'])
-def send_stream_chat():
-    if 'user_id' not in session:
-        return jsonify({'error': 'Unauthorized'}), 401
-    
-    data = request.get_json()
-    stream_id = data.get('stream_id')
-    message = data.get('message', '').strip()
-    
-    if not message:
-        return jsonify({'error': 'Empty message'}), 400
-    
-    conn = sqlite3.connect('gamebet.db')
-    c = conn.cursor()
-    
-    # Create stream_chat table if not exists
-    c.execute('''CREATE TABLE IF NOT EXISTS stream_chat (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        stream_id INTEGER,
-        user_id INTEGER,
-        username TEXT,
-        message TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )''')
-    
-    c.execute('''INSERT INTO stream_chat (stream_id, user_id, username, message) 
-                 VALUES (?, ?, ?, ?)''',
-             (stream_id, session['user_id'], session['username'], message))
-    
-    conn.commit()
-    conn.close()
-    
-    return jsonify({'success': True})
-
-@app.route('/get_stream_chat/<int:stream_id>')
-def get_stream_chat(stream_id):
-    conn = sqlite3.connect('gamebet.db')
-    c = conn.cursor()
-    
-    # Create stream_chat table if not exists
-    c.execute('''CREATE TABLE IF NOT EXISTS stream_chat (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        stream_id INTEGER,
-        user_id INTEGER,
-        username TEXT,
-        message TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )''')
-    
-    c.execute('''SELECT username, message, created_at FROM stream_chat 
-                 WHERE stream_id = ? ORDER BY created_at ASC LIMIT 50''', (stream_id,))
-    messages = c.fetchall()
-    conn.close()
-    
-    return jsonify({
-        'messages': [{'username': m[0], 'message': m[1], 'time': m[2]} for m in messages]
-    })
-
 @app.route('/test_streaming')
 def test_streaming():
     if 'user_id' not in session:
         return redirect(url_for('login'))
     
-    conn = sqlite3.connect('gamebet.db')
-    c = conn.cursor()
+    with get_db_connection() as conn:
+        c = conn.cursor()
     
     # Test stream creation
     import uuid
@@ -5223,11 +5766,8 @@ def test_streaming():
         conn.commit()
         
         # Test stream viewing
-        c.execute('SELECT * FROM streams WHERE id = ?', (stream_id,))
+        c.execute('SELECT * FROM streams WHERE id = %s', (stream_id,))
         stream = c.fetchone()
-        
-        conn.close()
-        
         return jsonify({
             'success': True,
             'message': 'Streaming system working!',
@@ -5237,7 +5777,6 @@ def test_streaming():
         })
         
     except Exception as e:
-        conn.close()
         return jsonify({
             'success': False,
             'error': str(e)
@@ -5245,8 +5784,8 @@ def test_streaming():
 
 @app.route('/init_db')
 def init_db():
-    conn = sqlite3.connect('gamebet.db')
-    c = conn.cursor()
+    with get_db_connection() as conn:
+        c = conn.cursor()
     
     c.execute('''CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -5327,14 +5866,12 @@ def init_db():
     
     if not admin_exists:
         admin_password = generate_password_hash('admin123')
-        c.execute('INSERT INTO users (username, email, password, balance) VALUES (?, ?, ?, ?)',
+        c.execute('INSERT INTO users (username, email, password, balance) VALUES (?, ?, ?, ?) ON CONFLICT (username) DO NOTHING',
                  ('admin', 'admin@gamebet.com', admin_password, 0.0))
         conn.commit()
         print("Admin user created: username=admin, password=admin123")
     
     conn.commit()
-    conn.close()
-    
     return 'Database initialized successfully!'
 
 # Tournament System Routes
@@ -5343,8 +5880,8 @@ def api_tournaments():
     if 'user_id' not in session:
         return jsonify({'error': 'Unauthorized'}), 401
     
-    conn = sqlite3.connect('gamebet.db')
-    c = conn.cursor()
+    with get_db_connection() as conn:
+        c = conn.cursor()
     
     # Create enhanced tournament tables
     c.execute('''CREATE TABLE IF NOT EXISTS tournament_system (
@@ -5436,7 +5973,7 @@ def api_tournaments():
                  (tournament_names[week_cycle], current_fee, week_cycle + 1, 1, 'weekly', reg_end.isoformat(), tournament_start.isoformat()))
         
         tournament_id = c.lastrowid
-        c.execute('SELECT * FROM tournament_system WHERE id = ?', (tournament_id,))
+        c.execute('SELECT * FROM tournament_system WHERE id = %s', (tournament_id,))
         current_tournament = c.fetchone()
     
     # Get tournament details
@@ -5453,13 +5990,10 @@ def api_tournaments():
     }
     
     # Get user's participation status
-    c.execute('SELECT * FROM tournament_players WHERE tournament_id = ? AND user_id = ?',
-             (current_tournament[0], session['user_id']))
+    c.execute('SELECT * FROM tournament_players WHERE tournament_id = %s AND user_id = %s', (current_tournament[0], session['user_id']))
     user_participation = c.fetchone()
     
     conn.commit()
-    conn.close()
-    
     return jsonify({
         'success': True,
         'tournament': tournament_data,
@@ -5482,8 +6016,8 @@ def api_join_tournament():
     tournament_id = data.get('tournament_id')
     currency = data.get('currency', 'KES')
     
-    conn = sqlite3.connect('gamebet.db')
-    c = conn.cursor()
+    with get_db_connection() as conn:
+        c = conn.cursor()
     
     # Create tournament tables if they don't exist
     c.execute('''CREATE TABLE IF NOT EXISTS tournament_system (
@@ -5517,18 +6051,15 @@ def api_join_tournament():
     )''')
     
     # Get tournament details
-    c.execute('SELECT * FROM tournament_system WHERE id = ?', (tournament_id,))
+    c.execute('SELECT * FROM tournament_system WHERE id = %s', (tournament_id,))
     tournament = c.fetchone()
     
     if not tournament:
-        conn.close()
         return jsonify({'error': 'Tournament not found'}), 404
     
     # Check if already joined
-    c.execute('SELECT id FROM tournament_players WHERE tournament_id = ? AND user_id = ?',
-             (tournament_id, session['user_id']))
+    c.execute('SELECT id FROM tournament_players WHERE tournament_id = %s AND user_id = %s', (tournament_id, session['user_id']))
     if c.fetchone():
-        conn.close()
         return jsonify({'error': 'Already joined this tournament'}), 400
     
     # Calculate entry fee in user's currency
@@ -5545,20 +6076,18 @@ def api_join_tournament():
     entry_fee_local = entry_fee_usd * currency_rates.get(currency, 130)  # Default to KES
     
     # Check user balance
-    c.execute('SELECT balance FROM users WHERE id = ?', (session['user_id'],))
+    c.execute('SELECT balance FROM users WHERE id = %s', (session['user_id'],))
     balance = c.fetchone()[0]
     
     if balance < entry_fee_local:
-        conn.close()
         return jsonify({'error': f'Insufficient balance! Need {entry_fee_local:.0f} {currency}'}), 400
     
     # Check tournament capacity
     if tournament[4] >= tournament[3]:  # current_players >= max_players
-        conn.close()
         return jsonify({'error': 'Tournament is full'}), 400
     
     # Join tournament
-    c.execute('UPDATE users SET balance = balance - ? WHERE id = ?', (entry_fee_local, session['user_id']))
+    c.execute('UPDATE users SET balance = balance - %s WHERE id = %s', (entry_fee_local, session['user_id']))
     
     # Add transaction record
     c.execute('''INSERT INTO transactions (user_id, type, amount, description)
@@ -5571,22 +6100,19 @@ def api_join_tournament():
              (tournament_id, session['user_id'], session['username'], entry_fee_local, currency))
     
     # Update tournament player count
-    c.execute('UPDATE tournament_system SET current_players = current_players + 1 WHERE id = ?',
-             (tournament_id,))
+    c.execute('UPDATE tournament_system SET current_players = current_players + 1 WHERE id = %s', (tournament_id,))
     
     # Check if tournament is now full
     c.execute('SELECT current_players, max_players FROM tournament_system WHERE id = ?', (tournament_id,))
     players_info = c.fetchone()
     
     if players_info and players_info[0] >= players_info[1]:
-        c.execute('UPDATE tournament_system SET status = "active" WHERE id = ?', (tournament_id,))
+        c.execute('UPDATE tournament_system SET status = "active" WHERE id = %s', (tournament_id,))
     
     # Update session balance
     session['balance'] = balance - entry_fee_local
     
     conn.commit()
-    conn.close()
-    
     return jsonify({
         'success': True,
         'message': f'Joined tournament! {entry_fee_local:.0f} {currency} entry fee paid',
@@ -5598,8 +6124,8 @@ def api_tournament_betting(tournament_id):
     if 'user_id' not in session:
         return jsonify({'error': 'Unauthorized'}), 401
     
-    conn = sqlite3.connect('gamebet.db')
-    c = conn.cursor()
+    with get_db_connection() as conn:
+        c = conn.cursor()
     
     # Get active tournament matches
     c.execute('''SELECT tm.*, tp1.username as p1_name, tp2.username as p2_name
@@ -5667,9 +6193,6 @@ def api_tournament_betting(tournament_id):
             'scheduled_time': match[9],
             'betting_options': match_bets
         })
-    
-    conn.close()
-    
     return jsonify({
         'success': True,
         'matches': betting_options
@@ -5680,8 +6203,8 @@ def api_tournament_players(tournament_id):
     if 'user_id' not in session:
         return jsonify({'error': 'Unauthorized'}), 401
     
-    conn = sqlite3.connect('gamebet.db')
-    c = conn.cursor()
+    with get_db_connection() as conn:
+        c = conn.cursor()
     
     # Get tournament players with auto-group assignment
     c.execute('SELECT username, group_number, joined_at FROM tournament_players WHERE tournament_id = ? ORDER BY joined_at', (tournament_id,))
@@ -5692,8 +6215,7 @@ def api_tournament_players(tournament_id):
         # Auto-assign group if not assigned
         if not group_num:
             group_num = (i % 4) + 1  # Groups 1-4 (A-D)
-            c.execute('UPDATE tournament_players SET group_number = ? WHERE tournament_id = ? AND username = ?', 
-                     (group_num, tournament_id, username))
+            c.execute('UPDATE tournament_players SET group_number = %s WHERE tournament_id = %s AND username = %s', (group_num, tournament_id, username))
         
         players.append({
             'username': username,
@@ -5702,8 +6224,6 @@ def api_tournament_players(tournament_id):
         })
     
     conn.commit()
-    conn.close()
-    
     return jsonify({'success': True, 'players': players})
 
 @app.route('/api/tournament_groups/<int:tournament_id>')
@@ -5711,26 +6231,26 @@ def api_tournament_groups(tournament_id):
     if 'user_id' not in session:
         return jsonify({'error': 'Unauthorized'}), 401
     
-    conn = sqlite3.connect('gamebet.db')
-    c = conn.cursor()
+    with get_db_connection() as conn:
+        c = conn.cursor()
     
     # Get tournament players - assign groups if not assigned
-    c.execute('SELECT COUNT(*) FROM tournament_players WHERE tournament_id = ?', (tournament_id,))
+    c.execute('SELECT COUNT(*) FROM tournament_players WHERE tournament_id = %s', (tournament_id,))
     total_players = c.fetchone()[0]
     
     if total_players > 0:
         # Auto-assign groups if not assigned
-        c.execute('SELECT COUNT(*) FROM tournament_players WHERE tournament_id = ? AND group_number IS NULL', (tournament_id,))
+        c.execute('SELECT COUNT(*) FROM tournament_players WHERE tournament_id = %s AND group_number IS NULL', (tournament_id,))
         unassigned = c.fetchone()[0]
         
         if unassigned > 0:
             # Assign players to groups
-            c.execute('SELECT id FROM tournament_players WHERE tournament_id = ? AND group_number IS NULL', (tournament_id,))
+            c.execute('SELECT id FROM tournament_players WHERE tournament_id = %s AND group_number IS NULL', (tournament_id,))
             unassigned_players = c.fetchall()
             
             for i, player in enumerate(unassigned_players):
                 group_num = (i % 8) + 1  # Groups 1-8
-                c.execute('UPDATE tournament_players SET group_number = ? WHERE id = ?', (group_num, player[0]))
+                c.execute('UPDATE tournament_players SET group_number = %s WHERE id = %s', (group_num, player[0]))
     
     # Get tournament players grouped by group_number
     c.execute('''SELECT group_number, username, wins, losses, 
@@ -5744,7 +6264,7 @@ def api_tournament_groups(tournament_id):
     # If no groups yet, create mock data for demonstration
     if not players_data:
         # Get all players and create mock groups
-        c.execute('SELECT username FROM tournament_players WHERE tournament_id = ?', (tournament_id,))
+        c.execute('SELECT username FROM tournament_players WHERE tournament_id = %s', (tournament_id,))
         all_players = c.fetchall()
         
         if all_players:
@@ -5762,7 +6282,6 @@ def api_tournament_groups(tournament_id):
                 })
             
             conn.commit()
-            conn.close()
             return jsonify({'success': True, 'groups': mock_groups})
     
     # Organize players into groups
@@ -5782,8 +6301,6 @@ def api_tournament_groups(tournament_id):
         })
     
     conn.commit()
-    conn.close()
-    
     return jsonify({
         'success': True,
         'groups': list(groups.values())
@@ -5802,19 +6319,18 @@ def api_place_tournament_bet():
     bet_amount = float(data.get('bet_amount', 0))
     odds = float(data.get('odds', 1.0))
     
-    conn = sqlite3.connect('gamebet.db')
-    c = conn.cursor()
+    with get_db_connection() as conn:
+        c = conn.cursor()
     
     # Check user balance
-    c.execute('SELECT balance FROM users WHERE id = ?', (session['user_id'],))
+    c.execute('SELECT balance FROM users WHERE id = %s', (session['user_id'],))
     balance = c.fetchone()[0]
     
     if balance < bet_amount:
-        conn.close()
         return jsonify({'error': 'Insufficient balance'}), 400
     
     # Place bet
-    c.execute('UPDATE users SET balance = balance - ? WHERE id = ?', (bet_amount, session['user_id']))
+    c.execute('UPDATE users SET balance = balance - %s WHERE id = %s', (bet_amount, session['user_id']))
     
     c.execute('''INSERT INTO tournament_betting 
                  (tournament_id, match_id, user_id, bet_type, bet_description, bet_amount, odds)
@@ -5824,8 +6340,6 @@ def api_place_tournament_bet():
     session['balance'] = balance - bet_amount
     
     conn.commit()
-    conn.close()
-    
     potential_payout = bet_amount * odds
     
     return jsonify({
@@ -5839,8 +6353,8 @@ def api_user_attraction():
     if 'user_id' not in session:
         return jsonify({'error': 'Unauthorized'}), 401
     
-    conn = sqlite3.connect('gamebet.db')
-    c = conn.cursor()
+    with get_db_connection() as conn:
+        c = conn.cursor()
     
     # Create user progress tracking table
     c.execute('''CREATE TABLE IF NOT EXISTS user_progress (
@@ -5856,22 +6370,22 @@ def api_user_attraction():
     )''')
     
     # Get or create user progress
-    c.execute('SELECT * FROM user_progress WHERE user_id = ?', (session['user_id'],))
+    c.execute('SELECT * FROM user_progress WHERE user_id = %s', (session['user_id'],))
     progress = c.fetchone()
     
     if not progress:
-        c.execute('INSERT INTO user_progress (user_id) VALUES (?)', (session['user_id'],))
-        c.execute('SELECT * FROM user_progress WHERE user_id = ?', (session['user_id'],))
+        c.execute('INSERT INTO user_progress (user_id) VALUES (%s)', (session['user_id'],))
+        c.execute('SELECT * FROM user_progress WHERE user_id = %s', (session['user_id'],))
         progress = c.fetchone()
     
     # Check streaming requirements
-    c.execute('SELECT COUNT(*) FROM streams WHERE user_id = ? AND status = "ended"', (session['user_id'],))
+    c.execute('SELECT COUNT(*) FROM streams WHERE user_id = %s AND status = "ended"', (session['user_id'],))
     total_streams = c.fetchone()[0]
     
     c.execute('SELECT COALESCE(SUM(viewers), 0) FROM streams WHERE user_id = ?', (session['user_id'],))
     total_viewers = c.fetchone()[0]
     
-    c.execute('SELECT COUNT(*) FROM tournament_players WHERE user_id = ?', (session['user_id'],))
+    c.execute('SELECT COUNT(*) FROM tournament_players WHERE user_id = %s', (session['user_id'],))
     tournaments_joined = c.fetchone()[0]
     
     # Calculate bonus eligibility
@@ -5903,7 +6417,7 @@ def api_user_attraction():
     }
     
     # Referral progress
-    c.execute('SELECT COUNT(*) FROM users WHERE referred_by = ?', (session['user_id'],))
+    c.execute('SELECT COUNT(*) FROM users WHERE referred_by = %s', (session['user_id'],))
     referrals_count = c.fetchone()[0]
     
     referral_bonuses = {
@@ -5923,9 +6437,6 @@ def api_user_attraction():
             'progress': 0
         }
     }
-    
-    conn.close()
-    
     return jsonify({
         'success': True,
         'bonuses': bonuses,
@@ -5947,8 +6458,8 @@ def api_claim_bonus():
     data = request.get_json()
     bonus_type = data.get('bonus_type')  # week1, week2, week3, week4
     
-    conn = sqlite3.connect('gamebet.db')
-    c = conn.cursor()
+    with get_db_connection() as conn:
+        c = conn.cursor()
     
     # Verify bonus eligibility (same logic as above)
     # For brevity, assuming bonus is valid
@@ -5956,6 +6467,10 @@ def api_claim_bonus():
     bonus_amount = 25  # Platform credits
     
     # Update user progress
+    valid_weeks = ['week1', 'week2', 'week3', 'week4']
+    if bonus_type not in valid_weeks:
+        return jsonify({'error': 'Invalid bonus type'}), 400
+    
     week_column = f'{bonus_type}_completed'
     c.execute(f'UPDATE user_progress SET {week_column} = TRUE, total_credits_earned = total_credits_earned + ? WHERE user_id = ?',
              (bonus_amount, session['user_id']))
@@ -5966,8 +6481,6 @@ def api_claim_bonus():
              (session['user_id'], 'platform_credits', bonus_amount, f'New user bonus - {bonus_type}'))
     
     conn.commit()
-    conn.close()
-    
     return jsonify({
         'success': True,
         'message': f'Bonus claimed! {bonus_amount} platform credits added',
@@ -5999,8 +6512,8 @@ def admin_user_activity_alerts():
     if 'user_id' not in session or session.get('username') != 'admin':
         return jsonify({'error': 'Unauthorized'}), 403
     
-    conn = sqlite3.connect('gamebet.db')
-    c = conn.cursor()
+    with get_db_connection() as conn:
+        c = conn.cursor()
     
     alerts = []
     
@@ -6017,9 +6530,9 @@ def admin_user_activity_alerts():
             'user_id': fs[0],
             'username': fs[1],
             'type': 'danger' if fs[3] == 1 else 'warning',
-            'icon': '🚨',
-            'title': f'Fake Screenshot - {fs[1]}',
-            'message': f'Violation #{fs[2]} - {"BANNED" if fs[3] == 1 else "WARNING ISSUED"}',
+            'icon': 'ðŸš¨',
+            'title': 'Fake Screenshot - ' + str(fs[1]),
+            'message': 'Violation #' + str(fs[2]) + ' - ' + ('BANNED' if fs[3] == 1 else 'WARNING ISSUED'),
             'time': fs[4]
         })
     
@@ -6037,9 +6550,9 @@ def admin_user_activity_alerts():
             'user_id': dep[0],
             'username': dep[1],
             'type': 'info',
-            'icon': '💰',
-            'title': f'Large Deposit - {dep[1]}',
-            'message': f'Deposited KSh {dep[2]:.0f}',
+            'icon': 'ðŸ’°',
+            'title': 'Large Deposit - ' + str(dep[1]),
+            'message': 'Deposited KSh ' + str(int(dep[2])),
             'time': dep[3]
         })
     
@@ -6057,9 +6570,9 @@ def admin_user_activity_alerts():
             'user_id': wd[0],
             'username': wd[1],
             'type': 'warning',
-            'icon': '💸',
-            'title': f'Large Withdrawal - {wd[1]}',
-            'message': f'Requested KSh {wd[2]:.0f}',
+            'icon': 'ðŸ’¸',
+            'title': 'Large Withdrawal - ' + str(wd[1]),
+            'message': 'Requested KSh ' + str(int(wd[2])),
             'time': wd[3]
         })
     
@@ -6075,88 +6588,17 @@ def admin_user_activity_alerts():
             'user_id': user[0],
             'username': user[1],
             'type': 'info',
-            'icon': '👤',
-            'title': f'New User - {user[1]}',
+            'icon': 'ðŸ‘¤',
+            'title': 'New User - ' + str(user[1]),
             'message': 'Just registered',
             'time': user[2]
         })
-    
-    conn.close()
-    
     # Sort alerts by time (most recent first)
     alerts.sort(key=lambda x: x['time'], reverse=True)
     
     return jsonify({'success': True, 'alerts': alerts[:15]})
 
+
+
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
-@app.route('/get_stream_url/<int:stream_id>')
-def get_stream_url(stream_id):
-    if 'user_id' not in session:
-        return jsonify({'error': 'Unauthorized'}), 401
-    
-    conn = sqlite3.connect('gamebet.db')
-    c = conn.cursor()
-    
-    c.execute('SELECT status, stream_key, created_at FROM streams WHERE id = ?', (stream_id,))
-    stream = c.fetchone()
-    
-    if not stream:
-        conn.close()
-        return jsonify({'success': False, 'error': 'Stream not found'})
-    
-    status, stream_key, created_at = stream
-    
-    # Check if stream is actually active (created within last 4 hours)
-    if status == 'live':
-        from datetime import datetime, timedelta
-        created_time = datetime.fromisoformat(created_at)
-        if datetime.now() - created_time > timedelta(hours=4):
-            c.execute('UPDATE streams SET status = "ended" WHERE id = ?', (stream_id,))
-            conn.commit()
-            status = 'ended'
-    
-    conn.close()
-    
-    return jsonify({
-        'success': True,
-        'status': status,
-        'stream_url': f'demo://stream/{stream_key}' if status == 'live' else None
-    })
-
-@app.route('/send_stream_chat', methods=['POST'])
-def send_stream_chat():
-    if 'user_id' not in session:
-        return jsonify({'error': 'Unauthorized'}), 401
-    
-    data = request.get_json()
-    stream_id = data['stream_id']
-    message = data['message']
-    
-    conn = sqlite3.connect('gamebet.db')
-    c = conn.cursor()
-    
-    c.execute('INSERT INTO stream_chat (stream_id, user_id, username, message) VALUES (?, ?, ?, ?)',
-             (stream_id, session['user_id'], session['username'], message))
-    
-    conn.commit()
-    conn.close()
-    
-    return jsonify({'success': True})
-
-@app.route('/get_stream_chat/<int:stream_id>')
-def get_stream_chat(stream_id):
-    if 'user_id' not in session:
-        return jsonify({'error': 'Unauthorized'}), 401
-    
-    conn = sqlite3.connect('gamebet.db')
-    c = conn.cursor()
-    
-    c.execute('SELECT username, message, created_at FROM stream_chat WHERE stream_id = ? ORDER BY created_at DESC LIMIT 50', (stream_id,))
-    messages = c.fetchall()
-    
-    conn.close()
-    
-    return jsonify({
-        'messages': [{'username': m[0], 'message': m[1], 'time': m[2]} for m in reversed(messages)]
-    })

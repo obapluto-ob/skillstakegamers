@@ -4,10 +4,10 @@
 <div class="hero-section">
     <div class="hero-content">
         <h1 class="hero-title">Secure Login</h1>
-        <p class="hero-subtitle">🔒 2FA Protected - Your Funds Are Safe</p>
+        <p class="hero-subtitle">🔒 Email 2FA Protected - Your Funds Are Safe</p>
         <div class="hero-stats">
             <div class="stat-highlight">Bank-Level Security</div>
-            <div class="stat-highlight">SMS Verification</div>
+            <div class="stat-highlight">Email Verification</div>
             <div class="stat-highlight">Fund Protection</div>
         </div>
     </div>
@@ -15,20 +15,20 @@
 
 <div class="auth-container">
     <div class="auth-card">
-        <div class="security-info" style="background: #fff3cd; padding: 1rem; border-radius: 5px; margin-bottom: 1rem; font-size: 0.9rem; border-left: 4px solid #ffc107;">
-            <strong>🔐 SMS Security Notice:</strong><br>
-            • We'll send a verification code to your phone<br>
+        <div class="security-info" style="background: #d1ecf1; padding: 1rem; border-radius: 5px; margin-bottom: 1rem; font-size: 0.9rem; border-left: 4px solid #17a2b8;">
+            <strong>📧 Email Security Notice:</strong><br>
+            • We'll send a verification code to your email<br>
             • <strong>NEVER share this code with anyone!</strong><br>
-            • SkillStake will NEVER ask for your code via call/WhatsApp<br>
-            • Code expires in 5 minutes for your security
+            • Check your spam folder if not received<br>
+            • Code expires in 10 minutes for your security
         </div>
 
         <div id="step1" class="login-step">
             <h2>Login to Your Account</h2>
             <form id="loginForm">
                 <div class="form-group">
-                    <label>Username or Phone</label>
-                    <input type="text" id="loginInput" class="form-control" placeholder="Username or +254700000000" required>
+                    <label>Username or Email</label>
+                    <input type="text" id="loginInput" class="form-control" placeholder="Username or email@example.com" required>
                 </div>
 
                 <div class="form-group">
@@ -41,8 +41,8 @@
         </div>
 
         <div id="step2" class="verification-step" style="display: none;">
-            <h2>🔐 Verify Your Identity</h2>
-            <p>Enter the 6-digit code sent to your phone</p>
+            <h2>📧 Verify Your Identity</h2>
+            <p>Enter the 6-digit code sent to your email</p>
             
             <form id="verifyForm">
                 <div class="form-group">
@@ -103,7 +103,7 @@
                 if (result.success) {
                     document.getElementById('step1').style.display = 'none';
                     document.getElementById('step2').style.display = 'block';
-                    showMessage('Verification code sent to your phone!', 'success');
+                    showMessage('Verification code sent to your email!', 'success');
                 } else {
                     showMessage(result.message, 'error');
                 }
