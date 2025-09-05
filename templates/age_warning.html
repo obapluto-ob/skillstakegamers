@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="warning-overlay" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 9999; display: flex; align-items: center; justify-content: center;">
+    <div class="warning-modal" style="background: white; padding: 2rem; border-radius: 15px; max-width: 500px; margin: 1rem; text-align: center; box-shadow: 0 20px 40px rgba(0,0,0,0.3);">
+        
+        <div style="font-size: 3rem; margin-bottom: 1rem;">⚠️</div>
+        
+        <h2 style="color: #dc3545; margin-bottom: 1rem;">Age Verification Required</h2>
+        
+        <div style="background: #fff3cd; padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem; border-left: 4px solid #ffc107;">
+            <p style="margin: 0; color: #856404; font-weight: bold;">
+                🔞 You must be 18+ years old to use this platform
+            </p>
+        </div>
+        
+        <div style="text-align: left; background: #f8f9fa; padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem;">
+            <h4 style="color: #495057; margin-bottom: 0.5rem;">⚠️ Important Disclaimers:</h4>
+            <ul style="color: #6c757d; font-size: 0.9rem; margin: 0; padding-left: 1.2rem;">
+                <li>This platform involves competitive gaming with real money</li>
+                <li>Only participate with money you can afford to lose</li>
+                <li>We are NOT responsible for your betting decisions or losses</li>
+                <li>Gambling can be addictive - play responsibly</li>
+                <li>By continuing, you accept full responsibility for your actions</li>
+            </ul>
+        </div>
+        
+        <div style="background: #e7f3ff; padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem;">
+            <p style="margin: 0; color: #0c5460; font-size: 0.9rem;">
+                🛡️ <strong>Responsible Gaming:</strong> Set limits, take breaks, and never chase losses. 
+                If you feel you have a gambling problem, seek help immediately.
+            </p>
+        </div>
+        
+        <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
+            <button onclick="window.location.href='/'" style="flex: 1; padding: 0.75rem; background: #6c757d; color: white; border: none; border-radius: 5px; cursor: pointer;">
+                ❌ I'm Under 18 - Exit
+            </button>
+            <button onclick="acceptWarning()" style="flex: 1; padding: 0.75rem; background: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer;">
+                ✅ I'm 18+ - Continue
+            </button>
+        </div>
+        
+        <p style="font-size: 0.8rem; color: #6c757d; margin-top: 1rem;">
+            By clicking "Continue", you confirm you are 18+ and accept our terms.
+        </p>
+    </div>
+</div>
+
+<script>
+function acceptWarning() {
+    // Set cookie to remember user accepted
+    document.cookie = "age_verified=true; max-age=86400; path=/"; // 24 hours
+    
+    // Redirect to registration
+    window.location.href = '/register_secure';
+}
+
+// Check if user already verified
+if (document.cookie.includes('age_verified=true')) {
+    window.location.href = '/register_secure';
+}
+</script>
+{% endblock %}

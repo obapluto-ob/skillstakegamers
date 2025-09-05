@@ -1,52 +1,32 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Register - SkillStake</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: Arial, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; display: flex; align-items: center; justify-content: center; }
-        .container { background: white; padding: 2rem; border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); width: 100%; max-width: 400px; }
-        .logo { text-align: center; margin-bottom: 2rem; }
-        .logo h1 { color: #667eea; font-size: 2rem; }
-        .form-group { margin-bottom: 1rem; }
-        label { display: block; margin-bottom: 0.5rem; font-weight: bold; color: #333; }
-        input, select { width: 100%; padding: 0.75rem; border: 2px solid #ddd; border-radius: 5px; font-size: 1rem; }
-        input:focus, select:focus { outline: none; border-color: #667eea; }
-        .phone-input { display: flex; gap: 0.5rem; }
-        .country-code { flex: 0 0 100px; }
-        .phone-number { flex: 1; }
-        .btn { width: 100%; padding: 0.75rem; background: #667eea; color: white; border: none; border-radius: 5px; font-size: 1rem; cursor: pointer; margin-top: 1rem; }
-        .btn:hover { background: #5a6fd8; }
-        .btn:disabled { background: #ccc; cursor: not-allowed; }
-        .verification-step { display: none; }
-        .code-input { text-align: center; font-size: 1.5rem; letter-spacing: 0.5rem; }
-        .alert { padding: 0.75rem; margin: 1rem 0; border-radius: 5px; }
-        .alert-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
-        .alert-error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
-        .login-link { text-align: center; margin-top: 1rem; }
-        .login-link a { color: #667eea; text-decoration: none; }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="logo">
-            <h1>SkillStake</h1>
-            <p>Secure Registration</p>
-        </div>
+{% extends "base.html" %}
 
+{% block content %}
+<div class="hero-section">
+    <div class="hero-content">
+        <h1 class="hero-title">Join SkillStake</h1>
+        <p class="hero-subtitle">🌍 International Registration with Phone Verification</p>
+        <div class="hero-stats">
+            <div class="stat-highlight">Global Support</div>
+            <div class="stat-highlight">SMS Verification</div>
+            <div class="stat-highlight">Secure Registration</div>
+        </div>
+    </div>
+</div>
+
+<div class="auth-container">
+    <div class="auth-card">
         <div id="step1" class="registration-step">
+            <h2>Create Your Account</h2>
             <form id="registerForm">
                 <div class="form-group">
                     <label>Username</label>
-                    <input type="text" id="username" required minlength="3">
+                    <input type="text" id="username" class="form-control" placeholder="Choose a username" required minlength="3">
                 </div>
 
                 <div class="form-group">
                     <label>Phone Number</label>
-                    <div class="phone-input">
-                        <select id="countryCode" class="country-code">
+                    <div style="display: flex; gap: 0.5rem;">
+                        <select id="countryCode" class="form-control" style="flex: 0 0 120px;">
                             <option value="+254">🇰🇪 +254</option>
                             <option value="+1">🇺🇸 +1</option>
                             <option value="+44">🇬🇧 +44</option>
@@ -54,43 +34,68 @@
                             <option value="+234">🇳🇬 +234</option>
                             <option value="+27">🇿🇦 +27</option>
                         </select>
-                        <input type="tel" id="phoneNumber" class="phone-number" placeholder="712345678" required>
+                        <input type="tel" id="phoneNumber" class="form-control" style="flex: 1;" placeholder="712345678" required>
                     </div>
                 </div>
 
                 <div class="form-group">
                     <label>Password</label>
-                    <input type="password" id="password" required minlength="6">
+                    <input type="password" id="password" class="form-control" placeholder="Create a strong password" required minlength="6">
                 </div>
 
                 <div class="form-group">
                     <label>Referral Code (Optional)</label>
-                    <input type="text" id="referralCode" placeholder="Enter referral code">
+                    <input type="text" id="referralCode" class="form-control" placeholder="Enter referral code">
                 </div>
 
-                <button type="submit" class="btn">Send Verification Code</button>
+                <button type="submit" class="btn auth-btn">Send Verification Code</button>
             </form>
         </div>
 
-        <div id="step2" class="verification-step">
-            <h3>Verify Your Phone</h3>
+        <div id="step2" class="verification-step" style="display: none;">
+            <h2>📱 Verify Your Phone</h2>
+            <div style="background: #f8d7da; padding: 0.75rem; border-radius: 5px; margin-bottom: 1rem; border-left: 4px solid #dc3545;">
+                <strong>⚠️ SECURITY WARNING:</strong><br>
+                • DO NOT share your verification code with ANYONE<br>
+                • SkillStake will NEVER ask for your code<br>
+                • Scammers may try to trick you - stay alert!
+            </div>
             <p>Enter the 6-digit code sent to <span id="phoneDisplay"></span></p>
             
             <form id="verifyForm">
                 <div class="form-group">
-                    <input type="text" id="verificationCode" class="code-input" maxlength="6" placeholder="000000" required>
+                    <input type="text" id="verificationCode" class="form-control" style="text-align: center; font-size: 1.5rem; letter-spacing: 0.5rem;" maxlength="6" placeholder="000000" required>
                 </div>
-                <button type="submit" class="btn">Verify & Register</button>
+                <button type="submit" class="btn auth-btn">Verify & Register</button>
                 <button type="button" class="btn" onclick="resendCode()" style="background: #6c757d; margin-top: 0.5rem;">Resend Code</button>
             </form>
         </div>
 
         <div id="messages"></div>
 
-        <div class="login-link">
-            <a href="/login">Already have an account? Login</a>
+        <p class="auth-link">
+            Already have an account? <a href="/login_secure">Login here</a>
+        </p>
+    </div>
+    
+    <div class="games-showcase">
+        <h3>Start Playing Today</h3>
+        <div class="games-preview">
+            <div class="game-preview">
+                <img src="https://images.unsplash.com/photo-1542751371-adc38448a05e?w=50&h=50&fit=crop" style="width: 40px; height: 40px; border-radius: 8px; margin-right: 1rem;">
+                <span>PUBG Mobile</span>
+            </div>
+            <div class="game-preview">
+                <img src="https://images.unsplash.com/photo-1511512578047-dfb367046420?w=50&h=50&fit=crop" style="width: 40px; height: 40px; border-radius: 8px; margin-right: 1rem;">
+                <span>COD Mobile</span>
+            </div>
+            <div class="game-preview">
+                <img src="https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=50&h=50&fit=crop" style="width: 40px; height: 40px; border-radius: 8px; margin-right: 1rem;">
+                <span>FIFA Mobile</span>
+            </div>
         </div>
     </div>
+</div>
 
     <script>
         let registrationData = {};
@@ -172,9 +177,9 @@
 
         function showMessage(message, type) {
             const messagesDiv = document.getElementById('messages');
-            messagesDiv.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
+            const alertClass = type === 'success' ? 'alert-success' : 'alert-danger';
+            messagesDiv.innerHTML = `<div class="alert ${alertClass}" style="padding: 0.75rem; margin: 1rem 0; border-radius: 5px; ${type === 'success' ? 'background: #d4edda; color: #155724; border: 1px solid #c3e6cb;' : 'background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb;'}">${message}</div>`;
             setTimeout(() => messagesDiv.innerHTML = '', 5000);
         }
     </script>
-</body>
-</html>
+{% endblock %}

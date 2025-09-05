@@ -566,9 +566,18 @@ def home():
         return redirect(url_for('dashboard'))
     return redirect(url_for('login_secure'))
 
+@app.route('/age_warning')
+def age_warning():
+    return render_template('age_warning.html')
+
+@app.route('/register_secure')
+def register_secure():
+    return render_template('register_new.html')
+
 @app.route('/register_new')
 def register_new():
-    return render_template('register_new.html')
+    # Redirect to age warning first
+    return redirect(url_for('age_warning'))
 
 @app.route('/login_secure')
 def login_secure():
@@ -576,7 +585,7 @@ def login_secure():
 
 @app.route('/send_verification', methods=['POST'])
 def send_verification():
-    from phone_auth import send_sms_code
+    from free_sms import send_verification_sms
     
     data = request.get_json()
     phone = data.get('phone')
@@ -585,14 +594,17 @@ def send_verification():
         return jsonify({'success': False, 'message': 'Phone number required'})
     
     try:
-        code = send_sms_code(phone)
-        return jsonify({'success': True, 'message': 'Verification code sent', 'demo_code': code})
+        success, message = send_verification_sms(phone)
+        return jsonify({
+            'success': success,
+            'message': message
+        })
     except Exception as e:
-        return jsonify({'success': False, 'message': 'Failed to send code'})
+        return jsonify({'success': False, 'message': 'Failed to send verification code'})
 
 @app.route('/register_with_verification', methods=['POST'])
 def register_with_verification():
-    from phone_auth import verify_sms_code
+    from free_sms import verify_code
     
     data = request.get_json()
     username = data.get('username')
@@ -602,7 +614,7 @@ def register_with_verification():
     code = data.get('code')
     
     # Verify SMS code
-    is_valid, message = verify_sms_code(phone, code)
+    is_valid, message = verify_code(phone, code)
     if not is_valid:
         return jsonify({'success': False, 'message': message})
     
@@ -654,7 +666,11 @@ def secure_login_step1():
                 # Store user ID in session temporarily
                 session['temp_user_id'] = user[0]
                 
-                return jsonify({'success': True, 'message': 'Code sent', 'demo_code': code})
+                return jsonify({
+                    'success': True, 
+                    'message': f'Demo Mode: Your login code is {code}',
+                    'demo_code': code
+                })
             else:
                 return jsonify({'success': False, 'message': 'Invalid credentials'})
                 
