@@ -680,7 +680,24 @@ def secure_login_step1():
             user = c.fetchone()
             
             if user and check_password_hash(user[2], password):
-                # Send login verification code to email
+                # Special case for admin - bypass email verification
+                if user[1] == 'admin':
+                    session['user_id'] = user[0]
+                    session['username'] = user[1]
+                    session['is_admin'] = True
+                    # Get admin balance
+                    c.execute('SELECT balance FROM users WHERE id = ?', (user[0],))
+                    balance_result = c.fetchone()
+                    session['balance'] = balance_result[0] if balance_result else 0
+                    
+                    return jsonify({
+                        'success': True, 
+                        'message': 'Admin login successful',
+                        'is_admin': True,
+                        'redirect': '/admin'
+                    })
+                
+                # Regular users need email verification
                 success, message = send_email_code(user[3])
                 
                 # Store user ID in session temporarily
@@ -837,7 +854,12 @@ def login():
                     session['username'] = user[1]
                     session['balance'] = user[4]
                     session['is_admin'] = (user[1] == 'admin')
-                    return redirect(url_for('dashboard'))
+                    
+                    # Redirect admin to admin dashboard
+                    if user[1] == 'admin':
+                        return redirect(url_for('admin_dashboard'))
+                    else:
+                        return redirect(url_for('dashboard'))
                 else:
                     flash('Invalid username/M-Pesa number or password!', 'error')
                     
