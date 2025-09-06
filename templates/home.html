@@ -3,16 +3,16 @@
 {% block content %}
 <div class="hero-section">
     <div class="hero-content">
-        <h1 class="hero-title">GameBet Pro</h1>
-        <p class="hero-subtitle">Turn Your Gaming Skills Into Real Money</p>
+        <h1 class="hero-title">SkillStake Gaming</h1>
+        <p class="hero-subtitle">🎮 Turn Your Gaming Skills Into Real Money 💰</p>
         <div class="hero-features">
             <div class="feature-item">✓ Instant M-Pesa Payments</div>
             <div class="feature-item">✓ Secure Result Validation</div>
             <div class="feature-item">✓ 24/7 Gaming Tournaments</div>
         </div>
         <div class="hero-actions">
-            <a href="{{ url_for('register') }}" class="btn auth-btn">Start Gaming & Earning</a>
-            <a href="{{ url_for('login') }}" class="btn btn-secondary">Login to Account</a>
+            <a href="{{ url_for('register_secure') }}" class="btn auth-btn">📧 Register with Email Verification</a>
+            <a href="{{ url_for('login_secure') }}" class="btn btn-secondary">🔒 Secure Login</a>
         </div>
     </div>
 </div>
@@ -100,7 +100,7 @@
     <div class="cta-content">
         <h2>Ready to Start Earning?</h2>
         <p>Join thousands of gamers making real money from their skills</p>
-        <a href="{{ url_for('register') }}" class="btn auth-btn">Create Account Now</a>
+        <a href="{{ url_for('register_secure') }}" class="btn auth-btn">Create Account Now</a>
     </div>
 </div>
 {% endblock %}

@@ -574,7 +574,7 @@ def handle_exception(e):
 def home():
     if 'user_id' in session:
         return redirect(url_for('dashboard'))
-    return redirect(url_for('login_secure'))
+    return render_template('home.html')
 
 @app.route('/age_warning')
 def age_warning():
