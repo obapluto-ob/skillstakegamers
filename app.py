@@ -290,19 +290,16 @@ def login():
                 user = c.fetchone()
                 
                 if user and check_password_hash(user[3], password):
-                    # Login directly for all users (skip email verification for now)
-                    session.clear()
-                    session.permanent = True
-                    session['user_id'] = user[0]
-                    session['username'] = user[1]
-                    session['balance'] = user[4]
-                    session['is_admin'] = (user[1] == 'admin')
-                    session['logged_in'] = True
-                    
+                    # Admin can login directly
                     if user[1] == 'admin':
+                        session.clear()
+                        session.permanent = True
+                        session['user_id'] = user[0]
+                        session['username'] = user[1]
+                        session['balance'] = user[4]
+                        session['is_admin'] = True
+                        session['logged_in'] = True
                         return redirect(url_for('admin_dashboard'))
-                    else:
-                        return redirect(url_for('dashboard'))
                     
                     # Regular users need email verification
                     session['pending_login'] = {
@@ -1147,6 +1144,18 @@ def leaderboard():
 @login_required
 def tournaments():
     return render_template('tournaments.html')
+
+@app.route('/my_game_matches')
+@login_required
+def my_game_matches():
+    return redirect(url_for('match_history'))
+
+@app.route('/add_funds', methods=['GET', 'POST'])
+@login_required
+def add_funds():
+    if request.method == 'POST':
+        flash('Deposit feature coming soon!', 'info')
+    return redirect(url_for('wallet'))
 
 
 
