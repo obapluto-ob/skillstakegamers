@@ -901,6 +901,51 @@ def admin_matches():
         return redirect(url_for('dashboard'))
     return redirect(url_for('admin_dashboard'))
 
+@app.route('/wallet')
+@login_required
+def wallet():
+    try:
+        with get_db_connection() as conn:
+            c = conn.cursor()
+            user_id = session['user_id']
+            
+            c.execute('''SELECT id, type, amount, description, created_at 
+                       FROM transactions 
+                       WHERE user_id = ? 
+                       ORDER BY created_at DESC LIMIT 20''', (user_id,))
+            transactions = c.fetchall()
+            
+            return render_template('wallet.html', transactions=transactions)
+    except Exception as e:
+        return render_template('wallet.html', transactions=[])
+
+@app.route('/matches')
+@login_required
+def matches():
+    return redirect(url_for('quick_matches'))
+
+@app.route('/profile')
+@login_required
+def profile():
+    try:
+        with get_db_connection() as conn:
+            c = conn.cursor()
+            c.execute('SELECT username, email, phone, balance, created_at FROM users WHERE id = ?', (session['user_id'],))
+            user = c.fetchone()
+            return render_template('profile.html', user=user)
+    except:
+        return render_template('profile.html', user=None)
+
+@app.route('/leaderboard')
+@login_required
+def leaderboard():
+    return render_template('leaderboard.html')
+
+@app.route('/tournaments')
+@login_required
+def tournaments():
+    return render_template('tournaments.html')
+
 @app.errorhandler(404)
 def not_found(error):
     return redirect(url_for('home'))
