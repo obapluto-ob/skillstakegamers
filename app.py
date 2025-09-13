@@ -267,58 +267,7 @@ def register_secure():
     
     return render_template('register.html')
 
-@app.route('/login_simple', methods=['GET', 'POST'])
-@limiter.limit("20 per minute")
-def login_simple():
-    """Simple login without email verification for testing"""
-    if request.method == 'POST':
-        login_input = request.form.get('login_input', '').strip()
-        password = request.form.get('password', '')
-        
-        print(f"DEBUG: Login attempt - Input: '{login_input}', Password length: {len(password)}")
-        
-        if not login_input or not password:
-            flash('Please enter both username/email and password!', 'error')
-            return render_template('login_fixed.html')
-        
-        try:
-            with get_db_connection() as conn:
-                c = conn.cursor()
-                c.execute('SELECT id, username, email, password, balance FROM users WHERE username = ? OR email = ?', 
-                         (login_input, login_input))
-                user = c.fetchone()
-                
-                print(f"DEBUG: User found: {user is not None}")
-                if user:
-                    print(f"DEBUG: User details - ID: {user[0]}, Username: {user[1]}, Email: {user[2]}")
-                    password_check = check_password_hash(user[3], password)
-                    print(f"DEBUG: Password check result: {password_check}")
-                
-                if user and check_password_hash(user[3], password):
-                    session.clear()
-                    session.permanent = True
-                    session['user_id'] = user[0]
-                    session['username'] = user[1]
-                    session['balance'] = user[4]
-                    session['is_admin'] = (user[1] == 'admin')
-                    session['logged_in'] = True
-                    
-                    print(f"DEBUG: Login successful for {user[1]}")
-                    
-                    if user[1] == 'admin':
-                        return redirect(url_for('admin_dashboard'))
-                    else:
-                        return redirect(url_for('dashboard'))
-                else:
-                    print(f"DEBUG: Login failed - User exists: {user is not None}")
-                    flash('Invalid username/email or password!', 'error')
-                    return render_template('login_fixed.html')
-        except Exception as e:
-            print(f"DEBUG: Exception during login: {str(e)}")
-            flash(f'Login error: {str(e)}', 'error')
-            return render_template('login_fixed.html')
-    
-    return render_template('login_fixed.html')
+
 
 @app.route('/login', methods=['GET', 'POST'])
 @limiter.limit("20 per minute")
@@ -339,84 +288,30 @@ def login():
                 user = c.fetchone()
                 
                 if user and check_password_hash(user[3], password):
-                    # Admin can login directly
+                    # Login directly for all users (skip email verification for now)
+                    session.clear()
+                    session.permanent = True
+                    session['user_id'] = user[0]
+                    session['username'] = user[1]
+                    session['balance'] = user[4]
+                    session['is_admin'] = (user[1] == 'admin')
+                    session['logged_in'] = True
+                    
                     if user[1] == 'admin':
-                        session.clear()
-                        session.permanent = True
-                        session['user_id'] = user[0]
-                        session['username'] = user[1]
-                        session['balance'] = user[4]
-                        session['is_admin'] = True
-                        session['logged_in'] = True
                         return redirect(url_for('admin_dashboard'))
-                    
-                    # Regular users need email verification
-                    session['pending_login'] = {
-                        'user_id': user[0],
-                        'username': user[1],
-                        'email': user[2],
-                        'balance': user[4]
-                    }
-                    
-                    # Send login verification code
-                    code = ''.join([str(random.randint(0, 9)) for _ in range(6)])
-                    
-                    verification_codes[user[2]] = {
-                        'code': code,
-                        'expires': datetime.now() + timedelta(minutes=10),
-                        'type': 'login'
-                    }
-                    
-                    # Send email
-                    try:
-                        gmail_user = os.getenv('GMAIL_USER')
-                        gmail_pass = os.getenv('GMAIL_PASS')
-                        
-                        if not gmail_user or not gmail_pass:
-                            flash('Email service not configured. Please contact admin.', 'error')
-                            return render_template('login_fixed.html')
-                        
-                        msg = MIMEMultipart()
-                        msg['From'] = gmail_user
-                        msg['To'] = user[2]
-                        msg['Subject'] = 'SkillStake - Login Verification Code'
-                        
-                        body = f'''
-Login Verification Required
-
-Your login verification code is: {code}
-
-This code will expire in 10 minutes.
-
-If you didn't try to login, please secure your account.
-
-SkillStake Team
-                        '''
-                        
-                        msg.attach(MIMEText(body, 'plain'))
-                        
-                        server = smtplib.SMTP('smtp.gmail.com', 587)
-                        server.starttls()
-                        server.login(gmail_user, gmail_pass)
-                        text = msg.as_string()
-                        server.sendmail(gmail_user, user[2], text)
-                        server.quit()
-                        
-                        flash(f'Verification code sent to {user[2]}. Please check your email.', 'info')
-                        return redirect(url_for('verify_login'))
-                        
-                    except Exception as email_error:
-                        # If email fails, log user in directly (fallback)
-                        session.clear()
-                        session.permanent = True
-                        session['user_id'] = user[0]
-                        session['username'] = user[1]
-                        session['balance'] = user[4]
-                        session['is_admin'] = False
-                        session['logged_in'] = True
-                        
-                        flash(f'Email service unavailable. Logged in directly. Welcome {user[1]}!', 'warning')
+                    else:
                         return redirect(url_for('dashboard'))
+                    
+                    # Login directly without email verification
+                    session.clear()
+                    session.permanent = True
+                    session['user_id'] = user[0]
+                    session['username'] = user[1]
+                    session['balance'] = user[4]
+                    session['is_admin'] = False
+                    session['logged_in'] = True
+                    
+                    return redirect(url_for('dashboard'))
                 else:
                     flash('Invalid username/email or password!', 'error')
                     return render_template('login_fixed.html')
@@ -1207,17 +1102,7 @@ def leaderboard():
 def tournaments():
     return render_template('tournaments.html')
 
-# Debug route to check user passwords
-@app.route('/debug_users')
-def debug_users():
-    try:
-        with get_db_connection() as conn:
-            c = conn.cursor()
-            c.execute('SELECT id, username, email FROM users LIMIT 10')
-            users = c.fetchall()
-            return f"<pre>Users: {users}</pre><br><a href='/login_simple'>Try Simple Login</a><br>Test user: testuser999 / test123"
-    except Exception as e:
-        return f"Error: {str(e)}"
+
 
 @app.errorhandler(404)
 def not_found(error):
