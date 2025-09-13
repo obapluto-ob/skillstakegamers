@@ -451,7 +451,12 @@ def admin_dashboard():
 @app.route('/games')
 @login_required
 def games():
-    return redirect(url_for('quick_matches'))
+    return render_template('games_hub.html')
+
+@app.route('/games_hub')
+@login_required
+def games_hub():
+    return render_template('games_hub.html')
 
 @app.route('/quick_matches')
 @login_required
