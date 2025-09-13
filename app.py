@@ -1175,7 +1175,124 @@ def add_funds():
 @app.route('/fpl_battles')
 @login_required
 def fpl_battles():
-    return render_template('fpl_battles.html')
+    try:
+        # Fetch live Premier League matches from FPL API
+        import requests
+        from datetime import datetime, timedelta
+        
+        # Get current gameweek and fixtures
+        bootstrap_url = 'https://fantasy.premierleague.com/api/bootstrap-static/'
+        fixtures_url = 'https://fantasy.premierleague.com/api/fixtures/'
+        
+        bootstrap_response = requests.get(bootstrap_url, timeout=10)
+        fixtures_response = requests.get(fixtures_url, timeout=10)
+        
+        live_matches = []
+        teams_data = {}
+        
+        if bootstrap_response.status_code == 200 and fixtures_response.status_code == 200:
+            bootstrap_data = bootstrap_response.json()
+            fixtures_data = fixtures_response.json()
+            
+            # Create teams lookup
+            for team in bootstrap_data['teams']:
+                teams_data[team['id']] = {
+                    'name': team['name'],
+                    'short_name': team['short_name'],
+                    'code': team['code']
+                }
+            
+            # Get upcoming fixtures (next 7 days)
+            today = datetime.now()
+            next_week = today + timedelta(days=7)
+            
+            for fixture in fixtures_data:
+                if fixture['kickoff_time']:
+                    kickoff = datetime.fromisoformat(fixture['kickoff_time'].replace('Z', '+00:00'))
+                    
+                    # Only show upcoming matches
+                    if today <= kickoff <= next_week and not fixture['finished']:
+                        home_team = teams_data.get(fixture['team_h'], {})
+                        away_team = teams_data.get(fixture['team_a'], {})
+                        
+                        live_matches.append({
+                            'id': fixture['id'],
+                            'home': home_team.get('short_name', 'TBD'),
+                            'away': away_team.get('short_name', 'TBD'),
+                            'home_logo': f"https://resources.premierleague.com/premierleague/badges/25/t{home_team.get('code', 1)}.png",
+                            'away_logo': f"https://resources.premierleague.com/premierleague/badges/25/t{away_team.get('code', 1)}.png",
+                            'time': kickoff.strftime('%d %b %H:%M')
+                        })
+            
+            # Sort by kickoff time
+            live_matches = sorted(live_matches, key=lambda x: x['time'])[:6]  # Show max 6 matches
+        
+        # Battle types
+        battle_types = [
+            {
+                'id': 'gameweek_points',
+                'name': 'Gameweek Points Battle',
+                'description': 'Compare total points scored in the current gameweek',
+                'min_bet': 50,
+                'max_bet': 1000
+            },
+            {
+                'id': 'captain_battle',
+                'name': 'Captain Battle',
+                'description': 'Whose captain will score more points this gameweek?',
+                'min_bet': 30,
+                'max_bet': 500
+            },
+            {
+                'id': 'transfer_battle',
+                'name': 'Transfer Battle',
+                'description': 'Best transfer of the gameweek wins',
+                'min_bet': 40,
+                'max_bet': 800
+            }
+        ]
+        
+        # Get open battles from database
+        try:
+            with get_db_connection() as conn:
+                c = conn.cursor()
+                c.execute('''SELECT fb.*, u.username as creator_name
+                           FROM fpl_battles fb
+                           JOIN users u ON fb.creator_id = u.id
+                           WHERE fb.status = "open" AND fb.creator_id != ?
+                           ORDER BY fb.created_at DESC LIMIT 10''', (session['user_id'],))
+                open_battles = c.fetchall()
+        except:
+            open_battles = []
+        
+        return render_template('fpl_battles.html', 
+                             live_matches=live_matches,
+                             battle_types=battle_types,
+                             open_battles=open_battles)
+        
+    except Exception as e:
+        # Fallback data if API fails
+        battle_types = [
+            {
+                'id': 'gameweek_points',
+                'name': 'Gameweek Points Battle',
+                'description': 'Compare total points scored in the current gameweek',
+                'min_bet': 50,
+                'max_bet': 1000
+            },
+            {
+                'id': 'captain_battle',
+                'name': 'Captain Battle',
+                'description': 'Whose captain will score more points this gameweek?',
+                'min_bet': 30,
+                'max_bet': 500
+            }
+        ]
+        
+        return render_template('fpl_battles.html', 
+                             live_matches=[],
+                             battle_types=battle_types,
+                             open_battles=[])
 
 @app.route('/join_game_match/<int:match_id>', methods=['POST'])
 @login_required
@@ -1231,6 +1348,138 @@ def upload_match_screenshot():
 def withdraw_funds():
     flash('Withdrawal feature coming soon!', 'info')
     return redirect(url_for('wallet'))
+
+@app.route('/create_fpl_battle', methods=['POST'])
+@login_required
+def create_fpl_battle():
+    try:
+        battle_type = request.form.get('battle_type')
+        fpl_team_id = request.form.get('fpl_team_id')
+        stake_amount = float(request.form.get('stake_amount', 0))
+        
+        if not all([battle_type, fpl_team_id, stake_amount]):
+            flash('Please fill in all fields', 'error')
+            return redirect(url_for('fpl_battles'))
+        
+        if stake_amount < 30 or stake_amount > 1000:
+            flash('Stake must be between 30 and 1000 KSh', 'error')
+            return redirect(url_for('fpl_battles'))
+        
+        if session.get('balance', 0) < stake_amount:
+            flash('Insufficient balance', 'error')
+            return redirect(url_for('fpl_battles'))
+        
+        # Verify FPL team exists
+        import requests
+        fpl_url = f'https://fantasy.premierleague.com/api/entry/{fpl_team_id}/'
+        try:
+            fpl_response = requests.get(fpl_url, timeout=5)
+            if fpl_response.status_code != 200:
+                flash('Invalid FPL Team ID', 'error')
+                return redirect(url_for('fpl_battles'))
+        except:
+            pass  # Continue even if API check fails
+        
+        with get_db_connection() as conn:
+            c = conn.cursor()
+            
+            # Create fpl_battles table if it doesn't exist
+            c.execute('''CREATE TABLE IF NOT EXISTS fpl_battles (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                battle_type TEXT NOT NULL,
+                creator_id INTEGER NOT NULL,
+                creator_fpl_id TEXT NOT NULL,
+                opponent_id INTEGER,
+                opponent_fpl_id TEXT,
+                stake_amount REAL NOT NULL,
+                total_pot REAL NOT NULL,
+                winner_id INTEGER,
+                status TEXT DEFAULT 'open',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                completed_at TIMESTAMP
+            )''')
+            
+            commission = stake_amount * 0.08
+            total_pot = (stake_amount * 2) - commission
+            
+            # Deduct stake from user balance
+            new_balance = session['balance'] - stake_amount
+            c.execute('UPDATE users SET balance = ? WHERE id = ?', (new_balance, session['user_id']))
+            session['balance'] = new_balance
+            
+            # Create battle
+            c.execute('''INSERT INTO fpl_battles 
+                       (battle_type, creator_id, creator_fpl_id, stake_amount, total_pot) 
+                       VALUES (?, ?, ?, ?, ?)''',
+                     (battle_type, session['user_id'], fpl_team_id, stake_amount, total_pot))
+            
+            # Add transaction
+            c.execute('''INSERT INTO transactions (user_id, type, amount, description) 
+                       VALUES (?, ?, ?, ?)''',
+                     (session['user_id'], 'fpl_battle_stake', -stake_amount, f'FPL Battle: {battle_type}'))
+            
+            conn.commit()
+        
+        flash(f'FPL Battle created! Stake: KSh {stake_amount}', 'success')
+        return redirect(url_for('fpl_battles'))
+        
+    except Exception as e:
+        flash('Error creating battle', 'error')
+        return redirect(url_for('fpl_battles'))
+
+@app.route('/join_fpl_battle/<int:battle_id>', methods=['POST'])
+@login_required
+def join_fpl_battle(battle_id):
+    try:
+        fpl_team_id = request.form.get('fpl_team_id')
+        
+        if not fpl_team_id:
+            return jsonify({'success': False, 'message': 'FPL Team ID required'})
+        
+        with get_db_connection() as conn:
+            c = conn.cursor()
+            
+            # Get battle details
+            c.execute('SELECT * FROM fpl_battles WHERE id = ? AND status = "open"', (battle_id,))
+            battle = c.fetchone()
+            
+            if not battle:
+                return jsonify({'success': False, 'message': 'Battle not found or already started'})
+            
+            if battle[2] == session['user_id']:  # creator_id
+                return jsonify({'success': False, 'message': 'Cannot join your own battle'})
+            
+            stake_amount = battle[5]  # stake_amount
+            if session.get('balance', 0) < stake_amount:
+                return jsonify({'success': False, 'message': 'Insufficient balance'})
+            
+            # Verify FPL team exists
+            import requests
+            fpl_url = f'https://fantasy.premierleague.com/api/entry/{fpl_team_id}/'
+            try:
+                fpl_response = requests.get(fpl_url, timeout=5)
+                if fpl_response.status_code != 200:
+                    return jsonify({'success': False, 'message': 'Invalid FPL Team ID'})
+            except:
+                pass  # Continue even if API check fails
+            
+            # Update battle and user balance
+            new_balance = session['balance'] - stake_amount
+            c.execute('UPDATE users SET balance = ? WHERE id = ?', (new_balance, session['user_id']))
+            c.execute('UPDATE fpl_battles SET opponent_id = ?, opponent_fpl_id = ?, status = "active" WHERE id = ?', 
+                     (session['user_id'], fpl_team_id, battle_id))
+            
+            # Add transaction
+            c.execute('INSERT INTO transactions (user_id, type, amount, description) VALUES (?, ?, ?, ?)',
+                     (session['user_id'], 'fpl_battle_stake', -stake_amount, f'Joined FPL Battle #{battle_id}'))
+            
+            conn.commit()
+            session['balance'] = new_balance
+            
+        return jsonify({'success': True, 'message': 'Successfully joined FPL battle!'})
+        
+    except Exception as e:
+        return jsonify({'success': False, 'message': 'Error joining battle'})
 
 
 
