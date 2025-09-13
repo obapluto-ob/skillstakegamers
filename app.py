@@ -1226,6 +1226,12 @@ def join_game_match(match_id):
 def upload_match_screenshot():
     return jsonify({'success': False, 'message': 'Screenshot upload feature coming soon!'})
 
+@app.route('/withdraw_funds', methods=['POST'])
+@login_required
+def withdraw_funds():
+    flash('Withdrawal feature coming soon!', 'info')
+    return redirect(url_for('wallet'))
+
 
 
 @app.errorhandler(404)
