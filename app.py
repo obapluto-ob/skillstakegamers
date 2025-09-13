@@ -443,6 +443,11 @@ def admin_dashboard():
                              earnings_data={'match_commission': 0, 'commission_rate': 8, 'deposit_fees': 0, 'withdrawal_fees': 0, 'referral_profits': 0, 'fraud_commissions': 0, 'total_battles': 0, 'bank_fees': 0, 'gross_earnings': 0, 'net_earnings': 0, 'pending_deposits': 0, 'pending_withdrawals': 0, 'total_game_matches': 0},
                              pending_deposits=[], pending_withdrawals=[], active_game_matches=[], notifications=[], unread_alerts=0)
 
+@app.route('/games')
+@login_required
+def games():
+    return redirect(url_for('quick_matches'))
+
 @app.route('/quick_matches')
 @login_required
 def quick_matches():
