@@ -214,7 +214,7 @@ def register_with_verification():
                     return jsonify({'success': False, 'message': 'Phone number already registered'})
             
             hashed_password = generate_password_hash(password)
-            referral_code = username[:3].upper() + ''.join(random.choices(string.digits, k=4))
+            referral_code = username[:3].upper() + ''.join([str(random.randint(0, 9)) for _ in range(4)])
             
             c.execute('''INSERT INTO users (username, email, password, balance, phone, referral_code) 
                          VALUES (?, ?, ?, ?, ?, ?)''',
@@ -879,6 +879,27 @@ def register_with_age():
     except Exception as e:
         flash('Registration failed. Please try again.', 'error')
         return redirect(url_for('register_fixed'))
+
+@app.route('/admin/users')
+@login_required
+def admin_users():
+    if session.get('username') != 'admin':
+        return redirect(url_for('dashboard'))
+    return redirect(url_for('admin_dashboard'))
+
+@app.route('/admin/transactions')
+@login_required
+def admin_transactions():
+    if session.get('username') != 'admin':
+        return redirect(url_for('dashboard'))
+    return redirect(url_for('admin_dashboard'))
+
+@app.route('/admin/matches')
+@login_required
+def admin_matches():
+    if session.get('username') != 'admin':
+        return redirect(url_for('dashboard'))
+    return redirect(url_for('admin_dashboard'))
 
 @app.errorhandler(404)
 def not_found(error):
