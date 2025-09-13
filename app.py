@@ -1247,16 +1247,16 @@ def fpl_battles():
         }
     ]
     
-    # Get live Premier League matches with better error handling
+    # Get real FPL matches from API
     live_matches = []
-    current_gameweek = 1
+    current_gameweek = 15
     
     try:
         import requests
-        from datetime import datetime, timedelta
+        from datetime import datetime
         
-        # Get current gameweek and fixtures with shorter timeout
-        bootstrap_response = requests.get('https://fantasy.premierleague.com/api/bootstrap-static/', timeout=5)
+        # Get bootstrap data for teams and current gameweek
+        bootstrap_response = requests.get('https://fantasy.premierleague.com/api/bootstrap-static/', timeout=10)
         
         if bootstrap_response.status_code == 200:
             bootstrap_data = bootstrap_response.json()
@@ -1264,7 +1264,7 @@ def fpl_battles():
             # Get current gameweek
             for event in bootstrap_data.get('events', []):
                 if event.get('is_current', False):
-                    current_gameweek = event.get('id', 1)
+                    current_gameweek = event.get('id', 15)
                     break
             
             # Create teams lookup
@@ -1276,43 +1276,50 @@ def fpl_battles():
                     'code': team['code']
                 }
             
-            # Get fixtures
-            fixtures_response = requests.get('https://fantasy.premierleague.com/api/fixtures/', timeout=5)
+            # Get fixtures for current and next gameweek
+            fixtures_response = requests.get('https://fantasy.premierleague.com/api/fixtures/', timeout=10)
             if fixtures_response.status_code == 200:
                 fixtures_data = fixtures_response.json()
                 
-                # Get upcoming fixtures (next 3 days)
-                today = datetime.now()
-                next_days = today + timedelta(days=3)
+                # Get unfinished fixtures from current and next gameweek
+                for fixture in fixtures_data:
+                    fixture_gw = fixture.get('event')
+                    if (fixture_gw and fixture_gw >= current_gameweek and 
+                        fixture_gw <= current_gameweek + 1 and 
+                        not fixture.get('finished', False) and 
+                        fixture.get('team_h') and fixture.get('team_a')):
+                        
+                        home_team = teams_data.get(fixture['team_h'], {})
+                        away_team = teams_data.get(fixture['team_a'], {})
+                        
+                        # Format kickoff time
+                        kickoff_time = f'GW {fixture_gw}'
+                        if fixture.get('kickoff_time'):
+                            try:
+                                kickoff_str = fixture['kickoff_time']
+                                if 'T' in kickoff_str:
+                                    kickoff_dt = datetime.fromisoformat(kickoff_str.replace('Z', ''))
+                                    kickoff_time = kickoff_dt.strftime('%a %d %b')
+                            except:
+                                kickoff_time = f'GW {fixture_gw}'
+                        
+                        live_matches.append({
+                            'id': fixture['id'],
+                            'home': home_team.get('short_name', 'HOME'),
+                            'away': away_team.get('short_name', 'AWAY'),
+                            'home_logo': f"https://resources.premierleague.com/premierleague/badges/25/t{home_team.get('code', 1)}.png",
+                            'away_logo': f"https://resources.premierleague.com/premierleague/badges/25/t{away_team.get('code', 1)}.png",
+                            'time': kickoff_time
+                        })
                 
-                for fixture in fixtures_data[:20]:  # Limit to first 20 fixtures
-                    if fixture.get('kickoff_time') and not fixture.get('finished', True):
-                        try:
-                            kickoff_str = fixture['kickoff_time']
-                            if 'T' in kickoff_str:
-                                kickoff_str = kickoff_str.split('T')[0] + ' ' + kickoff_str.split('T')[1][:8]
-                                kickoff = datetime.fromisoformat(kickoff_str.replace('Z', ''))
-                            
-                            if today <= kickoff <= next_days:
-                                home_team = teams_data.get(fixture['team_h'], {})
-                                away_team = teams_data.get(fixture['team_a'], {})
-                                
-                                live_matches.append({
-                                    'id': fixture['id'],
-                                    'home': home_team.get('short_name', 'HOME'),
-                                    'away': away_team.get('short_name', 'AWAY'),
-                                    'home_logo': f"https://resources.premierleague.com/premierleague/badges/25/t{home_team.get('code', 1)}.png",
-                                    'away_logo': f"https://resources.premierleague.com/premierleague/badges/25/t{away_team.get('code', 1)}.png",
-                                    'time': kickoff.strftime('%d %b %H:%M')
-                                })
-                        except:
-                            continue
-                
-                # Limit to 6 matches
-                live_matches = live_matches[:6]
+                # Limit to 8 matches
+                live_matches = live_matches[:8]
     
     except Exception as e:
-        # If API fails, create some sample matches
+        print(f'FPL API Error: {e}')
+    
+    # Always ensure we have matches to show
+    if not live_matches:
         live_matches = [
             {
                 'id': 1,
@@ -1320,7 +1327,7 @@ def fpl_battles():
                 'away': 'CHE',
                 'home_logo': 'https://resources.premierleague.com/premierleague/badges/25/t3.png',
                 'away_logo': 'https://resources.premierleague.com/premierleague/badges/25/t8.png',
-                'time': 'Next GW'
+                'time': f'GW {current_gameweek}'
             },
             {
                 'id': 2,
@@ -1328,7 +1335,23 @@ def fpl_battles():
                 'away': 'MCI',
                 'home_logo': 'https://resources.premierleague.com/premierleague/badges/25/t14.png',
                 'away_logo': 'https://resources.premierleague.com/premierleague/badges/25/t43.png',
-                'time': 'Next GW'
+                'time': f'GW {current_gameweek}'
+            },
+            {
+                'id': 3,
+                'home': 'MUN',
+                'away': 'TOT',
+                'home_logo': 'https://resources.premierleague.com/premierleague/badges/25/t1.png',
+                'away_logo': 'https://resources.premierleague.com/premierleague/badges/25/t6.png',
+                'time': f'GW {current_gameweek}'
+            },
+            {
+                'id': 4,
+                'home': 'NEW',
+                'away': 'AVL',
+                'home_logo': 'https://resources.premierleague.com/premierleague/badges/25/t4.png',
+                'away_logo': 'https://resources.premierleague.com/premierleague/badges/25/t7.png',
+                'time': f'GW {current_gameweek}'
             }
         ]
     
