@@ -52,7 +52,9 @@ def init_db():
             total_earnings REAL DEFAULT 0.0,
             referred_by INTEGER,
             banned INTEGER DEFAULT 0,
-            skill_tokens INTEGER DEFAULT 0
+            skill_tokens INTEGER DEFAULT 0,
+            email_verified INTEGER DEFAULT 0,
+            last_login TIMESTAMP
         )''')
         
         c.execute('''CREATE TABLE IF NOT EXISTS transactions (
@@ -302,16 +304,54 @@ def login():
                     else:
                         return redirect(url_for('dashboard'))
                     
-                    # Login directly without email verification
-                    session.clear()
-                    session.permanent = True
-                    session['user_id'] = user[0]
-                    session['username'] = user[1]
-                    session['balance'] = user[4]
-                    session['is_admin'] = False
-                    session['logged_in'] = True
+                    # Regular users need email verification
+                    session['pending_login'] = {
+                        'user_id': user[0],
+                        'username': user[1],
+                        'email': user[2],
+                        'balance': user[4]
+                    }
                     
-                    return redirect(url_for('dashboard'))
+                    # Send login verification code
+                    code = ''.join([str(random.randint(0, 9)) for _ in range(6)])
+                    
+                    verification_codes[user[2]] = {
+                        'code': code,
+                        'expires': datetime.now() + timedelta(minutes=10),
+                        'type': 'login'
+                    }
+                    
+                    # Send email
+                    gmail_user = os.getenv('GMAIL_USER')
+                    gmail_pass = os.getenv('GMAIL_PASS')
+                    
+                    msg = MIMEMultipart()
+                    msg['From'] = gmail_user
+                    msg['To'] = user[2]
+                    msg['Subject'] = 'SkillStake - Login Verification Code'
+                    
+                    body = f'''
+Login Verification Required
+
+Your login verification code is: {code}
+
+This code will expire in 10 minutes.
+
+If you didn't try to login, please secure your account.
+
+SkillStake Team
+                    '''
+                    
+                    msg.attach(MIMEText(body, 'plain'))
+                    
+                    server = smtplib.SMTP('smtp.gmail.com', 587)
+                    server.starttls()
+                    server.login(gmail_user, gmail_pass)
+                    text = msg.as_string()
+                    server.sendmail(gmail_user, user[2], text)
+                    server.quit()
+                    
+                    return redirect(url_for('verify_login'))
                 else:
                     flash('Invalid username/email or password!', 'error')
                     return render_template('login_fixed.html')
@@ -570,7 +610,13 @@ def verify_login_code():
         if stored_data['code'] != code or stored_data.get('type') != 'login':
             return jsonify({'success': False, 'message': 'Invalid verification code'})
         
-        # Complete login
+        # Complete login and update last login
+        with get_db_connection() as conn:
+            c = conn.cursor()
+            c.execute('UPDATE users SET last_login = CURRENT_TIMESTAMP, email_verified = 1 WHERE id = ?', 
+                     (user_data['user_id'],))
+            conn.commit()
+        
         session.clear()
         session.permanent = True
         session['user_id'] = user_data['user_id']
