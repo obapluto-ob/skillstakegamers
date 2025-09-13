@@ -96,11 +96,11 @@ app = Flask(__name__)
 app.secret_key = os.getenv('SECRET_KEY', 'fallback-key-change-in-production')
 app.permanent_session_lifetime = timedelta(hours=24)
 
-# Rate limiting configuration - More reasonable limits
+# Rate limiting configuration - Very generous limits
 limiter = Limiter(
     key_func=get_remote_address,
     app=app,
-    default_limits=["2000 per day", "500 per hour"]
+    default_limits=["5000 per day", "1000 per hour"]
 )
 
 init_db()
@@ -112,7 +112,7 @@ def home():
     return render_template('home.html')
 
 @app.route('/send_verification', methods=['POST'])
-@limiter.limit("10 per hour")
+@limiter.limit("20 per hour")
 def send_verification():
     try:
         data = request.get_json()
@@ -170,7 +170,7 @@ SkillStake Team
         return jsonify({'success': False, 'message': f'Failed to send email: {str(e)}'})
 
 @app.route('/register_with_verification', methods=['POST'])
-@limiter.limit("5 per hour")
+@limiter.limit("10 per hour")
 def register_with_verification():
     try:
         data = request.get_json()
@@ -230,7 +230,7 @@ def register_with_verification():
         return jsonify({'success': False, 'message': f'Registration failed: {str(e)}'})
 
 @app.route('/register_secure', methods=['GET', 'POST'])
-@limiter.limit("5 per minute")
+@limiter.limit("10 per minute")
 def register_secure():
     if request.method == 'POST':
         username = request.form.get('username', '').strip()
@@ -268,7 +268,7 @@ def register_secure():
     return render_template('register.html')
 
 @app.route('/login', methods=['GET', 'POST'])
-@limiter.limit("10 per minute")
+@limiter.limit("20 per minute")
 def login():
     if request.method == 'POST':
         login_input = request.form.get('login_input', '').strip()
@@ -678,7 +678,7 @@ def forgot_password():
     return render_template('forgot_password_fixed.html')
 
 @app.route('/send_reset_code', methods=['POST'])
-@limiter.limit("5 per hour")
+@limiter.limit("10 per hour")
 def send_reset_code():
     try:
         data = request.get_json()
@@ -813,7 +813,7 @@ def register_fixed():
     return render_template('register_fixed.html')
 
 @app.route('/register_with_age', methods=['POST'])
-@limiter.limit("5 per hour")
+@limiter.limit("10 per hour")
 def register_with_age():
     age_confirmed = request.form.get('age_confirmed')
     if not age_confirmed:
