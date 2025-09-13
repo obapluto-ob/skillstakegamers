@@ -33,7 +33,16 @@ def login_required(f):
     return wrapper
 
 def get_db_connection():
-    return sqlite3.connect('gamebet.db')
+    # Check for external database URL first (for production)
+    database_url = os.getenv('DATABASE_URL')
+    if database_url:
+        # For PostgreSQL or other external databases
+        # This would require additional setup, but for now use SQLite
+        pass
+    
+    # Use persistent path for SQLite
+    db_path = os.path.join('/tmp', 'gamebet.db') if os.path.exists('/tmp') else 'gamebet.db'
+    return sqlite3.connect(db_path)
 
 def init_db():
     with get_db_connection() as conn:
@@ -87,11 +96,13 @@ def init_db():
             completed_at TIMESTAMP
         )''')
         
-        # Create admin user
+        # Create admin user only if not exists
         admin_password = generate_password_hash(os.getenv('ADMIN_PASSWORD', 'admin123'))
-        c.execute('''INSERT OR IGNORE INTO users (username, email, password, balance, phone, referral_code) 
-                     VALUES (?, ?, ?, ?, ?, ?)''',
-                 ('admin', 'admin@skillstake.com', admin_password, 0.0, '0700000000', 'ADMIN001'))
+        c.execute('SELECT id FROM users WHERE username = "admin"')
+        if not c.fetchone():
+            c.execute('''INSERT INTO users (username, email, password, balance, phone, referral_code) 
+                         VALUES (?, ?, ?, ?, ?, ?)''',
+                     ('admin', 'admin@skillstake.com', admin_password, 0.0, '0700000000', 'ADMIN001'))
         conn.commit()
 
 app = Flask(__name__)
@@ -505,81 +516,59 @@ def quick_matches():
 @app.route('/create_game_match', methods=['POST'])
 @login_required
 def create_game_match():
-    if request.is_json:
-        data = request.get_json()
-        game_type = data.get('game_type')
-        game_mode = data.get('game_mode')
-        stake_amount = data.get('stake_amount')
-        game_username = data.get('game_username', '').strip()
-    else:
-        game_type = request.form.get('game_type')
-        game_mode = request.form.get('game_mode')
-        stake_amount = request.form.get('stake_amount')
+    try:
+        # Get form data
+        game_type = request.form.get('game_type', '').strip()
+        game_mode = request.form.get('game_mode', '').strip()
+        stake_amount = request.form.get('stake_amount', '').strip()
         game_username = request.form.get('game_username', '').strip()
-    
-    if not all([game_type, game_mode, stake_amount, game_username]):
-        error_msg = 'Please fill in all fields.'
-        if request.is_json:
-            return jsonify({'success': False, 'message': error_msg})
-        flash(error_msg, 'error')
-        return redirect(url_for('quick_matches'))
-    
-    try:
-        stake = float(stake_amount)
-        if not (50 <= stake <= 1000):
-            error_msg = 'Stake must be between 50 and 1000.'
-            if request.is_json:
-                return jsonify({'success': False, 'message': error_msg})
-            flash(error_msg, 'error')
-            return redirect(url_for('quick_matches'))
-    except (ValueError, TypeError):
-        error_msg = 'Invalid stake amount.'
-        if request.is_json:
-            return jsonify({'success': False, 'message': error_msg})
-        flash(error_msg, 'error')
-        return redirect(url_for('quick_matches'))
-    
-    if session.get('balance', 0) < stake:
-        error_msg = 'Insufficient balance. Please deposit funds.'
-        if request.is_json:
-            return jsonify({'success': False, 'message': error_msg})
-        flash(error_msg, 'error')
-        return redirect(url_for('quick_matches'))
-    
-    try:
+        
+        # Validation
+        if not all([game_type, game_mode, stake_amount, game_username]):
+            return jsonify({'success': False, 'message': 'Please fill in all fields'})
+        
+        try:
+            stake = float(stake_amount)
+            if not (50 <= stake <= 1000):
+                return jsonify({'success': False, 'message': 'Stake must be between 50 and 1000 KSh'})
+        except (ValueError, TypeError):
+            return jsonify({'success': False, 'message': 'Invalid stake amount'})
+        
+        if session.get('balance', 0) < stake:
+            return jsonify({'success': False, 'message': 'Insufficient balance. Please deposit funds'})
+        
+        # Create match
         with get_db_connection() as conn:
             c = conn.cursor()
             
             commission = stake * 0.08
             total_pot = (stake * 2) - commission
             
+            # Update user balance
             new_balance = session['balance'] - stake
             c.execute('UPDATE users SET balance = ? WHERE id = ?', (new_balance, session['user_id']))
             session['balance'] = new_balance
             
+            # Insert match
             c.execute('''INSERT INTO game_matches 
                        (game_type, game_mode, creator_id, creator_game_username, stake_amount, total_pot, commission) 
                        VALUES (?, ?, ?, ?, ?, ?, ?)''',
                      (game_type, game_mode, session['user_id'], game_username, stake, total_pot, commission))
             
+            # Add transaction
             c.execute('''INSERT INTO transactions (user_id, type, amount, description) 
                        VALUES (?, ?, ?, ?)''',
-                     (session['user_id'], 'match_stake', -stake, f'{game_type.title()} match stake: {game_mode}'))
+                     (session['user_id'], 'match_stake', -stake, f'{game_type.title()} {game_mode} match - KSh {stake}'))
             
             conn.commit()
-            
-        success_msg = f'Match created! Game: {game_type.title()} | Mode: {game_mode} | Stake: KSh {stake}'
-        if request.is_json:
-            return jsonify({'success': True, 'message': success_msg})
-        flash(success_msg, 'success')
-        return redirect(url_for('quick_matches'))
+        
+        return jsonify({
+            'success': True, 
+            'message': f'Match created successfully! Game: {game_type.title()} | Mode: {game_mode.replace("_", " ").title()} | Stake: KSh {stake}'
+        })
         
     except Exception as e:
-        error_msg = 'Error creating match. Please try again.'
-        if request.is_json:
-            return jsonify({'success': False, 'message': error_msg})
-        flash(error_msg, 'error')
-        return redirect(url_for('quick_matches'))
+        return jsonify({'success': False, 'message': 'Error creating match. Please try again'})
 
 @app.route('/verify_login')
 def verify_login():
@@ -1317,12 +1306,12 @@ def fpl_battles():
 @app.route('/join_game_match/<int:match_id>', methods=['POST'])
 @login_required
 def join_game_match(match_id):
-    game_username = request.form.get('game_username', '').strip()
-    
-    if not game_username:
-        return jsonify({'success': False, 'message': 'Game username is required'})
-    
     try:
+        game_username = request.form.get('game_username', '').strip()
+        
+        if not game_username:
+            return jsonify({'success': False, 'message': 'Game username is required'})
+        
         with get_db_connection() as conn:
             c = conn.cursor()
             
@@ -1333,10 +1322,10 @@ def join_game_match(match_id):
             if not match:
                 return jsonify({'success': False, 'message': 'Match not found or already started'})
             
-            if match[3] == session['user_id']:
+            if match[3] == session['user_id']:  # creator_id
                 return jsonify({'success': False, 'message': 'Cannot join your own match'})
             
-            stake_amount = match[7]
+            stake_amount = match[7]  # stake_amount
             if session.get('balance', 0) < stake_amount:
                 return jsonify({'success': False, 'message': 'Insufficient balance'})
             
@@ -1348,20 +1337,20 @@ def join_game_match(match_id):
             
             # Add transaction
             c.execute('INSERT INTO transactions (user_id, type, amount, description) VALUES (?, ?, ?, ?)',
-                     (session['user_id'], 'match_stake', -stake_amount, f'Joined {match[1]} match'))
+                     (session['user_id'], 'match_stake', -stake_amount, f'Joined {match[1]} {match[2]} match'))
             
             conn.commit()
             session['balance'] = new_balance
             
-        return jsonify({'success': True, 'message': 'Successfully joined match!'})
+        return jsonify({'success': True, 'message': 'Successfully joined match! Match is now active.'})
         
     except Exception as e:
-        return jsonify({'success': False, 'message': 'Error joining match'})
+        return jsonify({'success': False, 'message': 'Error joining match. Please try again.'})
 
 @app.route('/upload_match_screenshot', methods=['POST'])
 @login_required
 def upload_match_screenshot():
-    return jsonify({'success': False, 'message': 'Screenshot upload feature coming soon!'})
+    return jsonify({'success': False, 'message': 'Screenshot verification system coming soon! Contact admin for manual verification.'})
 
 @app.route('/withdraw_funds', methods=['POST'])
 @login_required
