@@ -738,6 +738,33 @@ SkillStake Team
     except Exception as e:
         return jsonify({'success': False, 'message': f'Failed to send reset code: {str(e)}'})
 
+@app.route('/verify_reset_code', methods=['POST'])
+def verify_reset_code():
+    try:
+        data = request.get_json()
+        email = data.get('email', '').strip().lower()
+        code = data.get('code', '').strip()
+        
+        if not all([email, code]):
+            return jsonify({'success': False, 'message': 'Email and code are required'})
+        
+        # Verify code
+        if email not in reset_codes:
+            return jsonify({'success': False, 'message': 'No reset code found'})
+        
+        stored_data = reset_codes[email]
+        if datetime.now() > stored_data['expires']:
+            del reset_codes[email]
+            return jsonify({'success': False, 'message': 'Reset code expired'})
+        
+        if stored_data['code'] != code:
+            return jsonify({'success': False, 'message': 'Invalid reset code'})
+        
+        return jsonify({'success': True, 'message': 'Code verified'})
+        
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'Verification failed: {str(e)}'})
+
 @app.route('/reset_password_complete', methods=['POST'])
 def reset_password_complete():
     try:
