@@ -275,6 +275,8 @@ def login_simple():
         login_input = request.form.get('login_input', '').strip()
         password = request.form.get('password', '')
         
+        print(f"DEBUG: Login attempt - Input: '{login_input}', Password length: {len(password)}")
+        
         if not login_input or not password:
             flash('Please enter both username/email and password!', 'error')
             return render_template('login_fixed.html')
@@ -286,6 +288,12 @@ def login_simple():
                          (login_input, login_input))
                 user = c.fetchone()
                 
+                print(f"DEBUG: User found: {user is not None}")
+                if user:
+                    print(f"DEBUG: User details - ID: {user[0]}, Username: {user[1]}, Email: {user[2]}")
+                    password_check = check_password_hash(user[3], password)
+                    print(f"DEBUG: Password check result: {password_check}")
+                
                 if user and check_password_hash(user[3], password):
                     session.clear()
                     session.permanent = True
@@ -295,15 +303,19 @@ def login_simple():
                     session['is_admin'] = (user[1] == 'admin')
                     session['logged_in'] = True
                     
+                    print(f"DEBUG: Login successful for {user[1]}")
+                    
                     if user[1] == 'admin':
                         return redirect(url_for('admin_dashboard'))
                     else:
                         return redirect(url_for('dashboard'))
                 else:
+                    print(f"DEBUG: Login failed - User exists: {user is not None}")
                     flash('Invalid username/email or password!', 'error')
                     return render_template('login_fixed.html')
         except Exception as e:
-            flash('Login error occurred. Please try again.', 'error')
+            print(f"DEBUG: Exception during login: {str(e)}")
+            flash(f'Login error: {str(e)}', 'error')
             return render_template('login_fixed.html')
     
     return render_template('login_fixed.html')
@@ -1194,6 +1206,18 @@ def leaderboard():
 @login_required
 def tournaments():
     return render_template('tournaments.html')
+
+# Debug route to check user passwords
+@app.route('/debug_users')
+def debug_users():
+    try:
+        with get_db_connection() as conn:
+            c = conn.cursor()
+            c.execute('SELECT id, username, email FROM users LIMIT 10')
+            users = c.fetchall()
+            return f"<pre>Users: {users}</pre><br><a href='/login_simple'>Try Simple Login</a><br>Test user: testuser999 / test123"
+    except Exception as e:
+        return f"Error: {str(e)}"
 
 @app.errorhandler(404)
 def not_found(error):
