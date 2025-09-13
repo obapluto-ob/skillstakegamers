@@ -885,56 +885,77 @@ def register_with_age():
 def admin_users():
     if session.get('username') != 'admin':
         return redirect(url_for('dashboard'))
-    return redirect(url_for('admin_dashboard'))
+    try:
+        with get_db_connection() as conn:
+            c = conn.cursor()
+            c.execute('SELECT id, username, email, balance, created_at FROM users WHERE username != "admin"')
+            users = c.fetchall()
+        return render_template('admin_users.html', users=users)
+    except:
+        return render_template('admin_users.html', users=[])
 
 @app.route('/admin_transactions')
 @login_required
 def admin_transactions():
     if session.get('username') != 'admin':
         return redirect(url_for('dashboard'))
-    return redirect(url_for('admin_dashboard'))
+    try:
+        with get_db_connection() as conn:
+            c = conn.cursor()
+            c.execute('SELECT * FROM transactions ORDER BY created_at DESC LIMIT 100')
+            transactions = c.fetchall()
+        return render_template('admin_transactions.html', transactions=transactions)
+    except:
+        return render_template('admin_transactions.html', transactions=[])
 
 @app.route('/admin_matches')
 @login_required
 def admin_matches():
     if session.get('username') != 'admin':
         return redirect(url_for('dashboard'))
-    return redirect(url_for('admin_dashboard'))
+    try:
+        with get_db_connection() as conn:
+            c = conn.cursor()
+            c.execute('SELECT * FROM game_matches ORDER BY created_at DESC LIMIT 50')
+            matches = c.fetchall()
+        return render_template('admin_matches.html', matches=matches)
+    except:
+        return render_template('admin_matches.html', matches=[])
 
 @app.route('/admin_deposits')
 @login_required
 def admin_deposits():
     if session.get('username') != 'admin':
         return redirect(url_for('dashboard'))
-    return redirect(url_for('admin_dashboard'))
+    return render_template('admin_deposits.html')
 
 @app.route('/admin_withdrawals')
 @login_required
 def admin_withdrawals():
     if session.get('username') != 'admin':
         return redirect(url_for('dashboard'))
-    return redirect(url_for('admin_dashboard'))
+    return render_template('admin_withdrawals.html')
 
 @app.route('/admin_settings')
 @login_required
 def admin_settings():
     if session.get('username') != 'admin':
         return redirect(url_for('dashboard'))
-    return redirect(url_for('admin_dashboard'))
+    return render_template('admin_settings.html')
 
 @app.route('/admin_tournaments')
 @login_required
 def admin_tournaments():
     if session.get('username') != 'admin':
         return redirect(url_for('dashboard'))
-    return redirect(url_for('admin_dashboard'))
+    return render_template('admin_tournaments.html')
 
 @app.route('/admin_support_center')
 @login_required
 def admin_support_center():
     if session.get('username') != 'admin':
         return redirect(url_for('dashboard'))
-    return redirect(url_for('admin_dashboard'))
+    return render_template('admin_support.html')
 
 @app.route('/api_test')
 @login_required
@@ -954,22 +975,63 @@ def clear_all_deposits():
 @app.route('/user_bonuses_page')
 @login_required
 def user_bonuses_page():
-    return render_template('user_bonuses.html')
+    try:
+        with get_db_connection() as conn:
+            c = conn.cursor()
+            c.execute('SELECT * FROM transactions WHERE user_id = ? AND type = "daily_bonus" ORDER BY created_at DESC LIMIT 10', (session['user_id'],))
+            bonus_history = c.fetchall()
+        return render_template('user_bonuses.html', bonus_history=bonus_history, can_claim_today=True)
+    except:
+        return render_template('user_bonuses.html', bonus_history=[], can_claim_today=True)
 
 @app.route('/referrals')
 @login_required
 def referrals():
-    return render_template('referrals.html')
+    try:
+        with get_db_connection() as conn:
+            c = conn.cursor()
+            c.execute('SELECT username, referral_code FROM users WHERE id = ?', (session['user_id'],))
+            user_data = c.fetchone()
+            referral_code = user_data[1] if user_data else 'Loading...'
+            
+            c.execute('SELECT username, created_at FROM users WHERE referred_by = ?', (session['user_id'],))
+            referred_users = c.fetchall()
+            
+        return render_template('referrals.html', 
+                             referral_code=referral_code,
+                             referred_users=referred_users,
+                             referral_earnings=len(referred_users) * 30)
+    except:
+        return render_template('referrals.html', referral_code='Loading...', referred_users=[], referral_earnings=0)
 
 @app.route('/friends')
 @login_required
 def friends():
-    return render_template('friends.html')
+    try:
+        with get_db_connection() as conn:
+            c = conn.cursor()
+            c.execute('SELECT id, username, phone FROM users WHERE id != ? AND username != "admin"', (session['user_id'],))
+            all_users = c.fetchall()
+        return render_template('friends.html', all_users=all_users, friends=[], requests=[])
+    except:
+        return render_template('friends.html', all_users=[], friends=[], requests=[])
 
 @app.route('/match_history')
 @login_required
 def match_history():
-    return render_template('match_history.html')
+    try:
+        with get_db_connection() as conn:
+            c = conn.cursor()
+            c.execute('SELECT * FROM game_matches WHERE creator_id = ? OR opponent_id = ? ORDER BY created_at DESC LIMIT 20', 
+                     (session['user_id'], session['user_id']))
+            matches = c.fetchall()
+            
+            c.execute('SELECT * FROM transactions WHERE user_id = ? ORDER BY created_at DESC LIMIT 10', (session['user_id'],))
+            transactions = c.fetchall()
+            
+        return render_template('match_history.html', matches=matches, transactions=transactions, withdrawals=[])
+    except:
+        return render_template('match_history.html', matches=[], transactions=[], withdrawals=[])
 
 @app.route('/support_chat')
 @login_required
@@ -1021,6 +1083,11 @@ def escalate_support():
 @login_required
 def daily_bonus_status():
     return jsonify({'can_claim': True, 'next_claim': 'tomorrow'})
+
+@app.route('/api/user_balance')
+@login_required
+def api_user_balance():
+    return jsonify({'balance': session.get('balance', 0), 'username': session.get('username', 'User')})
 
 @app.route('/wallet')
 @login_required
