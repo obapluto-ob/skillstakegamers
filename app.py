@@ -104,6 +104,44 @@ def home():
         return redirect(url_for('dashboard'))
     return render_template('home.html')
 
+@app.route('/register_secure', methods=['GET', 'POST'])
+@limiter.limit("3 per minute")
+def register_secure():
+    if request.method == 'POST':
+        username = request.form.get('username', '').strip()
+        email = request.form.get('email', '').strip()
+        password = request.form.get('password', '')
+        
+        if not all([username, email, password]):
+            flash('Please fill in all fields!', 'error')
+            return render_template('register.html')
+        
+        if len(password) < 6:
+            flash('Password must be at least 6 characters!', 'error')
+            return render_template('register.html')
+        
+        try:
+            with get_db_connection() as conn:
+                c = conn.cursor()
+                c.execute('SELECT id FROM users WHERE username = ? OR email = ?', (username, email))
+                if c.fetchone():
+                    flash('Username or email already exists!', 'error')
+                    return render_template('register.html')
+                
+                hashed_password = generate_password_hash(password)
+                referral_code = f"REF{random.randint(100000, 999999)}"
+                
+                c.execute('''INSERT INTO users (username, email, password, referral_code) 
+                           VALUES (?, ?, ?, ?)''', (username, email, hashed_password, referral_code))
+                conn.commit()
+                
+                flash('Registration successful! Please login.', 'success')
+                return redirect(url_for('login'))
+        except Exception as e:
+            flash('Registration failed. Please try again.', 'error')
+    
+    return render_template('register.html')
+
 @app.route('/login', methods=['GET', 'POST'])
 @limiter.limit("5 per minute")
 def login():
@@ -361,6 +399,10 @@ def logout():
     session.clear()
     flash('Logged out successfully!', 'success')
     return redirect(url_for('home'))
+
+@app.route('/register')
+def register():
+    return redirect(url_for('register_secure'))
 
 @app.errorhandler(404)
 def not_found(error):
