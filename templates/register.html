@@ -6,31 +6,166 @@
         <h2 class="auth-title">Create Account</h2>
         <p class="auth-subtitle">Join SkillStake Gaming Platform</p>
         
-        <form method="POST" class="auth-form">
+        <div id="registration-form">
             <div class="form-group">
                 <label for="username">Username</label>
-                <input type="text" id="username" name="username" required 
+                <input type="text" id="username" required 
                        placeholder="Enter your username" class="form-input">
             </div>
             
             <div class="form-group">
                 <label for="email">Email</label>
-                <input type="email" id="email" name="email" required 
+                <input type="email" id="email" required 
                        placeholder="Enter your email" class="form-input">
             </div>
             
             <div class="form-group">
+                <label for="phone">Phone (Optional)</label>
+                <input type="tel" id="phone" 
+                       placeholder="Enter your phone number" class="form-input">
+            </div>
+            
+            <div class="form-group">
                 <label for="password">Password</label>
-                <input type="password" id="password" name="password" required 
+                <input type="password" id="password" required 
                        placeholder="Enter your password" class="form-input">
             </div>
             
-            <button type="submit" class="btn auth-btn">Create Account</button>
-        </form>
+            <button onclick="sendVerificationCode()" class="btn auth-btn">Send Verification Code</button>
+        </div>
+        
+        <div id="verification-form" style="display: none;">
+            <div class="form-group">
+                <label for="verification-code">Enter 6-digit code sent to your email</label>
+                <input type="text" id="verification-code" maxlength="6" 
+                       placeholder="000000" class="form-input code-input">
+            </div>
+            
+            <button onclick="completeRegistration()" class="btn auth-btn">Complete Registration</button>
+            <button onclick="resendVerificationCode()" class="btn btn-secondary">Resend Code</button>
+        </div>
         
         <div class="auth-links">
             <p>Already have an account? <a href="{{ url_for('login') }}">Login here</a></p>
         </div>
     </div>
 </div>
+
+<style>
+.code-input {
+    text-align: center;
+    font-size: 1.5rem;
+    letter-spacing: 0.5rem;
+    font-weight: bold;
+}
+</style>
+
+<script>
+function sendVerificationCode() {
+    const email = document.getElementById('email').value.trim();
+    const username = document.getElementById('username').value.trim();
+    const password = document.getElementById('password').value;
+    
+    if (!email || !username || !password) {
+        alert('Please fill in all required fields');
+        return;
+    }
+    
+    if (password.length < 6) {
+        alert('Password must be at least 6 characters');
+        return;
+    }
+    
+    fetch('/send_verification', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ email: email })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            document.getElementById('registration-form').style.display = 'none';
+            document.getElementById('verification-form').style.display = 'block';
+            document.getElementById('verification-code').focus();
+            alert('Verification code sent to your email!');
+        } else {
+            alert(data.message || 'Failed to send verification code');
+        }
+    })
+    .catch(error => {
+        alert('Error sending verification code. Please try again.');
+    });
+}
+
+function completeRegistration() {
+    const username = document.getElementById('username').value.trim();
+    const email = document.getElementById('email').value.trim();
+    const phone = document.getElementById('phone').value.trim();
+    const password = document.getElementById('password').value;
+    const code = document.getElementById('verification-code').value.trim();
+    
+    if (!code || code.length !== 6) {
+        alert('Please enter the 6-digit verification code');
+        return;
+    }
+    
+    fetch('/register_with_verification', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            username: username,
+            email: email,
+            phone: phone,
+            password: password,
+            code: code
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Registration successful! You can now login.');
+            window.location.href = '/login';
+        } else {
+            alert(data.message || 'Registration failed');
+        }
+    })
+    .catch(error => {
+        alert('Error completing registration. Please try again.');
+    });
+}
+
+function resendVerificationCode() {
+    const email = document.getElementById('email').value.trim();
+    
+    fetch('/send_verification', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ email: email })
+    })
+    .then(response => response.json())
+    .then(data => {
+        alert(data.message || 'Verification code resent');
+    })
+    .catch(error => {
+        alert('Error resending code. Please try again.');
+    });
+}
+
+// Allow Enter key to proceed
+document.addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        if (document.getElementById('registration-form').style.display !== 'none') {
+            sendVerificationCode();
+        } else {
+            completeRegistration();
+        }
+    }
+});
+</script>
 {% endblock %}
