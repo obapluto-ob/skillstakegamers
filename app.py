@@ -950,6 +950,32 @@ def clear_all_deposits():
         return redirect(url_for('dashboard'))
     return redirect(url_for('admin_dashboard'))
 
+# USER ROUTES - Regular user functionality
+@app.route('/user_bonuses_page')
+@login_required
+def user_bonuses_page():
+    return render_template('user_bonuses.html')
+
+@app.route('/referrals')
+@login_required
+def referrals():
+    return render_template('referrals.html')
+
+@app.route('/friends')
+@login_required
+def friends():
+    return render_template('friends.html')
+
+@app.route('/match_history')
+@login_required
+def match_history():
+    return render_template('match_history.html')
+
+@app.route('/support_chat')
+@login_required
+def support_chat():
+    return render_template('support_chat.html')
+
 @app.route('/wallet')
 @login_required
 def wallet():
