@@ -96,11 +96,11 @@ app = Flask(__name__)
 app.secret_key = os.getenv('SECRET_KEY', 'fallback-key-change-in-production')
 app.permanent_session_lifetime = timedelta(hours=24)
 
-# Rate limiting configuration
+# Rate limiting configuration - More reasonable limits
 limiter = Limiter(
     key_func=get_remote_address,
     app=app,
-    default_limits=["1000 per day", "200 per hour"]
+    default_limits=["2000 per day", "500 per hour"]
 )
 
 init_db()
@@ -112,7 +112,7 @@ def home():
     return render_template('home.html')
 
 @app.route('/send_verification', methods=['POST'])
-@limiter.limit("5 per hour")
+@limiter.limit("10 per hour")
 def send_verification():
     try:
         data = request.get_json()
@@ -170,7 +170,7 @@ SkillStake Team
         return jsonify({'success': False, 'message': f'Failed to send email: {str(e)}'})
 
 @app.route('/register_with_verification', methods=['POST'])
-@limiter.limit("3 per hour")
+@limiter.limit("5 per hour")
 def register_with_verification():
     try:
         data = request.get_json()
@@ -230,7 +230,7 @@ def register_with_verification():
         return jsonify({'success': False, 'message': f'Registration failed: {str(e)}'})
 
 @app.route('/register_secure', methods=['GET', 'POST'])
-@limiter.limit("3 per minute")
+@limiter.limit("5 per minute")
 def register_secure():
     if request.method == 'POST':
         username = request.form.get('username', '').strip()
@@ -268,7 +268,7 @@ def register_secure():
     return render_template('register.html')
 
 @app.route('/login', methods=['GET', 'POST'])
-@limiter.limit("5 per minute")
+@limiter.limit("10 per minute")
 def login():
     if request.method == 'POST':
         login_input = request.form.get('login_input', '').strip()
@@ -673,6 +673,110 @@ def logout():
     flash('Logged out successfully!', 'success')
     return redirect(url_for('home'))
 
+@app.route('/forgot_password')
+def forgot_password():
+    return render_template('forgot_password_fixed.html')
+
+@app.route('/send_reset_code', methods=['POST'])
+@limiter.limit("5 per hour")
+def send_reset_code():
+    try:
+        data = request.get_json()
+        email = data.get('email', '').strip().lower()
+        
+        if not email:
+            return jsonify({'success': False, 'message': 'Email is required'})
+        
+        # Check if user exists
+        with get_db_connection() as conn:
+            c = conn.cursor()
+            c.execute('SELECT id FROM users WHERE email = ?', (email,))
+            if not c.fetchone():
+                return jsonify({'success': False, 'message': 'No account found with this email'})
+        
+        # Generate 6-digit code
+        code = ''.join([str(random.randint(0, 9)) for _ in range(6)])
+        
+        # Store code with expiration (10 minutes)
+        reset_codes[email] = {
+            'code': code,
+            'expires': datetime.now() + timedelta(minutes=10)
+        }
+        
+        # Send email
+        gmail_user = os.getenv('GMAIL_USER')
+        gmail_pass = os.getenv('GMAIL_PASS')
+        
+        msg = MIMEMultipart()
+        msg['From'] = gmail_user
+        msg['To'] = email
+        msg['Subject'] = 'SkillStake - Password Reset Code'
+        
+        body = f'''
+Password Reset Request
+
+Your password reset code is: {code}
+
+This code will expire in 10 minutes.
+
+If you didn't request this reset, please ignore this email.
+
+SkillStake Team
+        '''
+        
+        msg.attach(MIMEText(body, 'plain'))
+        
+        server = smtplib.SMTP('smtp.gmail.com', 587)
+        server.starttls()
+        server.login(gmail_user, gmail_pass)
+        text = msg.as_string()
+        server.sendmail(gmail_user, email, text)
+        server.quit()
+        
+        return jsonify({'success': True, 'message': 'Reset code sent to your email'})
+        
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'Failed to send reset code: {str(e)}'})
+
+@app.route('/reset_password_complete', methods=['POST'])
+def reset_password_complete():
+    try:
+        data = request.get_json()
+        email = data.get('email', '').strip().lower()
+        code = data.get('code', '').strip()
+        new_password = data.get('new_password', '')
+        
+        if not all([email, code, new_password]):
+            return jsonify({'success': False, 'message': 'All fields are required'})
+        
+        if len(new_password) < 6:
+            return jsonify({'success': False, 'message': 'Password must be at least 6 characters'})
+        
+        # Verify code
+        if email not in reset_codes:
+            return jsonify({'success': False, 'message': 'Reset session expired'})
+        
+        stored_data = reset_codes[email]
+        if datetime.now() > stored_data['expires'] or stored_data['code'] != code:
+            if email in reset_codes:
+                del reset_codes[email]
+            return jsonify({'success': False, 'message': 'Invalid or expired reset code'})
+        
+        # Update password
+        with get_db_connection() as conn:
+            c = conn.cursor()
+            hashed_password = generate_password_hash(new_password)
+            c.execute('UPDATE users SET password = ? WHERE email = ?', (hashed_password, email))
+            conn.commit()
+        
+        # Clean up reset code
+        del reset_codes[email]
+        
+        return jsonify({'success': True, 'message': 'Password reset successful'})
+        
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'Password reset failed: {str(e)}'})
+
 @app.route('/register')
 def register():
     return redirect(url_for('register_fixed'))
@@ -682,7 +786,7 @@ def register_fixed():
     return render_template('register_fixed.html')
 
 @app.route('/register_with_age', methods=['POST'])
-@limiter.limit("3 per hour")
+@limiter.limit("5 per hour")
 def register_with_age():
     age_confirmed = request.form.get('age_confirmed')
     if not age_confirmed:
