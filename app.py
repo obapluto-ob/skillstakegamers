@@ -1179,6 +1179,7 @@ def fpl_battles():
         # Fetch live Premier League matches from FPL API
         import requests
         from datetime import datetime, timedelta
+        import re
         
         # Get current gameweek and fixtures
         bootstrap_url = 'https://fantasy.premierleague.com/api/bootstrap-static/'
@@ -1189,10 +1190,17 @@ def fpl_battles():
         
         live_matches = []
         teams_data = {}
+        current_gameweek = 1
         
         if bootstrap_response.status_code == 200 and fixtures_response.status_code == 200:
             bootstrap_data = bootstrap_response.json()
             fixtures_data = fixtures_response.json()
+            
+            # Get current gameweek
+            for event in bootstrap_data.get('events', []):
+                if event.get('is_current', False):
+                    current_gameweek = event.get('id', 1)
+                    break
             
             # Create teams lookup
             for team in bootstrap_data['teams']:
@@ -1208,24 +1216,34 @@ def fpl_battles():
             
             for fixture in fixtures_data:
                 if fixture['kickoff_time']:
-                    kickoff = datetime.fromisoformat(fixture['kickoff_time'].replace('Z', '+00:00'))
-                    
-                    # Only show upcoming matches
-                    if today <= kickoff <= next_week and not fixture['finished']:
-                        home_team = teams_data.get(fixture['team_h'], {})
-                        away_team = teams_data.get(fixture['team_a'], {})
+                    try:
+                        # Handle different datetime formats
+                        kickoff_str = fixture['kickoff_time']
+                        if 'T' in kickoff_str:
+                            # Remove timezone info for parsing
+                            kickoff_str = re.sub(r'[+-]\d{2}:\d{2}$|Z$', '', kickoff_str)
+                            kickoff = datetime.fromisoformat(kickoff_str)
+                        else:
+                            kickoff = datetime.strptime(kickoff_str, '%Y-%m-%d %H:%M:%S')
                         
-                        live_matches.append({
-                            'id': fixture['id'],
-                            'home': home_team.get('short_name', 'TBD'),
-                            'away': away_team.get('short_name', 'TBD'),
-                            'home_logo': f"https://resources.premierleague.com/premierleague/badges/25/t{home_team.get('code', 1)}.png",
-                            'away_logo': f"https://resources.premierleague.com/premierleague/badges/25/t{away_team.get('code', 1)}.png",
-                            'time': kickoff.strftime('%d %b %H:%M')
-                        })
+                        # Only show upcoming matches
+                        if today <= kickoff <= next_week and not fixture['finished']:
+                            home_team = teams_data.get(fixture['team_h'], {})
+                            away_team = teams_data.get(fixture['team_a'], {})
+                            
+                            live_matches.append({
+                                'id': fixture['id'],
+                                'home': home_team.get('short_name', 'TBD'),
+                                'away': away_team.get('short_name', 'TBD'),
+                                'home_logo': f"https://resources.premierleague.com/premierleague/badges/25/t{home_team.get('code', 1)}.png",
+                                'away_logo': f"https://resources.premierleague.com/premierleague/badges/25/t{away_team.get('code', 1)}.png",
+                                'time': kickoff.strftime('%d %b %H:%M')
+                            })
+                    except (ValueError, TypeError):
+                        continue
             
-            # Sort by kickoff time
-            live_matches = sorted(live_matches, key=lambda x: x['time'])[:6]  # Show max 6 matches
+            # Sort by time and limit to 6 matches
+            live_matches = live_matches[:6]
         
         # Battle types
         battle_types = [
@@ -1268,7 +1286,8 @@ def fpl_battles():
         return render_template('fpl_battles.html', 
                              live_matches=live_matches,
                              battle_types=battle_types,
-                             open_battles=open_battles)
+                             open_battles=open_battles,
+                             current_gameweek=current_gameweek)
         
     except Exception as e:
         # Fallback data if API fails
@@ -1292,7 +1311,8 @@ def fpl_battles():
         return render_template('fpl_battles.html', 
                              live_matches=[],
                              battle_types=battle_types,
-                             open_battles=[])
+                             open_battles=[],
+                             current_gameweek=1)
 
 @app.route('/join_game_match/<int:match_id>', methods=['POST'])
 @login_required
@@ -1380,6 +1400,19 @@ def create_fpl_battle():
         except:
             pass  # Continue even if API check fails
         
+        # Get current gameweek
+        current_gameweek = 1
+        try:
+            bootstrap_response = requests.get('https://fantasy.premierleague.com/api/bootstrap-static/', timeout=5)
+            if bootstrap_response.status_code == 200:
+                bootstrap_data = bootstrap_response.json()
+                for event in bootstrap_data.get('events', []):
+                    if event.get('is_current', False):
+                        current_gameweek = event.get('id', 1)
+                        break
+        except:
+            pass
+        
         with get_db_connection() as conn:
             c = conn.cursor()
             
@@ -1395,6 +1428,9 @@ def create_fpl_battle():
                 total_pot REAL NOT NULL,
                 winner_id INTEGER,
                 status TEXT DEFAULT 'open',
+                gameweek INTEGER DEFAULT 1,
+                creator_points INTEGER DEFAULT 0,
+                opponent_points INTEGER DEFAULT 0,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 completed_at TIMESTAMP
             )''')
@@ -1409,9 +1445,9 @@ def create_fpl_battle():
             
             # Create battle
             c.execute('''INSERT INTO fpl_battles 
-                       (battle_type, creator_id, creator_fpl_id, stake_amount, total_pot) 
-                       VALUES (?, ?, ?, ?, ?)''',
-                     (battle_type, session['user_id'], fpl_team_id, stake_amount, total_pot))
+                       (battle_type, creator_id, creator_fpl_id, stake_amount, total_pot, gameweek) 
+                       VALUES (?, ?, ?, ?, ?, ?)''',
+                     (battle_type, session['user_id'], fpl_team_id, stake_amount, total_pot, current_gameweek))
             
             # Add transaction
             c.execute('''INSERT INTO transactions (user_id, type, amount, description) 
@@ -1480,6 +1516,162 @@ def join_fpl_battle(battle_id):
         
     except Exception as e:
         return jsonify({'success': False, 'message': 'Error joining battle'})
+
+@app.route('/my_fpl_battles')
+@login_required
+def my_fpl_battles():
+    try:
+        with get_db_connection() as conn:
+            c = conn.cursor()
+            c.execute('''SELECT fb.*, 
+                               cu.username as creator_name,
+                               ou.username as opponent_name,
+                               CASE 
+                                   WHEN fb.creator_id = ? THEN 'creator'
+                                   ELSE 'opponent'
+                               END as user_role
+                       FROM fpl_battles fb
+                       LEFT JOIN users cu ON fb.creator_id = cu.id
+                       LEFT JOIN users ou ON fb.opponent_id = ou.id
+                       WHERE fb.creator_id = ? OR fb.opponent_id = ?
+                       ORDER BY fb.created_at DESC''', 
+                     (session['user_id'], session['user_id'], session['user_id']))
+            battles = c.fetchall()
+        return render_template('my_fpl_battles.html', battles=battles)
+    except:
+        return render_template('my_fpl_battles.html', battles=[])
+
+@app.route('/admin_fpl_battles')
+@login_required
+def admin_fpl_battles():
+    if session.get('username') != 'admin':
+        return redirect(url_for('dashboard'))
+    try:
+        with get_db_connection() as conn:
+            c = conn.cursor()
+            c.execute('''SELECT fb.*, 
+                               cu.username as creator_name,
+                               ou.username as opponent_name
+                       FROM fpl_battles fb
+                       LEFT JOIN users cu ON fb.creator_id = cu.id
+                       LEFT JOIN users ou ON fb.opponent_id = ou.id
+                       ORDER BY fb.created_at DESC''')
+            battles = c.fetchall()
+        return render_template('admin_fpl_battles.html', battles=battles)
+    except:
+        return render_template('admin_fpl_battles.html', battles=[])
+
+@app.route('/resolve_fpl_battles')
+@login_required
+def resolve_fpl_battles():
+    if session.get('username') != 'admin':
+        return redirect(url_for('dashboard'))
+    
+    try:
+        import requests
+        resolved_count = 0
+        
+        with get_db_connection() as conn:
+            c = conn.cursor()
+            
+            # Get active battles
+            c.execute('SELECT * FROM fpl_battles WHERE status = "active"')
+            active_battles = c.fetchall()
+            
+            for battle in active_battles:
+                try:
+                    # Get FPL data for both players
+                    creator_url = f'https://fantasy.premierleague.com/api/entry/{battle[3]}/event/{battle[10]}/picks/'
+                    opponent_url = f'https://fantasy.premierleague.com/api/entry/{battle[5]}/event/{battle[10]}/picks/'
+                    
+                    creator_response = requests.get(creator_url, timeout=5)
+                    opponent_response = requests.get(opponent_url, timeout=5)
+                    
+                    if creator_response.status_code == 200 and opponent_response.status_code == 200:
+                        creator_data = creator_response.json()
+                        opponent_data = opponent_response.json()
+                        
+                        creator_points = creator_data.get('entry_history', {}).get('points', 0)
+                        opponent_points = opponent_data.get('entry_history', {}).get('points', 0)
+                        
+                        # Determine winner
+                        winner_id = None
+                        status = 'completed'
+                        
+                        if creator_points > opponent_points:
+                            winner_id = battle[2]  # creator_id
+                        elif opponent_points > creator_points:
+                            winner_id = battle[4]  # opponent_id
+                        else:
+                            status = 'draw'  # Tie
+                        
+                        # Update battle
+                        c.execute('''UPDATE fpl_battles 
+                                   SET status = ?, winner_id = ?, creator_points = ?, opponent_points = ?, completed_at = CURRENT_TIMESTAMP
+                                   WHERE id = ?''',
+                                 (status, winner_id, creator_points, opponent_points, battle[0]))
+                        
+                        # Award winnings
+                        if winner_id:
+                            c.execute('SELECT balance FROM users WHERE id = ?', (winner_id,))
+                            current_balance = c.fetchone()[0] or 0
+                            new_balance = current_balance + battle[7]  # total_pot
+                            c.execute('UPDATE users SET balance = ? WHERE id = ?', (new_balance, winner_id))
+                            
+                            # Add transaction
+                            c.execute('''INSERT INTO transactions (user_id, type, amount, description) 
+                                       VALUES (?, ?, ?, ?)''',
+                                     (winner_id, 'fpl_battle_win', battle[7], f'Won FPL Battle #{battle[0]}'))
+                        else:
+                            # Refund both players for draw
+                            for user_id in [battle[2], battle[4]]:
+                                c.execute('SELECT balance FROM users WHERE id = ?', (user_id,))
+                                current_balance = c.fetchone()[0] or 0
+                                new_balance = current_balance + battle[6]  # stake_amount
+                                c.execute('UPDATE users SET balance = ? WHERE id = ?', (new_balance, user_id))
+                                
+                                c.execute('''INSERT INTO transactions (user_id, type, amount, description) 
+                                           VALUES (?, ?, ?, ?)''',
+                                         (user_id, 'fpl_battle_refund', battle[6], f'FPL Battle #{battle[0]} - Draw Refund'))
+                        
+                        resolved_count += 1
+                        
+                except Exception as e:
+                    continue
+            
+            conn.commit()
+        
+        flash(f'Resolved {resolved_count} FPL battles', 'success')
+        return redirect(url_for('admin_fpl_battles'))
+        
+    except Exception as e:
+        flash('Error resolving battles', 'error')
+        return redirect(url_for('admin_fpl_battles'))
+
+@app.route('/battle_status/<int:battle_id>')
+@login_required
+def battle_status(battle_id):
+    try:
+        with get_db_connection() as conn:
+            c = conn.cursor()
+            c.execute('''SELECT fb.*, 
+                               cu.username as creator_name,
+                               ou.username as opponent_name
+                       FROM fpl_battles fb
+                       LEFT JOIN users cu ON fb.creator_id = cu.id
+                       LEFT JOIN users ou ON fb.opponent_id = ou.id
+                       WHERE fb.id = ? AND (fb.creator_id = ? OR fb.opponent_id = ?)''',
+                     (battle_id, session['user_id'], session['user_id']))
+            battle = c.fetchone()
+            
+            if not battle:
+                flash('Battle not found', 'error')
+                return redirect(url_for('my_fpl_battles'))
+            
+        return render_template('battle_status.html', battle=battle)
+    except:
+        flash('Error loading battle', 'error')
+        return redirect(url_for('my_fpl_battles'))
 
 
 
