@@ -31,15 +31,52 @@
 
 
 
+<!-- Game Hub Section -->
+<div class="card" style="background: linear-gradient(135deg, rgba(0,255,136,0.1), rgba(102,126,234,0.1)); border: 2px solid #00ff88;">
+    <h3 style="color: #00ff88; margin-bottom: 1.5rem; text-align: center;">🎮 GAME HUB</h3>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem;">
+        <div class="game-hub-card" onclick="window.location.href='{{ url_for('quick_matches') }}'" style="background: linear-gradient(135deg, #667eea, #764ba2); padding: 1.5rem; border-radius: 15px; cursor: pointer; text-align: center; transition: transform 0.3s;">
+            <h4 style="color: white; margin-bottom: 1rem; font-size: 1.4rem;">⚡ Quick Matches</h4>
+            <p style="color: rgba(255,255,255,0.9); margin-bottom: 1rem;">FIFA Mobile & eFootball battles</p>
+            <div style="background: rgba(255,255,255,0.2); padding: 0.5rem; border-radius: 8px; margin-bottom: 1rem;">
+                <span style="color: #00ff88; font-weight: bold;">Min: KSh 80 | Max: KSh 5000</span>
+            </div>
+            <button class="btn" style="background: #00ff88; color: #000; font-weight: bold; width: 100%;">START BATTLE</button>
+        </div>
+        
+        <div class="game-hub-card" onclick="window.location.href='{{ url_for('fpl_battles') }}'" style="background: linear-gradient(135deg, #f093fb, #f5576c); padding: 1.5rem; border-radius: 15px; cursor: pointer; text-align: center; transition: transform 0.3s;">
+            <h4 style="color: white; margin-bottom: 1rem; font-size: 1.4rem;">🏆 FPL Battles</h4>
+            <p style="color: rgba(255,255,255,0.9); margin-bottom: 1rem;">Fantasy Premier League competitions</p>
+            <div style="background: rgba(255,255,255,0.2); padding: 0.5rem; border-radius: 8px; margin-bottom: 1rem;">
+                <span style="color: #ffc107; font-weight: bold;">Weekly Tournaments</span>
+            </div>
+            <button class="btn" style="background: #ffc107; color: #000; font-weight: bold; width: 100%;">JOIN LEAGUE</button>
+        </div>
+    </div>
+</div>
+
+<!-- Navigation Menu -->
 <div class="card">
-    <h3>Quick Actions</h3>
-    <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
-        <a href="{{ url_for('quick_matches') }}" class="btn">Find Match</a>
-        <a href="{{ url_for('wallet') }}" class="btn btn-success">Add Funds</a>
-        <a href="{{ url_for('user_bonuses_page') }}" class="btn" style="background: linear-gradient(135deg, #00ff88, #00cc6a); color: #000; font-weight: 700;">BONUSES</a>
-        <a href="{{ url_for('referrals') }}" class="btn" style="background: linear-gradient(135deg, #ffa502, #ff6348); color: white; font-weight: 700;">REFERRALS</a>
-        <a href="{{ url_for('match_history') }}" class="btn btn-secondary">Match History</a>
-        <a href="{{ url_for('friends') }}" class="btn btn-info">Friends</a>
+    <h3 style="margin-bottom: 1.5rem; text-align: center;">🚀 Quick Actions</h3>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem;">
+        <a href="{{ url_for('wallet') }}" class="nav-btn" style="background: linear-gradient(135deg, #4facfe, #00f2fe); color: white; padding: 1rem; border-radius: 12px; text-decoration: none; text-align: center; font-weight: bold; transition: transform 0.3s;">
+            💰 Wallet
+        </a>
+        <a href="{{ url_for('user_bonuses_page') }}" class="nav-btn" style="background: linear-gradient(135deg, #43e97b, #38f9d7); color: #000; padding: 1rem; border-radius: 12px; text-decoration: none; text-align: center; font-weight: bold; transition: transform 0.3s;">
+            🎁 Bonuses
+        </a>
+        <a href="{{ url_for('referrals') }}" class="nav-btn" style="background: linear-gradient(135deg, #fa709a, #fee140); color: #000; padding: 1rem; border-radius: 12px; text-decoration: none; text-align: center; font-weight: bold; transition: transform 0.3s;">
+            👥 Referrals
+        </a>
+        <a href="{{ url_for('match_history') }}" class="nav-btn" style="background: linear-gradient(135deg, #a8edea, #fed6e3); color: #000; padding: 1rem; border-radius: 12px; text-decoration: none; text-align: center; font-weight: bold; transition: transform 0.3s;">
+            📊 History
+        </a>
+        <a href="{{ url_for('friends') }}" class="nav-btn" style="background: linear-gradient(135deg, #d299c2, #fef9d7); color: #000; padding: 1rem; border-radius: 12px; text-decoration: none; text-align: center; font-weight: bold; transition: transform 0.3s;">
+            👫 Friends
+        </a>
+        <a href="{{ url_for('profile') }}" class="nav-btn" style="background: linear-gradient(135deg, #89f7fe, #66a6ff); color: #000; padding: 1rem; border-radius: 12px; text-decoration: none; text-align: center; font-weight: bold; transition: transform 0.3s;">
+            👤 Profile
+        </a>
     </div>
 </div>
 
@@ -97,8 +134,7 @@
             <h4 style="color: #00ff88; margin-bottom: 1rem;"><img src="/static/icons/gamepad.svg" class="icon icon-gamepad" alt="Games"> Ready to Start Earning?</h4>
             <p style="margin-bottom: 1.5rem;">No matches yet, but that's about to change! Your gaming skills can make you money.</p>
             <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
-                <a href="{{ url_for('games') }}" class="btn btn-success">Create Your First Match</a>
-
+                <a href="{{ url_for('quick_matches') }}" class="btn btn-success">Create Your First Match</a>
             </div>
         </div>
     {% endif %}
@@ -119,3 +155,21 @@ function claimDailyBonus() {
 </script>
 
 {% endblock %}
+
+<style>
+.game-hub-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 25px rgba(0,255,136,0.3);
+}
+
+.nav-btn:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+}
+
+@media (max-width: 768px) {
+    .game-hub-card, .nav-btn {
+        margin-bottom: 1rem;
+    }
+}
+</style>

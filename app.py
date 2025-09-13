@@ -1167,6 +1167,60 @@ def add_funds():
         flash('Deposit feature coming soon!', 'info')
     return redirect(url_for('wallet'))
 
+@app.route('/fpl_battles')
+@login_required
+def fpl_battles():
+    return render_template('fpl_battles.html')
+
+@app.route('/join_game_match/<int:match_id>', methods=['POST'])
+@login_required
+def join_game_match(match_id):
+    game_username = request.form.get('game_username', '').strip()
+    
+    if not game_username:
+        return jsonify({'success': False, 'message': 'Game username is required'})
+    
+    try:
+        with get_db_connection() as conn:
+            c = conn.cursor()
+            
+            # Get match details
+            c.execute('SELECT * FROM game_matches WHERE id = ? AND status = "open"', (match_id,))
+            match = c.fetchone()
+            
+            if not match:
+                return jsonify({'success': False, 'message': 'Match not found or already started'})
+            
+            if match[3] == session['user_id']:
+                return jsonify({'success': False, 'message': 'Cannot join your own match'})
+            
+            stake_amount = match[7]
+            if session.get('balance', 0) < stake_amount:
+                return jsonify({'success': False, 'message': 'Insufficient balance'})
+            
+            # Update match and user balance
+            new_balance = session['balance'] - stake_amount
+            c.execute('UPDATE users SET balance = ? WHERE id = ?', (new_balance, session['user_id']))
+            c.execute('UPDATE game_matches SET opponent_id = ?, opponent_game_username = ?, status = "active" WHERE id = ?', 
+                     (session['user_id'], game_username, match_id))
+            
+            # Add transaction
+            c.execute('INSERT INTO transactions (user_id, type, amount, description) VALUES (?, ?, ?, ?)',
+                     (session['user_id'], 'match_stake', -stake_amount, f'Joined {match[1]} match'))
+            
+            conn.commit()
+            session['balance'] = new_balance
+            
+        return jsonify({'success': True, 'message': 'Successfully joined match!'})
+        
+    except Exception as e:
+        return jsonify({'success': False, 'message': 'Error joining match'})
+
+@app.route('/upload_match_screenshot', methods=['POST'])
+@login_required
+def upload_match_screenshot():
+    return jsonify({'success': False, 'message': 'Screenshot upload feature coming soon!'})
+
 
 
 @app.errorhandler(404)
