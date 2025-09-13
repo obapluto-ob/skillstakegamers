@@ -610,6 +610,16 @@ def verify_login_code():
         # Complete login and update last login
         with get_db_connection() as conn:
             c = conn.cursor()
+            # Add columns if they don't exist
+            try:
+                c.execute('ALTER TABLE users ADD COLUMN last_login TIMESTAMP')
+            except:
+                pass
+            try:
+                c.execute('ALTER TABLE users ADD COLUMN email_verified INTEGER DEFAULT 0')
+            except:
+                pass
+            
             c.execute('UPDATE users SET last_login = CURRENT_TIMESTAMP, email_verified = 1 WHERE id = ?', 
                      (user_data['user_id'],))
             conn.commit()
