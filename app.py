@@ -1431,31 +1431,45 @@ def withdraw_funds():
 def create_fpl_battle():
     try:
         battle_type = request.form.get('battle_type')
-        fpl_team_id = request.form.get('fpl_team_id')
+        fpl_team_id = request.form.get('fpl_team_id', '').strip()
         stake_amount = float(request.form.get('stake_amount', 0))
         
         if not all([battle_type, fpl_team_id, stake_amount]):
             flash('Please fill in all fields', 'error')
             return redirect(url_for('fpl_battles'))
         
-        if stake_amount < 30 or stake_amount > 1000:
-            flash('Stake must be between 30 and 1000 KSh', 'error')
+        # Validate FPL team ID format
+        if not fpl_team_id.isdigit() or len(fpl_team_id) < 6 or len(fpl_team_id) > 8:
+            flash('FPL Team ID must be 6-8 digits (e.g., 1234567)', 'error')
+            return redirect(url_for('fpl_battles'))
+        
+        if stake_amount < 30 or stake_amount > 2000:
+            flash('Stake must be between 30 and 2000 KSh', 'error')
             return redirect(url_for('fpl_battles'))
         
         if session.get('balance', 0) < stake_amount:
-            flash('Insufficient balance', 'error')
+            flash('Insufficient balance. Please add funds to your wallet.', 'error')
             return redirect(url_for('fpl_battles'))
         
-        # Verify FPL team exists
+        # Verify FPL team exists and get team name
+        team_name = 'Unknown Team'
         import requests
         fpl_url = f'https://fantasy.premierleague.com/api/entry/{fpl_team_id}/'
         try:
-            fpl_response = requests.get(fpl_url, timeout=5)
-            if fpl_response.status_code != 200:
-                flash('Invalid FPL Team ID', 'error')
+            fpl_response = requests.get(fpl_url, timeout=8)
+            if fpl_response.status_code == 200:
+                fpl_data = fpl_response.json()
+                team_name = fpl_data.get('name', 'Unknown Team')
+                # Validate it's an active team
+                if not fpl_data.get('id'):
+                    flash('Invalid FPL Team ID. Please check your team ID and try again.', 'error')
+                    return redirect(url_for('fpl_battles'))
+            else:
+                flash('Could not verify FPL Team ID. Please ensure it\'s correct.', 'error')
                 return redirect(url_for('fpl_battles'))
         except:
-            pass  # Continue even if API check fails
+            flash('Unable to verify FPL team. Please check your internet connection and team ID.', 'error')
+            return redirect(url_for('fpl_battles'))
         
         # Get current gameweek
         current_gameweek = 1
@@ -1509,25 +1523,32 @@ def create_fpl_battle():
             # Add transaction
             c.execute('''INSERT INTO transactions (user_id, type, amount, description) 
                        VALUES (?, ?, ?, ?)''',
-                     (session['user_id'], 'fpl_battle_stake', -stake_amount, f'FPL Battle: {battle_type}'))
+                     (session['user_id'], 'fpl_battle_stake', -stake_amount, f'FPL Battle: {battle_type} - Team: {team_name}'))
             
             conn.commit()
         
-        flash(f'FPL Battle created! Stake: KSh {stake_amount}', 'success')
+        flash(f'FPL Battle created successfully! Team: {team_name} | Stake: KSh {stake_amount}', 'success')
         return redirect(url_for('fpl_battles'))
         
+    except ValueError:
+        flash('Invalid stake amount. Please enter a valid number.', 'error')
+        return redirect(url_for('fpl_battles'))
     except Exception as e:
-        flash('Error creating battle', 'error')
+        flash('Error creating battle. Please try again.', 'error')
         return redirect(url_for('fpl_battles'))
 
 @app.route('/join_fpl_battle/<int:battle_id>', methods=['POST'])
 @login_required
 def join_fpl_battle(battle_id):
     try:
-        fpl_team_id = request.form.get('fpl_team_id')
+        fpl_team_id = request.form.get('fpl_team_id', '').strip()
         
         if not fpl_team_id:
             return jsonify({'success': False, 'message': 'FPL Team ID required'})
+        
+        # Validate FPL team ID format
+        if not fpl_team_id.isdigit() or len(fpl_team_id) < 6 or len(fpl_team_id) > 8:
+            return jsonify({'success': False, 'message': 'FPL Team ID must be 6-8 digits'})
         
         with get_db_connection() as conn:
             c = conn.cursor()
@@ -1542,19 +1563,29 @@ def join_fpl_battle(battle_id):
             if battle[2] == session['user_id']:  # creator_id
                 return jsonify({'success': False, 'message': 'Cannot join your own battle'})
             
+            # Check if user already used this FPL ID
+            if battle[3] == fpl_team_id:  # creator_fpl_id
+                return jsonify({'success': False, 'message': 'Cannot use the same FPL team ID as the creator'})
+            
             stake_amount = battle[5]  # stake_amount
             if session.get('balance', 0) < stake_amount:
-                return jsonify({'success': False, 'message': 'Insufficient balance'})
+                return jsonify({'success': False, 'message': 'Insufficient balance. Please add funds.'})
             
-            # Verify FPL team exists
+            # Verify FPL team exists and get team name
+            team_name = 'Unknown Team'
             import requests
             fpl_url = f'https://fantasy.premierleague.com/api/entry/{fpl_team_id}/'
             try:
-                fpl_response = requests.get(fpl_url, timeout=5)
-                if fpl_response.status_code != 200:
-                    return jsonify({'success': False, 'message': 'Invalid FPL Team ID'})
+                fpl_response = requests.get(fpl_url, timeout=8)
+                if fpl_response.status_code == 200:
+                    fpl_data = fpl_response.json()
+                    team_name = fpl_data.get('name', 'Unknown Team')
+                    if not fpl_data.get('id'):
+                        return jsonify({'success': False, 'message': 'Invalid FPL Team ID. Please check and try again.'})
+                else:
+                    return jsonify({'success': False, 'message': 'Could not verify FPL Team ID. Please check it\'s correct.'})
             except:
-                pass  # Continue even if API check fails
+                return jsonify({'success': False, 'message': 'Unable to verify FPL team. Check your connection and team ID.'})
             
             # Update battle and user balance
             new_balance = session['balance'] - stake_amount
@@ -1564,15 +1595,15 @@ def join_fpl_battle(battle_id):
             
             # Add transaction
             c.execute('INSERT INTO transactions (user_id, type, amount, description) VALUES (?, ?, ?, ?)',
-                     (session['user_id'], 'fpl_battle_stake', -stake_amount, f'Joined FPL Battle #{battle_id}'))
+                     (session['user_id'], 'fpl_battle_stake', -stake_amount, f'Joined FPL Battle #{battle_id} - Team: {team_name}'))
             
             conn.commit()
             session['balance'] = new_balance
             
-        return jsonify({'success': True, 'message': 'Successfully joined FPL battle!'})
+        return jsonify({'success': True, 'message': f'Successfully joined FPL battle! Team: {team_name}'})
         
     except Exception as e:
-        return jsonify({'success': False, 'message': 'Error joining battle'})
+        return jsonify({'success': False, 'message': 'Error joining battle. Please try again.'})
 
 @app.route('/my_fpl_battles')
 @login_required

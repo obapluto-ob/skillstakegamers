@@ -213,7 +213,22 @@ document.getElementById('stakeAmount').addEventListener('input', function() {
 // Create match form submission
 document.getElementById('createMatchForm').addEventListener('submit', function(e) {
     e.preventDefault();
-    const formData = new FormData(this);
+    
+    // Validate form
+    const gameType = document.getElementById('gameType').value;
+    const gameMode = document.getElementById('gameMode').value;
+    const gameUsername = document.getElementById('gameUsername').value;
+    const stakeAmount = document.getElementById('stakeAmount').value;
+    
+    if (!gameType || !gameMode || !gameUsername || !stakeAmount) {
+        alert('Please fill in all fields');
+        return;
+    }
+    
+    if (parseFloat(stakeAmount) < 50 || parseFloat(stakeAmount) > 1000) {
+        alert('Stake amount must be between 50 and 1000 KSh');
+        return;
+    }
     
     // Show loading state
     const submitBtn = this.querySelector('button[type="submit"]');
@@ -221,35 +236,35 @@ document.getElementById('createMatchForm').addEventListener('submit', function(e
     submitBtn.textContent = 'Creating...';
     submitBtn.disabled = true;
     
+    // Use URLSearchParams for better compatibility
+    const formData = new URLSearchParams();
+    formData.append('game_type', gameType);
+    formData.append('game_mode', gameMode);
+    formData.append('game_username', gameUsername);
+    formData.append('stake_amount', stakeAmount);
+    
     fetch('/create_game_match', {
         method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
         body: formData
     })
-    .then(response => {
-        if (response.headers.get('content-type')?.includes('application/json')) {
-            return response.json();
-        } else {
-            // Handle redirect response
-            location.reload();
-            return null;
-        }
-    })
+    .then(response => response.json())
     .then(data => {
-        if (data) {
-            if (data.success) {
-                alert(data.message);
-                closeCreateModal();
-                location.reload();
-            } else {
-                alert('Error: ' + data.message);
-                submitBtn.textContent = originalText;
-                submitBtn.disabled = false;
-            }
+        if (data.success) {
+            alert(data.message);
+            closeCreateModal();
+            location.reload();
+        } else {
+            alert('Error: ' + data.message);
         }
     })
     .catch(error => {
         console.error('Match creation error:', error);
-        alert('Error creating match. Please try again.');
+        alert('Error creating match. Please check your balance and try again.');
+    })
+    .finally(() => {
         submitBtn.textContent = originalText;
         submitBtn.disabled = false;
     });
@@ -258,24 +273,38 @@ document.getElementById('createMatchForm').addEventListener('submit', function(e
 // Join match form submission
 document.getElementById('joinMatchForm').addEventListener('submit', function(e) {
     e.preventDefault();
-    const formData = new FormData(this);
+    
     const matchId = document.getElementById('joinMatchId').value;
+    const gameUsername = document.getElementById('joinGameUsername').value;
+    
+    if (!gameUsername) {
+        alert('Please enter your game username');
+        return;
+    }
+    
+    const formData = new URLSearchParams();
+    formData.append('game_username', gameUsername);
     
     fetch(`/join_game_match/${matchId}`, {
         method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
         body: formData
     })
     .then(response => response.json())
     .then(data => {
         if (data.success) {
             alert(data.message);
+            closeJoinModal();
             location.reload();
         } else {
             alert('Error: ' + data.message);
         }
     })
     .catch(error => {
-        alert('Error joining match');
+        console.error('Join match error:', error);
+        alert('Error joining match. Please try again.');
     });
 });
 
