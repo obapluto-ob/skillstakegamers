@@ -385,18 +385,46 @@ def dashboard():
                 flash('User not found. Please login again.', 'error')
                 return redirect(url_for('login'))
             
+            # Update session balance
+            session['balance'] = user[2] or 0
+            
+            # Get user stats
+            c.execute('SELECT COUNT(*) FROM game_matches WHERE (creator_id = ? OR opponent_id = ?) AND winner_id = ?', 
+                     (user_id, user_id, user_id))
+            wins = c.fetchone()[0] or 0
+            
+            c.execute('SELECT COUNT(*) FROM game_matches WHERE (creator_id = ? OR opponent_id = ?) AND winner_id IS NOT NULL AND winner_id != ?', 
+                     (user_id, user_id, user_id))
+            losses = c.fetchone()[0] or 0
+            
+            c.execute('SELECT SUM(amount) FROM transactions WHERE user_id = ? AND type LIKE "%win%"', (user_id,))
+            earnings = c.fetchone()[0] or 0
+            
             stats = {
                 'balance': user[2] or 0,
-                'wins': 0,
-                'losses': 0,
-                'earnings': 0
+                'wins': wins,
+                'losses': losses,
+                'earnings': earnings
             }
             
-            return render_template('dashboard.html', stats=stats, recent_matches=[])
+            # Get recent matches
+            c.execute('''SELECT gm.*, u.username as opponent_name 
+                       FROM game_matches gm 
+                       LEFT JOIN users u ON (CASE WHEN gm.creator_id = ? THEN gm.opponent_id ELSE gm.creator_id END) = u.id
+                       WHERE gm.creator_id = ? OR gm.opponent_id = ? 
+                       ORDER BY gm.created_at DESC LIMIT 5''', (user_id, user_id, user_id))
+            recent_matches = c.fetchall()
+            
+            return render_template('dashboard.html', stats=stats, recent_matches=recent_matches)
             
     except Exception as e:
         flash(f'Dashboard error: {str(e)}', 'error')
         return redirect(url_for('login'))
+
+@app.route('/my_battles')
+@login_required
+def my_battles():
+    return redirect(url_for('my_fpl_battles'))
 
 @app.route('/admin_dashboard')
 @login_required
@@ -473,12 +501,23 @@ def games_hub():
 @app.route('/quick_matches')
 @login_required
 def quick_matches():
+    # Update user balance in session
+    try:
+        with get_db_connection() as conn:
+            c = conn.cursor()
+            c.execute('SELECT balance FROM users WHERE id = ?', (session['user_id'],))
+            user_balance = c.fetchone()
+            if user_balance:
+                session['balance'] = user_balance[0]
+    except:
+        pass
+    
     games_list = [
         {
             'id': 'fifa_mobile',
             'name': 'FIFA Mobile',
-            'min_bet': 100,
-            'max_bet': 5000,
+            'min_bet': 50,
+            'max_bet': 1000,
             'image': 'https://cdn.cloudflare.steamstatic.com/steam/apps/1811260/header.jpg',
             'modes': [
                 {'id': 'h2h', 'name': 'Head to Head', 'description': '11v11 online matches'},
@@ -488,8 +527,8 @@ def quick_matches():
         {
             'id': 'efootball',
             'name': 'eFootball',
-            'min_bet': 80,
-            'max_bet': 4000,
+            'min_bet': 50,
+            'max_bet': 1000,
             'image': 'https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1665460/header.jpg',
             'modes': [
                 {'id': 'quick_match', 'name': 'Quick Match', 'description': 'Fast 1v1 online matches'},
@@ -1165,26 +1204,62 @@ def add_funds():
 @app.route('/fpl_battles')
 @login_required
 def fpl_battles():
+    # Get user's current balance for display
     try:
-        # Fetch live Premier League matches from FPL API
+        with get_db_connection() as conn:
+            c = conn.cursor()
+            c.execute('SELECT balance FROM users WHERE id = ?', (session['user_id'],))
+            user_balance = c.fetchone()
+            if user_balance:
+                session['balance'] = user_balance[0]
+    except:
+        pass
+    
+    # Battle types with better descriptions
+    battle_types = [
+        {
+            'id': 'gameweek_points',
+            'name': 'Gameweek Points Battle',
+            'description': 'Compare total FPL points scored in the current gameweek',
+            'min_bet': 50,
+            'max_bet': 1000
+        },
+        {
+            'id': 'captain_battle',
+            'name': 'Captain Battle',
+            'description': 'Whose captain will score more points this gameweek?',
+            'min_bet': 30,
+            'max_bet': 500
+        },
+        {
+            'id': 'transfer_battle',
+            'name': 'Transfer Battle',
+            'description': 'Best transfer of the gameweek wins',
+            'min_bet': 40,
+            'max_bet': 800
+        },
+        {
+            'id': 'overall_rank',
+            'name': 'Overall Rank Battle',
+            'description': 'Compare FPL overall rankings - lower rank wins',
+            'min_bet': 100,
+            'max_bet': 2000
+        }
+    ]
+    
+    # Get live Premier League matches with better error handling
+    live_matches = []
+    current_gameweek = 1
+    
+    try:
         import requests
         from datetime import datetime, timedelta
-        import re
         
-        # Get current gameweek and fixtures
-        bootstrap_url = 'https://fantasy.premierleague.com/api/bootstrap-static/'
-        fixtures_url = 'https://fantasy.premierleague.com/api/fixtures/'
+        # Get current gameweek and fixtures with shorter timeout
+        bootstrap_response = requests.get('https://fantasy.premierleague.com/api/bootstrap-static/', timeout=5)
         
-        bootstrap_response = requests.get(bootstrap_url, timeout=10)
-        fixtures_response = requests.get(fixtures_url, timeout=10)
-        
-        live_matches = []
-        teams_data = {}
-        current_gameweek = 1
-        
-        if bootstrap_response.status_code == 200 and fixtures_response.status_code == 200:
+        if bootstrap_response.status_code == 200:
             bootstrap_data = bootstrap_response.json()
-            fixtures_data = fixtures_response.json()
             
             # Get current gameweek
             for event in bootstrap_data.get('events', []):
@@ -1193,116 +1268,108 @@ def fpl_battles():
                     break
             
             # Create teams lookup
-            for team in bootstrap_data['teams']:
+            teams_data = {}
+            for team in bootstrap_data.get('teams', []):
                 teams_data[team['id']] = {
                     'name': team['name'],
                     'short_name': team['short_name'],
                     'code': team['code']
                 }
             
-            # Get upcoming fixtures (next 7 days)
-            today = datetime.now()
-            next_week = today + timedelta(days=7)
-            
-            for fixture in fixtures_data:
-                if fixture['kickoff_time']:
-                    try:
-                        # Handle different datetime formats
-                        kickoff_str = fixture['kickoff_time']
-                        if 'T' in kickoff_str:
-                            # Remove timezone info for parsing
-                            kickoff_str = re.sub(r'[+-]\d{2}:\d{2}$|Z$', '', kickoff_str)
-                            kickoff = datetime.fromisoformat(kickoff_str)
-                        else:
-                            kickoff = datetime.strptime(kickoff_str, '%Y-%m-%d %H:%M:%S')
-                        
-                        # Only show upcoming matches
-                        if today <= kickoff <= next_week and not fixture['finished']:
-                            home_team = teams_data.get(fixture['team_h'], {})
-                            away_team = teams_data.get(fixture['team_a'], {})
+            # Get fixtures
+            fixtures_response = requests.get('https://fantasy.premierleague.com/api/fixtures/', timeout=5)
+            if fixtures_response.status_code == 200:
+                fixtures_data = fixtures_response.json()
+                
+                # Get upcoming fixtures (next 3 days)
+                today = datetime.now()
+                next_days = today + timedelta(days=3)
+                
+                for fixture in fixtures_data[:20]:  # Limit to first 20 fixtures
+                    if fixture.get('kickoff_time') and not fixture.get('finished', True):
+                        try:
+                            kickoff_str = fixture['kickoff_time']
+                            if 'T' in kickoff_str:
+                                kickoff_str = kickoff_str.split('T')[0] + ' ' + kickoff_str.split('T')[1][:8]
+                                kickoff = datetime.fromisoformat(kickoff_str.replace('Z', ''))
                             
-                            live_matches.append({
-                                'id': fixture['id'],
-                                'home': home_team.get('short_name', 'TBD'),
-                                'away': away_team.get('short_name', 'TBD'),
-                                'home_logo': f"https://resources.premierleague.com/premierleague/badges/25/t{home_team.get('code', 1)}.png",
-                                'away_logo': f"https://resources.premierleague.com/premierleague/badges/25/t{away_team.get('code', 1)}.png",
-                                'time': kickoff.strftime('%d %b %H:%M')
-                            })
-                    except (ValueError, TypeError):
-                        continue
-            
-            # Sort by time and limit to 6 matches
-            live_matches = live_matches[:6]
-        
-        # Battle types
-        battle_types = [
-            {
-                'id': 'gameweek_points',
-                'name': 'Gameweek Points Battle',
-                'description': 'Compare total points scored in the current gameweek',
-                'min_bet': 50,
-                'max_bet': 1000
-            },
-            {
-                'id': 'captain_battle',
-                'name': 'Captain Battle',
-                'description': 'Whose captain will score more points this gameweek?',
-                'min_bet': 30,
-                'max_bet': 500
-            },
-            {
-                'id': 'transfer_battle',
-                'name': 'Transfer Battle',
-                'description': 'Best transfer of the gameweek wins',
-                'min_bet': 40,
-                'max_bet': 800
-            }
-        ]
-        
-        # Get open battles from database
-        try:
-            with get_db_connection() as conn:
-                c = conn.cursor()
-                c.execute('''SELECT fb.*, u.username as creator_name
-                           FROM fpl_battles fb
-                           JOIN users u ON fb.creator_id = u.id
-                           WHERE fb.status = "open" AND fb.creator_id != ?
-                           ORDER BY fb.created_at DESC LIMIT 10''', (session['user_id'],))
-                open_battles = c.fetchall()
-        except:
-            open_battles = []
-        
-        return render_template('fpl_battles.html', 
-                             live_matches=live_matches,
-                             battle_types=battle_types,
-                             open_battles=open_battles,
-                             current_gameweek=current_gameweek)
-        
+                            if today <= kickoff <= next_days:
+                                home_team = teams_data.get(fixture['team_h'], {})
+                                away_team = teams_data.get(fixture['team_a'], {})
+                                
+                                live_matches.append({
+                                    'id': fixture['id'],
+                                    'home': home_team.get('short_name', 'HOME'),
+                                    'away': away_team.get('short_name', 'AWAY'),
+                                    'home_logo': f"https://resources.premierleague.com/premierleague/badges/25/t{home_team.get('code', 1)}.png",
+                                    'away_logo': f"https://resources.premierleague.com/premierleague/badges/25/t{away_team.get('code', 1)}.png",
+                                    'time': kickoff.strftime('%d %b %H:%M')
+                                })
+                        except:
+                            continue
+                
+                # Limit to 6 matches
+                live_matches = live_matches[:6]
+    
     except Exception as e:
-        # Fallback data if API fails
-        battle_types = [
+        # If API fails, create some sample matches
+        live_matches = [
             {
-                'id': 'gameweek_points',
-                'name': 'Gameweek Points Battle',
-                'description': 'Compare total points scored in the current gameweek',
-                'min_bet': 50,
-                'max_bet': 1000
+                'id': 1,
+                'home': 'ARS',
+                'away': 'CHE',
+                'home_logo': 'https://resources.premierleague.com/premierleague/badges/25/t3.png',
+                'away_logo': 'https://resources.premierleague.com/premierleague/badges/25/t8.png',
+                'time': 'Next GW'
             },
             {
-                'id': 'captain_battle',
-                'name': 'Captain Battle',
-                'description': 'Whose captain will score more points this gameweek?',
-                'min_bet': 30,
-                'max_bet': 500
+                'id': 2,
+                'home': 'LIV',
+                'away': 'MCI',
+                'home_logo': 'https://resources.premierleague.com/premierleague/badges/25/t14.png',
+                'away_logo': 'https://resources.premierleague.com/premierleague/badges/25/t43.png',
+                'time': 'Next GW'
             }
         ]
-        
-        return render_template('fpl_battles.html', 
-                             live_matches=[],
-                             battle_types=battle_types,
-                             open_battles=[],
-                             current_gameweek=1)
+    
+    # Get open battles from database
+    open_battles = []
+    try:
+        with get_db_connection() as conn:
+            c = conn.cursor()
+            # Ensure fpl_battles table exists
+            c.execute('''CREATE TABLE IF NOT EXISTS fpl_battles (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                battle_type TEXT NOT NULL,
+                creator_id INTEGER NOT NULL,
+                creator_fpl_id TEXT NOT NULL,
+                opponent_id INTEGER,
+                opponent_fpl_id TEXT,
+                stake_amount REAL NOT NULL,
+                total_pot REAL NOT NULL,
+                winner_id INTEGER,
+                status TEXT DEFAULT 'open',
+                gameweek INTEGER DEFAULT 1,
+                creator_points INTEGER DEFAULT 0,
+                opponent_points INTEGER DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                completed_at TIMESTAMP
+            )''')
+            
+            c.execute('''SELECT fb.*, u.username as creator_name
+                       FROM fpl_battles fb
+                       JOIN users u ON fb.creator_id = u.id
+                       WHERE fb.status = "open" AND fb.creator_id != ?
+                       ORDER BY fb.created_at DESC LIMIT 10''', (session['user_id'],))
+            open_battles = c.fetchall()
+    except Exception as e:
+        pass
+    
+    return render_template('fpl_battles.html', 
+                         live_matches=live_matches,
+                         battle_types=battle_types,
+                         open_battles=open_battles,
+                         current_gameweek=current_gameweek)
 
 @app.route('/join_game_match/<int:match_id>', methods=['POST'])
 @login_required
