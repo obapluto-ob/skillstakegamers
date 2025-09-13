@@ -880,23 +880,44 @@ def register_with_age():
         flash('Registration failed. Please try again.', 'error')
         return redirect(url_for('register_fixed'))
 
-@app.route('/admin/users')
+@app.route('/admin_users')
 @login_required
 def admin_users():
     if session.get('username') != 'admin':
         return redirect(url_for('dashboard'))
     return redirect(url_for('admin_dashboard'))
 
-@app.route('/admin/transactions')
+@app.route('/admin_transactions')
 @login_required
 def admin_transactions():
     if session.get('username') != 'admin':
         return redirect(url_for('dashboard'))
     return redirect(url_for('admin_dashboard'))
 
-@app.route('/admin/matches')
+@app.route('/admin_matches')
 @login_required
 def admin_matches():
+    if session.get('username') != 'admin':
+        return redirect(url_for('dashboard'))
+    return redirect(url_for('admin_dashboard'))
+
+@app.route('/admin_deposits')
+@login_required
+def admin_deposits():
+    if session.get('username') != 'admin':
+        return redirect(url_for('dashboard'))
+    return redirect(url_for('admin_dashboard'))
+
+@app.route('/admin_withdrawals')
+@login_required
+def admin_withdrawals():
+    if session.get('username') != 'admin':
+        return redirect(url_for('dashboard'))
+    return redirect(url_for('admin_dashboard'))
+
+@app.route('/admin_settings')
+@login_required
+def admin_settings():
     if session.get('username') != 'admin':
         return redirect(url_for('dashboard'))
     return redirect(url_for('admin_dashboard'))
