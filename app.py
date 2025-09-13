@@ -40,8 +40,9 @@ def get_db_connection():
         # This would require additional setup, but for now use SQLite
         pass
     
-    # Use persistent path for SQLite
-    db_path = os.path.join('/tmp', 'gamebet.db') if os.path.exists('/tmp') else 'gamebet.db'
+    # Always use local gamebet.db for persistence
+    # /tmp gets wiped on Render deployments, so avoid it
+    db_path = 'gamebet.db'
     return sqlite3.connect(db_path)
 
 def init_db():
