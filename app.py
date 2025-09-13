@@ -929,6 +929,13 @@ def admin_tournaments():
         return redirect(url_for('dashboard'))
     return redirect(url_for('admin_dashboard'))
 
+@app.route('/admin_support_center')
+@login_required
+def admin_support_center():
+    if session.get('username') != 'admin':
+        return redirect(url_for('dashboard'))
+    return redirect(url_for('admin_dashboard'))
+
 @app.route('/wallet')
 @login_required
 def wallet():
