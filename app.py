@@ -936,6 +936,13 @@ def admin_support_center():
         return redirect(url_for('dashboard'))
     return redirect(url_for('admin_dashboard'))
 
+@app.route('/api_test')
+@login_required
+def api_test():
+    if session.get('username') != 'admin':
+        return redirect(url_for('dashboard'))
+    return redirect(url_for('admin_dashboard'))
+
 @app.route('/wallet')
 @login_required
 def wallet():
