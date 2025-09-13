@@ -34,12 +34,12 @@
 <div class="card">
     <h3>Quick Actions</h3>
     <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
-        <a href="{{ url_for('games') }}" class="btn">Find Match</a>
+        <a href="{{ url_for('quick_matches') }}" class="btn">Find Match</a>
         <a href="{{ url_for('wallet') }}" class="btn btn-success">Add Funds</a>
-        <a href="/unique_dashboard" class="btn" style="background: linear-gradient(135deg, #00ff88, #00cc6a); color: #000; font-weight: 700;">UNIQUE FEATURES</a>
-        <a href="#" onclick="claimDailyBonus()" class="btn" style="background: linear-gradient(135deg, #ffa502, #ff6348); color: white; font-weight: 700;">CLAIM DAILY BONUS</a>
-        <a href="{{ url_for('matches') }}" class="btn btn-secondary">View Matches</a>
-        <a href="{{ url_for('leaderboard') }}" class="btn btn-info">Leaderboard</a>
+        <a href="{{ url_for('user_bonuses_page') }}" class="btn" style="background: linear-gradient(135deg, #00ff88, #00cc6a); color: #000; font-weight: 700;">BONUSES</a>
+        <a href="{{ url_for('referrals') }}" class="btn" style="background: linear-gradient(135deg, #ffa502, #ff6348); color: white; font-weight: 700;">REFERRALS</a>
+        <a href="{{ url_for('match_history') }}" class="btn btn-secondary">Match History</a>
+        <a href="{{ url_for('friends') }}" class="btn btn-info">Friends</a>
     </div>
 </div>
 
