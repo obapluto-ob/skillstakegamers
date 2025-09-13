@@ -6651,6 +6651,15 @@ def system_health():
     # System capabilities
     health['capabilities'] = {
         'basic_ocr': health['core_packages'].get('pytesseract', {}).get('status') == 'installed',
+        'ai_verification': health['ai_packages'].get('scikit-learn', {}).get('status') == 'installed',
+        'enhanced_ocr': health['ai_packages'].get('easyocr', {}).get('status') == 'installed'
+    }
+    
+    return jsonify(health)
+
+if __name__ == '__main__':
+    port = int(os.environ.get('PORT', 5000))
+    app.run(debug=False, host='0.0.0.0', port=port)atus') == 'installed',
         'advanced_ocr': health['ai_packages'].get('easyocr', {}).get('status') == 'installed',
         'machine_learning': health['ai_packages'].get('scikit-learn', {}).get('status') == 'installed',
         'computer_vision': health['core_packages'].get('opencv-python', {}).get('status') == 'installed'
