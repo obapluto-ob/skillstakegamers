@@ -1,0 +1,200 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="hero-section">
+    <div class="hero-content">
+        <h1 class="hero-title">Join SkillStake</h1>
+        <p class="hero-subtitle">Turn Your Gaming Skills Into Real Money</p>
+        <div class="hero-stats">
+            <div class="stat-highlight">Email Verification</div>
+            <div class="stat-highlight">Secure Registration</div>
+            <div class="stat-highlight">Real Money Gaming</div>
+        </div>
+    </div>
+</div>
+
+<div class="auth-container">
+    <div class="auth-card">
+        <h2>Create Your Account</h2>
+        <form method="POST" action="/register_with_age">
+            <input type="hidden" name="age_confirmed" value="1">
+            
+            <div class="form-group">
+                <label>Username</label>
+                <input type="text" name="username" class="form-control" placeholder="Choose a unique username" required minlength="3" maxlength="20">
+                <small style="color: #666;">3-20 characters, letters and numbers only</small>
+            </div>
+
+            <div class="form-group">
+                <label>Email Address</label>
+                <input type="email" name="email" class="form-control" placeholder="your@email.com" required>
+                <small style="color: #666;">Used for login and notifications</small>
+            </div>
+
+            <div class="form-group">
+                <label>Phone Number (Optional)</label>
+                <input type="tel" name="phone" class="form-control" placeholder="0712345678 (for M-Pesa payments)">
+                <small style="color: #666;">Required for withdrawals</small>
+            </div>
+
+            <div class="form-group">
+                <label>Password</label>
+                <div class="password-input-container" style="position: relative;">
+                    <input type="password" id="password" name="password" class="form-control" placeholder="Create a strong password" required minlength="6">
+                    <button type="button" class="password-toggle" onclick="togglePassword('password')" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: #666;">
+                        Show
+                    </button>
+                </div>
+                <small style="color: #666;">Minimum 6 characters</small>
+            </div>
+
+            <div class="form-group">
+                <label>Confirm Password</label>
+                <div class="password-input-container" style="position: relative;">
+                    <input type="password" id="confirmPassword" name="confirm_password" class="form-control" placeholder="Confirm your password" required>
+                    <button type="button" class="password-toggle" onclick="togglePassword('confirmPassword')" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: #666;">
+                        Show
+                    </button>
+                </div>
+                <div id="passwordMatch" style="font-size: 0.8rem; margin-top: 0.25rem;"></div>
+            </div>
+
+            <div class="form-group">
+                <label>Referral Code (Optional)</label>
+                <input type="text" name="referral_code" class="form-control" placeholder="Enter friend's referral code for bonus">
+                <small style="color: #666;">Get bonus when referred by a friend</small>
+            </div>
+
+            <button type="submit" class="btn auth-btn" id="registerBtn" disabled>Create Account & Start Gaming</button>
+        </form>
+        
+        <p class="auth-link">
+            Already have an account? <a href="{{ url_for('login') }}">Login here</a> | 
+            <a href="{{ url_for('forgot_password') }}">Forgot Password?</a>
+        </p>
+    </div>
+    
+    <div class="games-showcase">
+        <h3>Available Games</h3>
+        <div class="games-preview">
+            <div class="game-preview">
+                <img src="https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=50&h=50&fit=crop" style="width: 40px; height: 40px; border-radius: 8px; margin-right: 1rem;">
+                <span>FIFA Mobile</span>
+            </div>
+            <div class="game-preview">
+                <img src="https://images.unsplash.com/photo-1431324155629-1a6deb1dec8d?w=50&h=50&fit=crop" style="width: 40px; height: 40px; border-radius: 8px; margin-right: 1rem;">
+                <span>eFootball</span>
+            </div>
+            <div class="game-preview">
+                <img src="https://images.unsplash.com/photo-1542751371-adc38448a05e?w=50&h=50&fit=crop" style="width: 40px; height: 40px; border-radius: 8px; margin-right: 1rem;">
+                <span>FPL Battles</span>
+            </div>
+        </div>
+        
+        <div class="how-it-works">
+            <h4>How It Works</h4>
+            <div class="step-item">1. Deposit via Crypto (USDT)</div>
+            <div class="step-item">2. Create/Join matches</div>
+            <div class="step-item">3. Upload match results</div>
+            <div class="step-item">4. Winner takes 92% of pot</div>
+            <div class="step-item">5. Withdraw anytime</div>
+        </div>
+    </div>
+</div>
+
+<script>
+function togglePassword(fieldId) {
+    const field = document.getElementById(fieldId);
+    const button = field.nextElementSibling;
+    
+    if (field.type === 'password') {
+        field.type = 'text';
+        button.textContent = 'Hide';
+    } else {
+        field.type = 'password';
+        button.textContent = 'Show';
+    }
+}
+
+function checkPasswordMatch() {
+    const password = document.getElementById('password').value;
+    const confirmPassword = document.getElementById('confirmPassword').value;
+    const matchDiv = document.getElementById('passwordMatch');
+    const registerBtn = document.getElementById('registerBtn');
+    
+    if (confirmPassword === '') {
+        matchDiv.textContent = '';
+        registerBtn.disabled = true;
+        return;
+    }
+    
+    if (password === confirmPassword) {
+        matchDiv.innerHTML = '<span style="color: #28a745;">Passwords match</span>';
+        registerBtn.disabled = false;
+    } else {
+        matchDiv.innerHTML = '<span style="color: #dc3545;">Passwords do not match</span>';
+        registerBtn.disabled = true;
+    }
+}
+
+// Add event listeners
+document.getElementById('password').addEventListener('input', checkPasswordMatch);
+document.getElementById('confirmPassword').addEventListener('input', checkPasswordMatch);
+
+// Enable button if passwords match and all required fields filled
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.querySelector('form');
+    const inputs = form.querySelectorAll('input[required]');
+    
+    function checkForm() {
+        let allFilled = true;
+        inputs.forEach(input => {
+            if (!input.value.trim()) allFilled = false;
+        });
+        
+        const passwordsMatch = document.getElementById('password').value === document.getElementById('confirmPassword').value;
+        document.getElementById('registerBtn').disabled = !(allFilled && passwordsMatch);
+    }
+    
+    inputs.forEach(input => input.addEventListener('input', checkForm));
+});
+</script>
+
+<style>
+.password-input-container {
+    position: relative;
+}
+
+.password-toggle {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #666;
+    font-size: 1.2rem;
+}
+
+.password-toggle:hover {
+    color: #333;
+}
+
+.form-control {
+    padding-right: 40px;
+}
+
+.auth-btn:disabled {
+    background: #6c757d !important;
+    cursor: not-allowed;
+}
+
+.step-item {
+    padding: 0.5rem 0;
+    border-left: 3px solid #00ff88;
+    padding-left: 1rem;
+    margin: 0.5rem 0;
+}
+</style>
+{% endblock %}

@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card">
+    <h2>Verify Email Change</h2>
+    <p>Enter the verification code sent to your new email address:</p>
+    
+    <form method="POST">
+        <div class="form-group">
+            <label>Verification Code</label>
+            <input type="text" name="code" class="form-control" maxlength="6" required>
+        </div>
+        <button type="submit" class="btn">Verify & Update Email</button>
+        <a href="{{ url_for('profile') }}" class="btn btn-secondary">Cancel</a>
+    </form>
+</div>
+{% endblock %}

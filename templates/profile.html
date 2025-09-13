@@ -17,13 +17,13 @@
         
         <div class="form-group">
             <label>Email</label>
-            <input type="email" class="form-control" value="{{ user[2] }}" disabled>
-            <small style="color: #ccc;">Email cannot be changed</small>
+            <input type="email" name="email" class="form-control" value="{{ user[2] if user and user[2] else '' }}" placeholder="your@email.com">
+            <small style="color: #ccc;">Changing email requires verification</small>
         </div>
         
         <div class="form-group">
             <label>Phone Number</label>
-            <input type="tel" name="phone" class="form-control" value="{{ user[5] if user|length > 5 else '' }}" placeholder="+254 700 000 000">
+            <input type="tel" name="phone" class="form-control" value="{{ user[5] if user and user[5] else '' }}" placeholder="+254 700 000 000">
             <small style="color: #ccc;">Other players can contact you during matches</small>
         </div>
         
@@ -32,22 +32,44 @@
 </div>
 
 <div class="card">
+    <h2>Change Password</h2>
+    <form method="POST">
+        <div class="form-group">
+            <label>Current Password</label>
+            <input type="password" name="current_password" class="form-control" placeholder="Enter current password">
+        </div>
+        
+        <div class="form-group">
+            <label>New Password</label>
+            <input type="password" name="new_password" class="form-control" placeholder="Enter new password (min 6 characters)">
+        </div>
+        
+        <div class="form-group">
+            <label>Confirm New Password</label>
+            <input type="password" name="confirm_password" class="form-control" placeholder="Confirm new password">
+        </div>
+        
+        <button type="submit" class="btn">Change Password</button>
+    </form>
+</div>
+
+<div class="card">
     <h2>Gaming Stats</h2>
     <div class="stats-grid">
         <div class="stat-card">
-            <div class="stat-number">{{ user[6] or 0 }}</div>
+            <div class="stat-number">{{ user[8] or 0 }}</div>
             <div class="stat-label">Wins</div>
         </div>
         <div class="stat-card">
-            <div class="stat-number">{{ user[7] or 0 }}</div>
+            <div class="stat-number">{{ user[9] or 0 }}</div>
             <div class="stat-label">Losses</div>
         </div>
         <div class="stat-card">
-            <div class="stat-number">KSh {{ "%.0f"|format((user[8] or 0)|float) }}</div>
+            <div class="stat-number">KSh {{ "%.0f"|format((user[10] or 0)|float) }}</div>
             <div class="stat-label">Total Earnings</div>
         </div>
         <div class="stat-card">
-            <div class="stat-number">{{ "%.1f"|format(((user[6] or 0) * 100.0 / ((user[6] or 0) + (user[7] or 0))) if ((user[6] or 0) + (user[7] or 0)) > 0 else 0) }}%</div>
+            <div class="stat-number">{{ "%.1f"|format(((user[8] or 0) * 100.0 / ((user[8] or 0) + (user[9] or 0))) if ((user[8] or 0) + (user[9] or 0)) > 0 else 0) }}%</div>
             <div class="stat-label">Win Rate</div>
         </div>
     </div>

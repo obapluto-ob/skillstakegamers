@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card">
+    <h1>⚔️ My FPL Battles</h1>
+    <p>Track all your Fantasy Premier League battles</p>
+</div>
+
+{% if battles %}
+    <div style="display: grid; gap: 1rem;">
+        {% for battle in battles %}
+        <div class="card">
+            <div style="display: flex; justify-content: between; align-items: center;">
+                <div style="flex: 1;">
+                    <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 0.5rem;">
+                        <h4 style="margin: 0;">{{ battle[1]|replace('_', ' ')|title }}</h4>
+                        <span class="status-badge status-{{ battle[9] }}">{{ battle[9]|title }}</span>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
+                        <div>
+                            <strong>Stake:</strong> KSh {{ battle[5] }}<br>
+                            <strong>Pot:</strong> KSh {{ battle[6] }}
+                        </div>
+                        <div>
+                            <strong>Gameweek:</strong> {{ battle[10] }}<br>
+                            <strong>Created:</strong> {{ battle[15][:10] }}
+                        </div>
+                        <div>
+                            {% if battle[-1] == 'creator' %}
+                                <strong>You vs:</strong> 
+                                {% if battle[-2] %}{{ battle[-2] }}{% else %}Waiting...{% endif %}
+                            {% else %}
+                                <strong>You vs:</strong> {{ battle[-3] }}
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <!-- Battle Status Info -->
+                    {% if battle[9] == 'open' %}
+                        <div style="color: #ffc107;">
+                            🕐 Waiting for opponent to join
+                        </div>
+                    {% elif battle[9] == 'active' %}
+                        <div style="color: #dc3545;">
+                            🔴 Battle in progress - Gameweek {{ battle[10] }}
+                        </div>
+                    {% elif battle[9] == 'completed' %}
+                        {% if (battle[-1] == 'creator' and battle[8] == battle[2]) or (battle[-1] == 'opponent' and battle[8] == battle[4]) %}
+                            <div style="color: #28a745;">
+                                🏆 You won! Final scores: {{ battle[12] }} vs {{ battle[13] }}
+                            </div>
+                        {% elif battle[8] %}
+                            <div style="color: #dc3545;">
+                                😞 You lost. Final scores: {{ battle[12] }} vs {{ battle[13] }}
+                            </div>
+                        {% else %}
+                            <div style="color: #6c757d;">
+                                🤝 Draw - Stakes refunded
+                            </div>
+                        {% endif %}
+                    {% endif %}
+                </div>
+                
+                <div style="margin-left: 1rem;">
+                    <a href="/battle_status/{{ battle[0] }}" class="btn btn-primary">View Details</a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+{% else %}
+    <div class="card">
+        <div style="text-align: center; padding: 2rem;">
+            <h3>No battles yet</h3>
+            <p>Create your first FPL battle to get started!</p>
+            <a href="/fpl_battles" class="btn btn-primary">Create Battle</a>
+        </div>
+    </div>
+{% endif %}
+
+<div class="card">
+    <div style="display: flex; gap: 1rem;">
+        <a href="/fpl_battles" class="btn btn-success">Create New Battle</a>
+        <a href="/dashboard" class="btn btn-secondary">← Back to Dashboard</a>
+    </div>
+</div>
+
+{% endblock %}

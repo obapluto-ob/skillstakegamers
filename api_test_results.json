@@ -1,0 +1,205 @@
+{
+  "timestamp": "2025-09-08T17:47:46.513340",
+  "fifa_results": [
+    {
+      "endpoint": "https://www.ea.com/fifa/fifa-mobile/api/player/testuser123",
+      "status_code": 404,
+      "latency_ms": 2239.94,
+      "success": false,
+      "response_size": 80314,
+      "content_type": "text/html; charset=UTF-8",
+      "has_json": false
+    },
+    {
+      "endpoint": "https://fifamobile.gg/api/player/testuser123",
+      "error": "Connection Error",
+      "success": false
+    },
+    {
+      "endpoint": "https://www.googleapis.com/games/v1/players/testuser123",
+      "status_code": 401,
+      "latency_ms": 1209.74,
+      "success": false,
+      "response_size": 831,
+      "content_type": "application/json; charset=UTF-8",
+      "has_json": false
+    },
+    {
+      "endpoint": "https://api.fifamobile.com/player/testuser123",
+      "error": "Connection Error",
+      "success": false
+    },
+    {
+      "endpoint": "https://fifamobile.com/api/v1/player/testuser123",
+      "error": "Timeout (>10s)",
+      "success": false
+    },
+    {
+      "endpoint": "https://www.ea.com/fifa/fifa-mobile/api/player/player1",
+      "status_code": 404,
+      "latency_ms": 1358.89,
+      "success": false,
+      "response_size": 80314,
+      "content_type": "text/html; charset=UTF-8",
+      "has_json": false
+    },
+    {
+      "endpoint": "https://fifamobile.gg/api/player/player1",
+      "error": "Connection Error",
+      "success": false
+    },
+    {
+      "endpoint": "https://www.googleapis.com/games/v1/players/player1",
+      "status_code": 401,
+      "latency_ms": 972.93,
+      "success": false,
+      "response_size": 831,
+      "content_type": "application/json; charset=UTF-8",
+      "has_json": false
+    },
+    {
+      "endpoint": "https://api.fifamobile.com/player/player1",
+      "error": "Connection Error",
+      "success": false
+    },
+    {
+      "endpoint": "https://fifamobile.com/api/v1/player/player1",
+      "error": "Timeout (>10s)",
+      "success": false
+    },
+    {
+      "endpoint": "https://www.ea.com/fifa/fifa-mobile/api/player/gamer2024",
+      "status_code": 404,
+      "latency_ms": 1457.09,
+      "success": false,
+      "response_size": 80314,
+      "content_type": "text/html; charset=UTF-8",
+      "has_json": false
+    },
+    {
+      "endpoint": "https://fifamobile.gg/api/player/gamer2024",
+      "error": "Connection Error",
+      "success": false
+    },
+    {
+      "endpoint": "https://www.googleapis.com/games/v1/players/gamer2024",
+      "status_code": 401,
+      "latency_ms": 998.5,
+      "success": false,
+      "response_size": 831,
+      "content_type": "application/json; charset=UTF-8",
+      "has_json": false
+    },
+    {
+      "endpoint": "https://api.fifamobile.com/player/gamer2024",
+      "error": "Connection Error",
+      "success": false
+    },
+    {
+      "endpoint": "https://fifamobile.com/api/v1/player/gamer2024",
+      "error": "Timeout (>10s)",
+      "success": false
+    }
+  ],
+  "efootball_results": [
+    {
+      "endpoint": "https://www.konami.com/efootball/api/player/testuser123",
+      "status_code": 404,
+      "latency_ms": 2145.61,
+      "success": false,
+      "response_size": 43397,
+      "content_type": "text/html; charset=UTF-8",
+      "has_json": false
+    },
+    {
+      "endpoint": "https://efootball.pro/api/player/testuser123",
+      "error": "Connection Error",
+      "success": false
+    },
+    {
+      "endpoint": "https://api.efootball.com/player/testuser123",
+      "error": "Connection Error",
+      "success": false
+    },
+    {
+      "endpoint": "https://efootball.gg/api/player/testuser123",
+      "error": "Connection Error",
+      "success": false
+    },
+    {
+      "endpoint": "https://www.konami.com/wepes/2024/api/player/testuser123",
+      "status_code": 404,
+      "latency_ms": 1150.58,
+      "success": false,
+      "response_size": 2780,
+      "content_type": "text/html; charset=utf-8",
+      "has_json": false
+    },
+    {
+      "endpoint": "https://www.konami.com/efootball/api/player/player1",
+      "status_code": 404,
+      "latency_ms": 1585.25,
+      "success": false,
+      "response_size": 43397,
+      "content_type": "text/html; charset=UTF-8",
+      "has_json": false
+    },
+    {
+      "endpoint": "https://efootball.pro/api/player/player1",
+      "error": "Connection Error",
+      "success": false
+    },
+    {
+      "endpoint": "https://api.efootball.com/player/player1",
+      "error": "Connection Error",
+      "success": false
+    },
+    {
+      "endpoint": "https://efootball.gg/api/player/player1",
+      "error": "Connection Error",
+      "success": false
+    },
+    {
+      "endpoint": "https://www.konami.com/wepes/2024/api/player/player1",
+      "status_code": 404,
+      "latency_ms": 1433.84,
+      "success": false,
+      "response_size": 2780,
+      "content_type": "text/html; charset=utf-8",
+      "has_json": false
+    },
+    {
+      "endpoint": "https://www.konami.com/efootball/api/player/gamer2024",
+      "status_code": 404,
+      "latency_ms": 1846.11,
+      "success": false,
+      "response_size": 43397,
+      "content_type": "text/html; charset=UTF-8",
+      "has_json": false
+    },
+    {
+      "endpoint": "https://efootball.pro/api/player/gamer2024",
+      "error": "Connection Error",
+      "success": false
+    },
+    {
+      "endpoint": "https://api.efootball.com/player/gamer2024",
+      "error": "Connection Error",
+      "success": false
+    },
+    {
+      "endpoint": "https://efootball.gg/api/player/gamer2024",
+      "error": "Connection Error",
+      "success": false
+    },
+    {
+      "endpoint": "https://www.konami.com/wepes/2024/api/player/gamer2024",
+      "status_code": 404,
+      "latency_ms": 1248.5,
+      "success": false,
+      "response_size": 2780,
+      "content_type": "text/html; charset=utf-8",
+      "has_json": false
+    }
+  ]
+}

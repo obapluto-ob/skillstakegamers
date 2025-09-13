@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bonus Security Dashboard - SkillStake Admin</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+        .header {
+            background: rgba(255,255,255,0.95);
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        .header h1 { color: #2c3e50; margin-bottom: 10px; }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .stat-card {
+            background: rgba(255,255,255,0.95);
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        .stat-value { font-size: 2rem; font-weight: bold; margin-bottom: 5px; }
+        .stat-label { color: #666; font-size: 0.9rem; }
+        .high-risk { color: #e74c3c; }
+        .medium-risk { color: #f39c12; }
+        .low-risk { color: #27ae60; }
+        .security-table {
+            background: rgba(255,255,255,0.95);
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .table-header {
+            background: #34495e;
+            color: white;
+            padding: 15px 20px;
+            font-weight: bold;
+        }
+        .table-content { max-height: 400px; overflow-y: auto; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #eee; }
+        th { background: #f8f9fa; font-weight: 600; }
+        .risk-high { background: #ffebee; }
+        .risk-medium { background: #fff3e0; }
+        .risk-low { background: #e8f5e8; }
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            margin: 2px;
+        }
+        .btn-danger { background: #e74c3c; color: white; }
+        .btn-warning { background: #f39c12; color: white; }
+        .btn-success { background: #27ae60; color: white; }
+        .btn-info { background: #3498db; color: white; }
+        .controls {
+            background: rgba(255,255,255,0.95);
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        .control-group {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .alert {
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+        }
+        .alert-danger { background: #ffebee; border-left: 4px solid #e74c3c; }
+        .alert-warning { background: #fff3e0; border-left: 4px solid #f39c12; }
+        .alert-success { background: #e8f5e8; border-left: 4px solid #27ae60; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🛡️ Bonus Security Dashboard</h1>
+            <p>Real-time monitoring and fraud prevention for daily bonus system</p>
+        </div>
+
+        <!-- Security Statistics -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value high-risk" id="highRiskUsers">0</div>
+                <div class="stat-label">High Risk Users</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value medium-risk" id="mediumRiskUsers">0</div>
+                <div class="stat-label">Medium Risk Users</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="dailyBonusTotal">0 KSh</div>
+                <div class="stat-label">Daily Bonus Paid</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="poolRemaining">15,000 KSh</div>
+                <div class="stat-label">Pool Remaining</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="suspiciousIPs">0</div>
+                <div class="stat-label">Suspicious IPs</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="blockedClaims">0</div>
+                <div class="stat-label">Blocked Claims Today</div>
+            </div>
+        </div>
+
+        <!-- Security Controls -->
+        <div class="controls">
+            <h3>🔧 Security Controls</h3>
+            <div class="control-group">
+                <button class="btn btn-danger" onclick="emergencyStop()">🚨 Emergency Stop All Bonuses</button>
+                <button class="btn btn-warning" onclick="adjustDailyLimit()">⚙️ Adjust Daily Limit</button>
+                <button class="btn btn-info" onclick="refreshData()">🔄 Refresh Data</button>
+                <button class="btn btn-success" onclick="exportSecurityReport()">📊 Export Report</button>
+            </div>
+            <div class="control-group">
+                <label>Daily Bonus Pool Limit:</label>
+                <input type="number" id="dailyLimit" value="15000" min="1000" max="50000">
+                <span>KSh</span>
+                <button class="btn btn-info" onclick="updateLimit()">Update</button>
+            </div>
+        </div>
+
+        <!-- High Risk Users -->
+        <div class="security-table">
+            <div class="table-header">⚠️ High Risk Users (Real-time)</div>
+            <div class="table-content">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>User</th>
+                            <th>Risk Score</th>
+                            <th>Risk Factors</th>
+                            <th>Last Claim</th>
+                            <th>IP Address</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="highRiskTable">
+                        <tr><td colspan="6" style="text-align: center; color: #666;">Loading...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Suspicious Activities -->
+        <div class="security-table">
+            <div class="table-header">🔍 Recent Suspicious Activities</div>
+            <div class="table-content">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            <th>User</th>
+                            <th>Activity</th>
+                            <th>Risk Level</th>
+                            <th>Details</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="suspiciousTable">
+                        <tr><td colspan="6" style="text-align: center; color: #666;">Loading...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- IP Analysis -->
+        <div class="security-table">
+            <div class="table-header">🌐 IP Address Analysis</div>
+            <div class="table-content">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>IP Address</th>
+                            <th>Users Today</th>
+                            <th>Claims Today</th>
+                            <th>Risk Level</th>
+                            <th>Location</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ipAnalysisTable">
+                        <tr><td colspan="6" style="text-align: center; color: #666;">Loading...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Real-time data refresh
+        function refreshData() {
+            loadSecurityStats();
+            loadHighRiskUsers();
+            loadSuspiciousActivities();
+            loadIPAnalysis();
+        }
+
+        function loadSecurityStats() {
+            fetch('/admin/bonus_security_stats')
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        document.getElementById('highRiskUsers').textContent = data.stats.high_risk_users;
+                        document.getElementById('mediumRiskUsers').textContent = data.stats.medium_risk_users;
+                        document.getElementById('dailyBonusTotal').textContent = data.stats.daily_bonus_total + ' KSh';
+                        document.getElementById('poolRemaining').textContent = data.stats.pool_remaining + ' KSh';
+                        document.getElementById('suspiciousIPs').textContent = data.stats.suspicious_ips;
+                        document.getElementById('blockedClaims').textContent = data.stats.blocked_claims;
+                        
+                        // Update pool remaining color based on level
+                        const poolElement = document.getElementById('poolRemaining');
+                        const remaining = data.stats.pool_remaining;
+                        if (remaining < 3000) {
+                            poolElement.className = 'stat-value high-risk';
+                        } else if (remaining < 7000) {
+                            poolElement.className = 'stat-value medium-risk';
+                        } else {
+                            poolElement.className = 'stat-value low-risk';
+                        }
+                    }
+                })
+                .catch(e => console.error('Error loading stats:', e));
+        }
+
+        function loadHighRiskUsers() {
+            fetch('/admin/high_risk_users')
+                .then(r => r.json())
+                .then(data => {
+                    const tbody = document.getElementById('highRiskTable');
+                    if (data.success && data.users.length > 0) {
+                        tbody.innerHTML = data.users.map(user => `
+                            <tr class="risk-${user.risk_level}">
+                                <td><strong>${user.username}</strong><br><small>ID: ${user.user_id}</small></td>
+                                <td><span class="${user.risk_score > 0.7 ? 'high-risk' : 'medium-risk'}">${(user.risk_score * 100).toFixed(0)}%</span></td>
+                                <td><small>${user.risk_factors}</small></td>
+                                <td>${user.last_claim || 'Never'}</td>
+                                <td><code>${user.ip_address}</code></td>
+                                <td>
+                                    <button class="btn btn-danger" onclick="restrictUser(${user.user_id})">Restrict</button>
+                                    <button class="btn btn-warning" onclick="flagUser(${user.user_id})">Flag</button>
+                                </td>
+                            </tr>
+                        `).join('');
+                    } else {
+                        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #27ae60;">✅ No high-risk users detected</td></tr>';
+                    }
+                })
+                .catch(e => console.error('Error loading high-risk users:', e));
+        }
+
+        function loadSuspiciousActivities() {
+            fetch('/admin/suspicious_activities')
+                .then(r => r.json())
+                .then(data => {
+                    const tbody = document.getElementById('suspiciousTable');
+                    if (data.success && data.activities.length > 0) {
+                        tbody.innerHTML = data.activities.map(activity => `
+                            <tr class="risk-${activity.severity.toLowerCase()}">
+                                <td>${new Date(activity.created_at).toLocaleString()}</td>
+                                <td><strong>${activity.username}</strong></td>
+                                <td>${activity.violation_type}</td>
+                                <td><span class="${activity.severity.toLowerCase()}-risk">${activity.severity}</span></td>
+                                <td><small>${activity.details}</small></td>
+                                <td>
+                                    <button class="btn btn-info" onclick="investigateUser(${activity.user_id})">Investigate</button>
+                                </td>
+                            </tr>
+                        `).join('');
+                    } else {
+                        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #27ae60;">✅ No suspicious activities detected</td></tr>';
+                    }
+                })
+                .catch(e => console.error('Error loading suspicious activities:', e));
+        }
+
+        function loadIPAnalysis() {
+            fetch('/admin/ip_analysis')
+                .then(r => r.json())
+                .then(data => {
+                    const tbody = document.getElementById('ipAnalysisTable');
+                    if (data.success && data.ips.length > 0) {
+                        tbody.innerHTML = data.ips.map(ip => `
+                            <tr class="risk-${ip.risk_level}">
+                                <td><code>${ip.ip_address}</code></td>
+                                <td>${ip.users_today}</td>
+                                <td>${ip.claims_today}</td>
+                                <td><span class="${ip.risk_level}-risk">${ip.risk_level.toUpperCase()}</span></td>
+                                <td>${ip.location || 'Unknown'}</td>
+                                <td>
+                                    <button class="btn btn-danger" onclick="blockIP('${ip.ip_address}')">Block IP</button>
+                                    <button class="btn btn-warning" onclick="limitIP('${ip.ip_address}')">Limit</button>
+                                </td>
+                            </tr>
+                        `).join('');
+                    } else {
+                        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #27ae60;">✅ No suspicious IP activity detected</td></tr>';
+                    }
+                })
+                .catch(e => console.error('Error loading IP analysis:', e));
+        }
+
+        // Security Actions
+        function restrictUser(userId) {
+            if (confirm('Restrict this user\'s bonus eligibility?')) {
+                fetch('/admin/restrict_user_bonus', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({user_id: userId, restriction_level: 3})
+                })
+                .then(r => r.json())
+                .then(data => {
+                    alert(data.message);
+                    refreshData();
+                });
+            }
+        }
+
+        function flagUser(userId) {
+            const reason = prompt('Enter reason for flagging:');
+            if (reason) {
+                fetch('/admin/flag_user', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({user_id: userId, reason: reason})
+                })
+                .then(r => r.json())
+                .then(data => {
+                    alert(data.message);
+                    refreshData();
+                });
+            }
+        }
+
+        function blockIP(ipAddress) {
+            if (confirm(`Block all bonus claims from IP ${ipAddress}?`)) {
+                fetch('/admin/block_ip', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ip_address: ipAddress})
+                })
+                .then(r => r.json())
+                .then(data => {
+                    alert(data.message);
+                    refreshData();
+                });
+            }
+        }
+
+        function emergencyStop() {
+            if (confirm('🚨 EMERGENCY STOP: This will disable ALL bonus claims platform-wide. Continue?')) {
+                fetch('/admin/emergency_stop_bonuses', {method: 'POST'})
+                .then(r => r.json())
+                .then(data => {
+                    alert(data.message);
+                    refreshData();
+                });
+            }
+        }
+
+        function adjustDailyLimit() {
+            const newLimit = prompt('Enter new daily bonus pool limit (KSh):', '15000');
+            if (newLimit && !isNaN(newLimit)) {
+                document.getElementById('dailyLimit').value = newLimit;
+                updateLimit();
+            }
+        }
+
+        function updateLimit() {
+            const limit = document.getElementById('dailyLimit').value;
+            fetch('/admin/update_bonus_limit', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({daily_limit: parseInt(limit)})
+            })
+            .then(r => r.json())
+            .then(data => {
+                alert(data.message);
+                refreshData();
+            });
+        }
+
+        function exportSecurityReport() {
+            window.open('/admin/export_security_report', '_blank');
+        }
+
+        function investigateUser(userId) {
+            window.open(`/admin/user_investigation/${userId}`, '_blank');
+        }
+
+        // Auto-refresh every 30 seconds
+        setInterval(refreshData, 30000);
+
+        // Initial load
+        refreshData();
+
+        // Add real-time alerts
+        function checkForAlerts() {
+            fetch('/admin/security_alerts')
+                .then(r => r.json())
+                .then(data => {
+                    if (data.alerts && data.alerts.length > 0) {
+                        data.alerts.forEach(alert => {
+                            showAlert(alert.message, alert.severity);
+                        });
+                    }
+                });
+        }
+
+        function showAlert(message, severity) {
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-${severity}`;
+            alertDiv.innerHTML = `<strong>Security Alert:</strong> ${message}`;
+            document.querySelector('.container').insertBefore(alertDiv, document.querySelector('.stats-grid'));
+            
+            setTimeout(() => alertDiv.remove(), 10000);
+        }
+
+        // Check for alerts every 10 seconds
+        setInterval(checkForAlerts, 10000);
+    </script>
+</body>
+</html>

@@ -12,20 +12,20 @@
     <h3 style="color: #00ff88; margin-bottom: 1rem; font-size: 1.8rem;"><img src="/static/icons/trophy.svg" class="icon icon-trophy" alt="Trophy"> Your Path to Domination</h3>
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem;">
         <div style="background: linear-gradient(135deg, rgba(255,193,7,0.2), rgba(255,193,7,0.1)); padding: 1.5rem; border-radius: 12px; border-left: 4px solid #ffc107;">
-            <h4 style="color: #ffc107; font-size: 1.3rem;">⚡ Master Your Craft</h4>
-            <p style="font-weight: 500;">Start with KSh 50-100 matches. Build your reputation, sharpen your skills, and establish your dominance in the arena!</p>
+            <h4 style="color: #ffc107; font-size: 1.3rem;">Quick Matches</h4>
+            <p style="font-weight: 500;">FIFA Mobile and eFootball battles. Start with KSh 80-100 matches. OCR verification for instant results!</p>
         </div>
         <div style="background: linear-gradient(135deg, rgba(23,162,184,0.2), rgba(23,162,184,0.1)); padding: 1.5rem; border-radius: 12px; border-left: 4px solid #17a2b8;">
-            <h4 style="color: #17a2b8; font-size: 1.3rem;">🏆 Conquer Tournaments</h4>
-            <p style="font-weight: 500;">Enter the big leagues! Tournaments are where legends are made. Low entry, massive rewards. Your skills deserve the spotlight!</p>
+            <h4 style="color: #17a2b8; font-size: 1.3rem;">FPL Battles</h4>
+            <p style="font-weight: 500;">Fantasy Premier League competitions. Use your football knowledge to win real money. Live fixtures updated daily!</p>
         </div>
         <div style="background: linear-gradient(135deg, rgba(40,167,69,0.2), rgba(40,167,69,0.1)); padding: 1.5rem; border-radius: 12px; border-left: 4px solid #28a745;">
-            <h4 style="color: #28a745; font-size: 1.3rem;">💰 Build Your Empire</h4>
-            <p style="font-weight: 500;">Recruit your squad! KSh 30 per friend + 4% lifetime earnings. Turn your network into your net worth!</p>
+            <h4 style="color: #28a745; font-size: 1.3rem;">Build Your Network</h4>
+            <p style="font-weight: 500;">Invite friends to join the platform. Earn referral bonuses and build your gaming community!</p>
         </div>
     </div>
     <div style="margin-top: 1rem; padding: 1rem; background: rgba(255,193,7,0.1); border-radius: 8px; text-align: center;">
-        <strong style="color: #ffc107; font-size: 1.1rem;"><img src="/static/icons/money.svg" class="icon icon-money" alt="Money"> Champion's Mindset:</strong> Consistency breeds champions. Small victories compound into massive success. Play smart, dominate often!
+        <strong style="color: #ffc107; font-size: 1.1rem;">Pro Tip:</strong> Combine gaming skills with football knowledge. Play FIFA matches and FPL battles for maximum earning potential!
     </div>
 </div>
 
@@ -35,48 +35,15 @@
     <h3>Quick Actions</h3>
     <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
         <a href="{{ url_for('games') }}" class="btn">Find Match</a>
-        <a href="{{ url_for('live_streams') }}" class="btn btn-danger">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                <circle cx="12" cy="12" r="8"/>
-            </svg>
-            LIVE
-        </a>
         <a href="{{ url_for('wallet') }}" class="btn btn-success">Add Funds</a>
+        <a href="/unique_dashboard" class="btn" style="background: linear-gradient(135deg, #00ff88, #00cc6a); color: #000; font-weight: 700;">UNIQUE FEATURES</a>
+        <a href="#" onclick="claimDailyBonus()" class="btn" style="background: linear-gradient(135deg, #ffa502, #ff6348); color: white; font-weight: 700;">CLAIM DAILY BONUS</a>
         <a href="{{ url_for('matches') }}" class="btn btn-secondary">View Matches</a>
-
+        <a href="{{ url_for('leaderboard') }}" class="btn btn-info">Leaderboard</a>
     </div>
 </div>
 
-<!-- User's Active Streams -->
-{% if user_streams %}
-<div class="card">
-    <h3><img src="/static/icons/live.svg" class="icon" alt="Live"> Your Active Streams</h3>
-    {% for stream in user_streams %}
-    <div class="match-card" style="border-left: 4px solid #dc3545;">
-        <div class="match-header">
-            <div><strong>{{ stream[4] }}</strong></div>
-            <span class="status-badge" style="background: #dc3545;"><img src="/static/icons/live.svg" class="icon icon-sm" alt="Live"> {{ stream[6].upper() }}</span>
-        </div>
-        <div style="margin: 1rem 0;">
-            <p>Stream Key: <code>{{ stream[7] }}</code></p>
-            <p>Viewers: {{ stream[5] }} | Type: {{ stream[8] or 'screen' }}</p>
-            {% if stream[2] %}
-                <p style="color: #ffc107;">🎮 Match Stream</p>
-            {% else %}
-                <p style="color: #00ff88;">🔴 Independent Stream (Earning from ads!)</p>
-            {% endif %}
-        </div>
-        <div style="display: flex; gap: 0.5rem;">
-            <a href="/watch_stream/{{ stream[0] }}" class="btn btn-primary">View Stream</a>
-            <button onclick="showStreamViewers({{ stream[0] }})" class="btn btn-secondary">View Audience</button>
-            <form method="POST" action="/stop_stream/{{ stream[0] }}" style="display: inline;">
-                <button type="submit" class="btn btn-danger">Stop Stream</button>
-            </form>
-        </div>
-    </div>
-    {% endfor %}
-</div>
-{% endif %}
+
 
 <div class="card">
     <h3>Recent Matches</h3>
@@ -136,25 +103,19 @@
         </div>
     {% endif %}
 </div>
+
 <script>
-function showStreamViewers(streamId) {
-    fetch(`/stream_viewers/${streamId}`)
-        .then(response => response.json())
-        .then(data => {
-            if (data.viewers) {
-                let viewerList = `Current Viewers (${data.count}):\n\n`;
-                data.viewers.forEach(viewer => {
-                    const joinTime = new Date(viewer.joined_at).toLocaleTimeString();
-                    viewerList += `• ${viewer.username} (joined ${joinTime})\n`;
-                });
-                alert(viewerList || 'No viewers currently watching');
-            } else {
-                alert('Unable to load viewer list');
-            }
-        })
-        .catch(err => {
-            alert('Error loading viewers');
-        });
+function claimDailyBonus() {
+    fetch('/claim_daily_bonus', {method: 'POST'})
+    .then(r => r.json())
+    .then(d => {
+        alert(d.message);
+        if (d.success) {
+            location.reload();
+        }
+    })
+    .catch(e => alert('Error claiming bonus'));
 }
 </script>
+
 {% endblock %}

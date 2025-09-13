@@ -375,7 +375,7 @@
                 <a href="{{ url_for('admin_users') }}">Users</a>
                 <a href="{{ url_for('admin_transactions') }}">Transactions</a>
                 <a href="{{ url_for('admin_matches') }}">Matches</a>
-                <a href="{{ url_for('tournaments_new') }}">Streaming Tournaments</a>
+                <a href="{{ url_for('admin_tournaments') }}">🏆 Tournaments</a>
                 <a href="{{ url_for('admin_support_center') }}" style="color: #ff6b6b; font-weight: bold;">Support Center</a>
                 <div style="color: #ff6b6b; font-weight: bold; font-size: 0.8rem;">ADMIN</div>
                 <a href="{{ url_for('logout') }}" class="btn btn-secondary">Logout</a>
@@ -393,10 +393,8 @@
                     </button>
                     <div class="dropdown-content" id="dropdownContent">
                         <a href="{{ url_for('quick_matches') }}">🎮 Quick Match</a>
-                        <a href="{{ url_for('live_streams') }}">🔴 LIVE Streams</a>
-                        <a href="{{ url_for('streaming_matches') }}">📺 Stream Match</a>
+                        <a href="{{ url_for('tournaments') }}">🏆 Tournaments</a>
                         <a href="{{ url_for('matches') }}">⚔️ My Matches</a>
-                        <a href="{{ url_for('tournaments_new') }}">🏆 Tournaments</a>
                         <a href="{{ url_for('user_bonuses_page') }}">🎁 Bonuses</a>
                         <a href="{{ url_for('referrals') }}">💰 Earn Money</a>
                         <a href="{{ url_for('friends') }}">👥 Friends</a>

@@ -3,7 +3,7 @@
 {% block content %}
 <div class="card" style="background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(5px); border: 1px solid rgba(255, 255, 255, 0.1);">
     <h1><img src="/static/icons/gamepad.svg" class="icon icon-gamepad" alt="Games"> Gaming Hub</h1>
-    <p>Choose your gaming experience - Quick matches or live streaming</p>
+    <p>Quick matches + FPL battles - Gaming skills meet football knowledge</p>
 </div>
 
 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem;">
@@ -23,29 +23,29 @@
                 <li>Fast payouts when verified</li>
             </ul>
         </div>
-        <a href="/quick_matches" class="btn" style="background: white; color: #28a745; font-weight: bold; width: 100%; box-shadow: 0 4px 15px rgba(0,0,0,0.2); text-transform: uppercase;">
-            DEPLOY NOW
+        <a href="/quick_matches" class="btn" style="background: white; color: #28a745; font-weight: bold; width: 100%; box-shadow: 0 4px 15px rgba(0,0,0,0.2); text-transform: uppercase; border: none; cursor: pointer; text-decoration: none; display: block; text-align: center; padding: 12px;">
+            SELECT GAME
         </a>
     </div>
 
-    <!-- Streaming Section -->
+    <!-- FPL Battles Section -->
     <div class="card" style="background: rgba(220, 53, 69, 0.1); backdrop-filter: blur(5px); border: 1px solid rgba(220, 53, 69, 0.2); text-align: center; position: relative; overflow: hidden;">
         <div style="position: absolute; top: -20px; right: -20px; background: rgba(255,255,255,0.2); width: 80px; height: 80px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
             <div style="width: 30px; height: 20px; background: white; border-radius: 4px; opacity: 0.8;"></div>
         </div>
-        <h2 style="color: white; margin-bottom: 1rem;">STREAM MATCH</h2>
+        <h2 style="color: white; margin-bottom: 1rem;">FPL BATTLES</h2>
         <div style="background: rgba(255,255,255,0.15); padding: 1.5rem; border-radius: 12px; margin-bottom: 1.5rem; backdrop-filter: blur(10px);">
-            <h3 style="color: white; margin-bottom: 1rem;">PROFESSIONAL STREAMING</h3>
+            <h3 style="color: white; margin-bottom: 1rem;">FANTASY PREMIER LEAGUE</h3>
             <ul style="color: rgba(255,255,255,0.95); text-align: left; margin-left: 1rem; line-height: 1.6;">
-                <li>Real-time broadcast technology</li>
-                <li>Performance-based bonuses (KSh 10-35)</li>
-                <li>Audience engagement analytics</li>
-                <li>Multi-platform distribution</li>
-                <li>Enterprise-grade infrastructure</li>
+                <li>Real FPL data verification</li>
+                <li>Live match player battles</li>
+                <li>Gameweek score competitions</li>
+                <li>Captain vs Captain duels</li>
+                <li>Instant 90-minute payouts</li>
             </ul>
         </div>
-        <a href="/streaming_matches" class="btn" style="background: white; color: #dc3545; font-weight: bold; width: 100%; box-shadow: 0 4px 15px rgba(0,0,0,0.2); text-transform: uppercase;">
-            GO LIVE
+        <a href="/fpl_battles" class="btn" style="background: white; color: #dc3545; font-weight: bold; width: 100%; box-shadow: 0 4px 15px rgba(0,0,0,0.2); text-transform: uppercase; border: none; cursor: pointer; text-decoration: none; display: block; text-align: center; padding: 12px;">
+            VIEW BATTLES
         </a>
     </div>
 </div>
@@ -60,9 +60,9 @@
             <p style="opacity: 0.9;">Advanced verification</p>
         </div>
         <div style="background: linear-gradient(45deg, #dc3545, #fd7e14); padding: 1rem; border-radius: 12px; text-align: center; color: white;">
-            <h3>STREAM MATCH</h3>
-            <p style="font-size: 1.5em; font-weight: bold;">PREMIUM REWARDS</p>
-            <p style="opacity: 0.9;">Up to KSh 35 bonus</p>
+            <h3>FPL BATTLES</h3>
+            <p style="font-size: 1.5em; font-weight: bold;">LIVE MATCHES</p>
+            <p style="opacity: 0.9;">Real-time verification</p>
         </div>
         <div style="background: #2a2a2a; padding: 1rem; border-radius: 8px; text-align: center;">
             <h3 style="color: #28a745;">Your Balance</h3>
@@ -77,9 +77,11 @@
     <h2><img src="/static/icons/lightbulb.svg" class="icon icon-lightbulb" alt="Links"> Quick Links</h2>
     <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
         <a href="/matches" class="btn btn-secondary"><img src="/static/icons/gamepad.svg" class="icon icon-sm" alt="Matches"> My Matches</a>
-        <a href="/live_streams" class="btn btn-info"><img src="/static/icons/live.svg" class="icon icon-sm" alt="Live"> Live Streams</a>
-        <a href="/streaming_matches" class="btn btn-danger">🎥 Stream Games</a>
+        <a href="/tournaments" class="btn" style="background: linear-gradient(135deg, #ffa502, #ff6348); color: white;">🏆 Tournaments</a>
         <a href="/wallet" class="btn btn-success"><img src="/static/icons/money.svg" class="icon icon-sm icon-money" alt="Money"> Wallet</a>
+        <a href="/leaderboard" class="btn btn-info">🏆 Leaderboard</a>
     </div>
 </div>
+
+
 {% endblock %}

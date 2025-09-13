@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card">
+    <h1>🏆 FPL Battles Management</h1>
+    
+    <div class="stats-grid" style="margin-bottom: 2rem;">
+        <div class="stat-card">
+            <div class="stat-number">{{ battles|length }}</div>
+            <div class="stat-label">Total Battles</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number">{{ battles|selectattr('9', 'equalto', 'active')|list|length }}</div>
+            <div class="stat-label">Active Battles</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number">{{ battles|selectattr('9', 'equalto', 'completed')|list|length }}</div>
+            <div class="stat-label">Completed</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number">{{ battles|selectattr('9', 'equalto', 'open')|list|length }}</div>
+            <div class="stat-label">Open Battles</div>
+        </div>
+    </div>
+
+    <div style="margin-bottom: 1rem;">
+        <button onclick="window.location.href='/resolve_fpl_battles'" class="btn btn-success">🔄 Resolve Active Battles</button>
+        <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary">← Back to Dashboard</a>
+    </div>
+
+    {% if battles %}
+        <div style="overflow-x: auto;">
+            <table style="width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                <thead style="background: #f8f9fa;">
+                    <tr>
+                        <th style="padding: 1rem; text-align: left; border-bottom: 1px solid #dee2e6;">ID</th>
+                        <th style="padding: 1rem; text-align: left; border-bottom: 1px solid #dee2e6;">Type</th>
+                        <th style="padding: 1rem; text-align: left; border-bottom: 1px solid #dee2e6;">Creator</th>
+                        <th style="padding: 1rem; text-align: left; border-bottom: 1px solid #dee2e6;">Opponent</th>
+                        <th style="padding: 1rem; text-align: left; border-bottom: 1px solid #dee2e6;">Stake</th>
+                        <th style="padding: 1rem; text-align: left; border-bottom: 1px solid #dee2e6;">Status</th>
+                        <th style="padding: 1rem; text-align: left; border-bottom: 1px solid #dee2e6;">Created</th>
+                        <th style="padding: 1rem; text-align: left; border-bottom: 1px solid #dee2e6;">Result</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for battle in battles %}
+                    <tr style="border-bottom: 1px solid #f1f3f4;">
+                        <td style="padding: 1rem;">#{{ battle[0] }}</td>
+                        <td style="padding: 1rem;">
+                            <span style="background: #e3f2fd; color: #1976d2; padding: 0.2rem 0.5rem; border-radius: 12px; font-size: 0.8rem;">
+                                {{ battle[1].replace('_', ' ').title() }}
+                            </span>
+                        </td>
+                        <td style="padding: 1rem;">
+                            <strong>{{ battle[16] or 'Unknown' }}</strong><br>
+                            <small style="color: #666;">FPL: {{ battle[3] }}</small>
+                        </td>
+                        <td style="padding: 1rem;">
+                            {% if battle[17] %}
+                                <strong>{{ battle[17] }}</strong><br>
+                                <small style="color: #666;">FPL: {{ battle[5] }}</small>
+                            {% else %}
+                                <span style="color: #999; font-style: italic;">Waiting for opponent</span>
+                            {% endif %}
+                        </td>
+                        <td style="padding: 1rem;">
+                            <strong>KSh {{ "%.0f"|format(battle[6]) }}</strong><br>
+                            <small style="color: #666;">Pot: KSh {{ "%.0f"|format(battle[7]) }}</small>
+                        </td>
+                        <td style="padding: 1rem;">
+                            {% if battle[9] == 'open' %}
+                                <span style="background: #fff3cd; color: #856404; padding: 0.3rem 0.6rem; border-radius: 12px; font-size: 0.8rem;">🟡 Open</span>
+                            {% elif battle[9] == 'active' %}
+                                <span style="background: #d4edda; color: #155724; padding: 0.3rem 0.6rem; border-radius: 12px; font-size: 0.8rem;">🟢 Active</span>
+                            {% elif battle[9] == 'completed' %}
+                                <span style="background: #cce5ff; color: #004085; padding: 0.3rem 0.6rem; border-radius: 12px; font-size: 0.8rem;">✅ Completed</span>
+                            {% elif battle[9] == 'draw' %}
+                                <span style="background: #f8d7da; color: #721c24; padding: 0.3rem 0.6rem; border-radius: 12px; font-size: 0.8rem;">🤝 Draw</span>
+                            {% endif %}
+                        </td>
+                        <td style="padding: 1rem;">
+                            <small>{{ battle[15] }}</small>
+                        </td>
+                        <td style="padding: 1rem;">
+                            {% if battle[9] == 'completed' %}
+                                {% if battle[8] == battle[2] %}
+                                    <span style="color: #28a745; font-weight: bold;">{{ battle[16] }} Won</span><br>
+                                    <small>{{ battle[12] }} - {{ battle[13] }}</small>
+                                {% elif battle[8] == battle[4] %}
+                                    <span style="color: #28a745; font-weight: bold;">{{ battle[17] }} Won</span><br>
+                                    <small>{{ battle[12] }} - {{ battle[13] }}</small>
+                                {% endif %}
+                            {% elif battle[9] == 'draw' %}
+                                <span style="color: #6c757d;">Refunded</span>
+                            {% else %}
+                                <span style="color: #999;">-</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div style="text-align: center; padding: 3rem; color: #6c757d;">
+            <div style="font-size: 3rem; margin-bottom: 1rem;">🏆</div>
+            <h3>No FPL Battles Yet</h3>
+            <p>FPL battles will appear here once users start creating them.</p>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

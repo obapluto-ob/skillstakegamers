@@ -1,23 +1,26 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="card" style="background: linear-gradient(135deg, #17a2b8, #138496); color: white; border: none;">
-    <h1>AI SUPPORT SYSTEM</h1>
-    <p>Advanced neural network assistant - Instant solutions 24/7</p>
+<div class="card" style="background: linear-gradient(135deg, #28a745, #20c997); color: white; border: none;">
+    <h1>💬 Live Support Chat</h1>
+    <p>Connect with our support team - Real humans helping real gamers</p>
 </div>
 
 <div class="card">
     <div id="chatMessages" style="height: 400px; overflow-y: auto; border: 1px solid rgba(255,255,255,0.2); padding: 1rem; margin-bottom: 1rem; background: rgba(0,0,0,0.2);">
         <div class="bot-message">
-            <strong>SKILLSTATE AI:</strong> SYSTEM INITIALIZED. USER {{ session.username }} AUTHENTICATED.
-            <ul style="margin: 0.5rem 0; padding-left: 1.5rem;">
-                <li>ACCOUNT MANAGEMENT PROTOCOLS</li>
-                <li>FINANCIAL TRANSACTION PROCESSING</li>
-                <li>MATCH COORDINATION SYSTEMS</li>
-                <li>TOURNAMENT INFRASTRUCTURE</li>
-                <li>TECHNICAL DIAGNOSTICS</li>
-            </ul>
-            AWAITING USER INPUT. PROCESSING CAPABILITIES: UNLIMITED.
+            <strong>👨‍💼 Alex (Support Agent):</strong> Hey {{ session.username }}! Welcome to SkillStake support. I'm here to help you with anything you need.
+            <div style="background: rgba(0,255,136,0.1); padding: 0.5rem; margin: 0.5rem 0; border-radius: 4px;">
+                <strong>🚀 I can help you with:</strong>
+                <ul style="margin: 0.5rem 0; padding-left: 1.5rem;">
+                    <li>💰 Deposits & Withdrawals</li>
+                    <li>🎮 Game Issues & Rules</li>
+                    <li>🔧 Technical Problems</li>
+                    <li>🔒 Account Security</li>
+                    <li>🏆 Tournament Questions</li>
+                </ul>
+            </div>
+            I can see your current balance is <strong>KSh {{ session.balance or 0 }}</strong>. What can I help you with today?
         </div>
     </div>
     
@@ -44,15 +47,22 @@
 <script>
 const responses = {
     'deposit': {
-        keywords: ['deposit', 'add money', 'fund', 'mpesa', 'pay', 'how do i deposit'],
-        response: `To deposit money:
-        1. Go to Wallet page
-        2. Click "Add Funds"
-        3. Enter amount and your M-Pesa details
-        4. Upload M-Pesa receipt screenshot
-        5. Admin will approve within 1 hour
+        keywords: ['deposit', 'add money', 'fund', 'mpesa', 'pay', 'how do i deposit', 'paybill', 'till'],
+        response: `Sure! I'll walk you through depositing money. It's really simple:
         
-        💡 Tip: We charge 3% processing fee. Minimum deposit: KSh 50`
+        📱 **M-Pesa (Most Popular):**
+        1. Go to your Wallet page
+        2. Click "Add Funds" 
+        3. Enter amount (minimum KSh 100)
+        4. Fill in your M-Pesa number and name
+        5. Upload a clear screenshot of your M-Pesa receipt
+        6. I'll approve it within 30 minutes!
+        
+        💳 **Other Options:**
+        - PayPal: Instant deposit, 3% fee
+        - Crypto: USDT deposits, 2% fee
+        
+        The M-Pesa fee is 5%, but it's the fastest way. Need help with any specific step?`
     },
     'withdraw': {
         keywords: ['withdraw', 'cash out', 'get money', 'how do i withdraw'],
@@ -109,20 +119,54 @@ const responses = {
         
         ⚠️ Important: Always take screenshots of final results!`
     },
+    'technical': {
+        keywords: ['lag', 'slow', 'loading', 'crash', 'bug', 'glitch', 'not working'],
+        response: `🔧 TECHNICAL DIAGNOSTICS INITIATED:
+        
+        🔍 PERFORMANCE OPTIMIZATION:
+        1. Clear browser cache (Ctrl+Shift+Del)
+        2. Close unnecessary tabs/apps
+        3. Use Chrome/Firefox for best performance
+        4. Check internet speed (min 2 Mbps)
+        
+        📱 MOBILE USERS:
+        - Use latest browser version
+        - Enable JavaScript
+        - Disable data saver mode
+        
+        ⚡ STILL HAVING ISSUES? Type 'emergency' for priority support.`
+    },
+    'security': {
+        keywords: ['hack', 'secure', 'safe', 'password', 'account', 'login'],
+        response: `🔒 SECURITY PROTOCOL ACTIVATED:
+        
+        🔐 ACCOUNT PROTECTION:
+        - Use strong passwords (8+ characters)
+        - Never share login details
+        - Log out on shared devices
+        - Enable 2FA when available
+        
+        🚨 SUSPICIOUS ACTIVITY?
+        1. Change password immediately
+        2. Check transaction history
+        3. Contact admin: +254729237059
+        
+        📊 YOUR ACCOUNT: Secure & Protected`
+    },
     'default': {
         keywords: [],
-        response: `I understand you need help! Here are your options:
+        response: `I'm here to help! I handle most support issues, but if you need something more complex, I can always get my supervisor involved.
         
-        🔧 Common Issues:
-        - Deposit/Withdrawal problems
-        - Balance discrepancies  
-        - Tournament questions
-        - Game rules clarification
+        🚀 **I'm great with:**
+        • Deposit & withdrawal questions
+        • Game rules and strategies  
+        • Technical troubleshooting
+        • Account security concerns
+        • Tournament information
         
-        📞 Need human help?
-        Contact admin: +254729237059
+        Just tell me what's going on and I'll do my best to help. If I can't solve it, I'll make sure someone who can gets involved right away.
         
-        Try asking more specifically about your issue!`
+        What's on your mind?`
     }
 };
 
@@ -162,7 +206,8 @@ function addMessage(sender, message) {
         background: ${sender === 'user' ? 'rgba(0,255,136,0.1)' : 'rgba(255,255,255,0.1)'};
     `;
     
-    messageDiv.innerHTML = `<strong>${sender === 'user' ? 'USER' : 'SKILLSTATE AI'}:</strong> ${message.replace(/\\n/g, '<br>')}`;
+    const agentName = sender === 'user' ? 'You' : 'Alex (Support)';
+    messageDiv.innerHTML = `<strong>${agentName}:</strong> ${message.replace(/\\n/g, '<br>')}`;
     chatDiv.appendChild(messageDiv);
     chatDiv.scrollTop = chatDiv.scrollHeight;
 }
@@ -173,15 +218,60 @@ const maxAttempts = 3;
 function getBotResponse(message) {
     const lowerMessage = message.toLowerCase();
     
-    // Check for keywords first
+    // Advanced AI processing with context awareness
+    const userBalance = {{ session.balance or 0 }};
+    const username = '{{ session.username }}';
+    
+    // Intelligent keyword matching with context
     for (const [key, data] of Object.entries(responses)) {
         if (key === 'default') continue;
         
         if (data.keywords.some(keyword => lowerMessage.includes(keyword))) {
             failedAttempts = 0;
             localStorage.setItem('failedAttempts', '0');
-            return data.response;
+            
+            // Personalize response based on user context
+            let personalizedResponse = data.response;
+            
+            if (key === 'balance' && userBalance > 0) {
+                personalizedResponse += `\n\n📊 YOUR CURRENT BALANCE: KSh ${userBalance}`;
+            }
+            
+            if (key === 'deposit' && userBalance < 100) {
+                personalizedResponse += `\n\n⚠️ NOTICE: Low balance detected. Recommended deposit: KSh 500+`;
+            }
+            
+            return personalizedResponse;
         }
+    }
+    
+    // Advanced pattern recognition
+    if (lowerMessage.includes('stuck') || lowerMessage.includes('error') || lowerMessage.includes('problem')) {
+        return `🔧 DIAGNOSTIC MODE ACTIVATED for ${username}:
+        
+        🔍 COMMON SOLUTIONS:
+        1. Clear browser cache & cookies
+        2. Try different browser/device
+        3. Check internet connection
+        4. Disable ad blockers
+        
+        📊 SYSTEM STATUS: All services operational
+        
+        Still stuck? Type 'admin help' for human assistance.`;
+    }
+    
+    if (lowerMessage.includes('win') || lowerMessage.includes('match') || lowerMessage.includes('game')) {
+        return `🎮 GAMING INTELLIGENCE ACTIVATED:
+        
+        🏆 WINNING STRATEGIES:
+        - Start with small bets (KSh 100-200)
+        - Play games you're skilled at
+        - Study opponent patterns
+        - Take clear result screenshots
+        
+        📊 YOUR STATS: Balance KSh ${userBalance}
+        
+        Ready to dominate? Go to Quick Matches!`;
     }
     
     // Increment failed attempts
@@ -191,12 +281,12 @@ function getBotResponse(message) {
     // Escalate to admin after max attempts
     if (failedAttempts >= maxAttempts) {
         sendToAdmin(message);
-        return `I'm having trouble understanding your issue. Let me connect you with our admin for personalized help.
+        return `Hey, I want to make sure you get the best help possible. Let me connect you with my supervisor who can handle more complex issues.
         
-        📞 Admin Contact: +254729237059
-        📧 Your issue has been forwarded to admin support.
+        📞 **Direct Admin Line:** +254729237059
+        📧 **Your case has been forwarded** to our senior support team
         
-        An admin will respond to you shortly.`;
+        You should hear back within 15 minutes. Is there anything else I can help with while you wait?`;
     }
     
     return responses.default.response;

@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card" style="background: linear-gradient(135deg, #667eea, #764ba2); color: white; border: none;">
+    <h1>🏆 Tournament Management</h1>
+    <p>Create and manage WhatsApp-integrated tournaments</p>
+</div>
+
+<div class="card">
+    <h2>➕ Create New Tournament</h2>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+        <div>
+            <label>Tournament Name:</label>
+            <input type="text" id="tournamentName" class="form-control" placeholder="FIFA Mobile Championship">
+        </div>
+        <div>
+            <label>Game Type:</label>
+            <select id="gameType" class="form-control">
+                <option value="FIFA Mobile">FIFA Mobile</option>
+                <option value="eFootball">eFootball</option>
+                <option value="PUBG Mobile">PUBG Mobile</option>
+            </select>
+        </div>
+        <div>
+            <label>Entry Fee (KSh):</label>
+            <input type="number" id="entryFee" class="form-control" placeholder="200" min="50">
+        </div>
+        <div>
+            <label>Max Players:</label>
+            <select id="maxPlayers" class="form-control">
+                <option value="8">8 Players</option>
+                <option value="16">16 Players</option>
+                <option value="32">32 Players</option>
+            </select>
+        </div>
+    </div>
+    <button onclick="createTournament()" class="btn" style="background: #28a745; margin-top: 1rem;">
+        🏆 Create Tournament
+    </button>
+</div>
+
+<div class="card">
+    <h2>📋 Tournament List</h2>
+    {% if tournaments %}
+        <table style="width: 100%; border-collapse: collapse;">
+            <tr style="background: #f8f9fa;">
+                <th style="padding: 0.5rem; border: 1px solid #ddd;">Name</th>
+                <th style="padding: 0.5rem; border: 1px solid #ddd;">Game</th>
+                <th style="padding: 0.5rem; border: 1px solid #ddd;">Entry Fee</th>
+                <th style="padding: 0.5rem; border: 1px solid #ddd;">Players</th>
+                <th style="padding: 0.5rem; border: 1px solid #ddd;">Status</th>
+                <th style="padding: 0.5rem; border: 1px solid #ddd;">Actions</th>
+            </tr>
+            {% for tournament in tournaments %}
+            <tr>
+                <td style="padding: 0.5rem; border: 1px solid #ddd;">{{ tournament[1] }}</td>
+                <td style="padding: 0.5rem; border: 1px solid #ddd;">{{ tournament[2] }}</td>
+                <td style="padding: 0.5rem; border: 1px solid #ddd;">KSh {{ tournament[3] }}</td>
+                <td style="padding: 0.5rem; border: 1px solid #ddd;">{{ tournament[8] }}/{{ tournament[4] }}</td>
+                <td style="padding: 0.5rem; border: 1px solid #ddd;">
+                    <span style="color: {% if tournament[6] == 'open' %}#28a745{% elif tournament[6] == 'active' %}#ffc107{% else %}#dc3545{% endif %}; font-weight: bold;">
+                        {{ tournament[6].upper() }}
+                    </span>
+                </td>
+                <td style="padding: 0.5rem; border: 1px solid #ddd;">
+                    {% if tournament[6] == 'open' and tournament[7] == 0 %}
+                        <button onclick="announceTournament({{ tournament[0] }})" class="btn btn-sm" style="background: #17a2b8; color: white;">
+                            📢 Announce to WhatsApp
+                        </button>
+                    {% endif %}
+                    <button onclick="viewParticipants({{ tournament[0] }})" class="btn btn-sm">
+                        👥 View Players
+                    </button>
+                </td>
+            </tr>
+            {% endfor %}
+        </table>
+    {% else %}
+        <p style="text-align: center; color: #666; padding: 2rem;">No tournaments created yet.</p>
+    {% endif %}
+</div>
+
+<div class="card">
+    <h2>📱 WhatsApp Integration Guide</h2>
+    <div style="background: #e8f5e8; padding: 1rem; border-radius: 8px;">
+        <h4>🔄 How It Works:</h4>
+        <ol>
+            <li><strong>Create Tournament:</strong> Set up tournament details above</li>
+            <li><strong>Announce to WhatsApp:</strong> Click "Announce" to get message template</li>
+            <li><strong>Copy & Paste:</strong> Copy the message and post in your WhatsApp group</li>
+            <li><strong>Users Join:</strong> Players join through the platform</li>
+            <li><strong>Coordinate Matches:</strong> Share brackets and schedules in WhatsApp</li>
+        </ol>
+    </div>
+</div>
+
+<script>
+function createTournament() {
+    const name = document.getElementById('tournamentName').value;
+    const gameType = document.getElementById('gameType').value;
+    const entryFee = document.getElementById('entryFee').value;
+    const maxPlayers = document.getElementById('maxPlayers').value;
+    
+    if (!name || !entryFee) {
+        alert('Please fill in all fields');
+        return;
+    }
+    
+    fetch('/admin/create_tournament', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            name: name,
+            game_type: gameType,
+            entry_fee: entryFee,
+            max_players: maxPlayers
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('✅ Tournament created successfully!');
+            location.reload();
+        } else {
+            alert('❌ ' + data.message);
+        }
+    });
+}
+
+function announceTournament(tournamentId) {
+    fetch(`/admin/announce_tournament/${tournamentId}`, {
+        method: 'POST'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Show WhatsApp message to copy
+            const message = data.whatsapp_message;
+            const popup = window.open('', 'WhatsApp Message', 'width=500,height=600');
+            popup.document.write(`
+                <html>
+                <head><title>WhatsApp Tournament Announcement</title></head>
+                <body style="font-family: Arial; padding: 20px;">
+                    <h2>📱 Copy this message to WhatsApp Group:</h2>
+                    <textarea style="width: 100%; height: 300px; font-size: 14px;">${message}</textarea>
+                    <br><br>
+                    <button onclick="navigator.clipboard.writeText(document.querySelector('textarea').value); alert('Copied!');" 
+                            style="background: #25D366; color: white; padding: 10px 20px; border: none; border-radius: 5px;">
+                        📋 Copy Message
+                    </button>
+                    <p><strong>Users to notify:</strong> ${data.user_count}</p>
+                </body>
+                </html>
+            `);
+            
+            alert(`✅ Tournament announcement ready! Message prepared for ${data.user_count} users.`);
+        } else {
+            alert('❌ ' + data.message);
+        }
+    });
+}
+
+function viewParticipants(tournamentId) {
+    // Implementation for viewing participants
+    alert('Participants view - to be implemented');
+}
+</script>
+{% endblock %}

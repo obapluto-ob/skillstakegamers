@@ -2,234 +2,107 @@
 
 {% block content %}
 <div class="card">
-    <h1><svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M20 12V8H6A2 2 0 0 1 4 6V4A2 2 0 0 1 6 2H12V6H20V4A2 2 0 0 1 22 6V18A2 2 0 0 1 20 20H6A2 2 0 0 1 4 18V16A2 2 0 0 1 6 14H20V12Z" fill="currentColor"/></svg> New User Bonuses</h1>
-    <p>Complete tasks to earn platform credits for tournament entries and features</p>
+    <h1>💰 Daily Bonus System</h1>
+    <p>Claim your daily 75 KSh bonus every day!</p>
 </div>
 
 <div class="card">
-    <h3>Weekly Bonus Program</h3>
-    <div id="weeklyBonuses">
-        <div class="loading">Loading bonus progress...</div>
+    <h3>🎁 Daily 75 KSh Bonus</h3>
+    <div style="background: linear-gradient(135deg, #28a745, #20c997); color: white; padding: 2rem; border-radius: 15px; text-align: center; margin-bottom: 1rem;">
+        <div style="font-size: 3rem; margin-bottom: 1rem;">💰</div>
+        <h2 style="margin: 0; font-size: 2.5rem;">KSh 75</h2>
+        <p style="margin: 0.5rem 0; font-size: 1.2rem;">Daily Login Bonus</p>
+        {% if can_claim_today %}
+            <form method="POST" action="{{ url_for('claim_bonus') }}" style="margin-top: 1.5rem;">
+                <input type="hidden" name="bonus_type" value="daily_75">
+                <button type="submit" class="btn" style="background: white; color: #28a745; font-weight: bold; padding: 1rem 2rem; font-size: 1.1rem;">🎁 Claim Daily Bonus</button>
+            </form>
+        {% else %}
+            <div style="background: rgba(255,255,255,0.2); padding: 1rem; border-radius: 8px; margin-top: 1.5rem;">
+                <strong>✅ Already Claimed Today!</strong><br>
+                <small>Come back tomorrow for another 75 KSh</small>
+            </div>
+        {% endif %}
+    </div>
+    
+    <div style="background: #e7f3ff; padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+        <h4 style="color: #0c5460; margin-top: 0;">💡 How It Works:</h4>
+        <ul style="color: #0c5460; margin: 0; padding-left: 1.5rem;">
+            <li><strong>Daily Reset:</strong> Bonus resets every day at midnight</li>
+            <li><strong>Instant Credit:</strong> 75 KSh added to your balance immediately</li>
+            <li><strong>Real Money:</strong> Use for matches, withdraw, or save up</li>
+            <li><strong>No Limits:</strong> Claim every single day</li>
+        </ul>
     </div>
 </div>
 
 <div class="card">
-    <h3>Referral Bonus Program</h3>
-    <div id="referralBonuses">
-        <div class="loading">Loading referral progress...</div>
-    </div>
+    <h3>📊 Your Bonus History</h3>
+    {% if bonus_history %}
+        <div style="max-height: 300px; overflow-y: auto;">
+            {% for bonus in bonus_history %}
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.8rem; border-bottom: 1px solid #eee;">
+                <div>
+                    <strong>Daily Bonus Claimed</strong><br>
+                    <small style="color: #666;">{{ bonus[5] }}</small>
+                </div>
+                <div style="color: #28a745; font-weight: bold;">+KSh {{ "%.0f"|format(bonus[3]) }}</div>
+            </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div style="text-align: center; padding: 2rem; color: #666;">
+            <div style="font-size: 3rem; margin-bottom: 1rem;">🎁</div>
+            <p>No bonuses claimed yet!</p>
+            <p style="font-size: 0.9rem;">Claim your first 75 KSh bonus above</p>
+        </div>
+    {% endif %}
 </div>
 
 <div class="card">
-    <h3>Your Statistics</h3>
-    <div id="userStats">
-        <div class="loading">Loading your stats...</div>
-    </div>
-</div>
-
-<div class="card">
-    <h3>How Platform Credits Work</h3>
+    <h3>💡 Bonus Tips & Info</h3>
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem;">
         <div style="background: rgba(40, 167, 69, 0.1); padding: 1rem; border-radius: 8px;">
-            <h4 style="color: #28a745;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 12L11 14L15 10" stroke="#28a745" stroke-width="2" fill="none"/><circle cx="12" cy="12" r="10" stroke="#28a745" stroke-width="2" fill="none"/></svg> What You Can Use Credits For</h4>
+            <h4 style="color: #28a745;">✅ What You Can Do</h4>
             <ul style="margin: 0; padding-left: 1.5rem;">
-                <li>Tournament entry fees</li>
-                <li>Premium streaming features</li>
-                <li>Betting on tournament matches</li>
-                <li>Exclusive tournaments</li>
-            </ul>
-        </div>
-        <div style="background: rgba(220, 53, 69, 0.1); padding: 1rem; border-radius: 8px;">
-            <h4 style="color: #dc3545;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="10" stroke="#dc3545" stroke-width="2" fill="none"/><line x1="15" y1="9" x2="9" y2="15" stroke="#dc3545" stroke-width="2"/><line x1="9" y1="9" x2="15" y2="15" stroke="#dc3545" stroke-width="2"/></svg> What Credits Cannot Be Used For</h4>
-            <ul style="margin: 0; padding-left: 1.5rem;">
-                <li>Cash withdrawals</li>
-                <li>Converting to real money</li>
-                <li>Transferring to other users</li>
-                <li>Regular match betting</li>
+                <li>Use for FIFA/eFootball matches</li>
+                <li>Withdraw to M-Pesa/PayPal</li>
+                <li>Save up for bigger matches</li>
+                <li>Build your gaming bankroll</li>
             </ul>
         </div>
         <div style="background: rgba(23, 162, 184, 0.1); padding: 1rem; border-radius: 8px;">
-            <h4 style="color: #17a2b8;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="5" stroke="#17a2b8" stroke-width="2" fill="none"/><path d="M12 1V3M12 21V23M4.22 4.22L5.64 5.64M18.36 18.36L19.78 19.78M1 12H3M21 12H23M4.22 19.78L5.64 18.36M18.36 5.64L19.78 4.22" stroke="#17a2b8" stroke-width="2"/></svg> Pro Tips</h4>
+            <h4 style="color: #17a2b8;">🚀 Pro Tips</h4>
             <ul style="margin: 0; padding-left: 1.5rem;">
-                <li>Complete all weekly tasks for KSh 13,000 total</li>
-                <li>Refer friends for additional bonuses</li>
-                <li>Credits never expire</li>
-                <li>Use credits strategically for tournaments</li>
+                <li>Claim daily - never miss a day!</li>
+                <li>75 KSh × 30 days = 2,250 KSh/month</li>
+                <li>Use bonuses to practice matches</li>
+                <li>Compound winnings for bigger profits</li>
+            </ul>
+        </div>
+        <div style="background: rgba(255, 193, 7, 0.1); padding: 1rem; border-radius: 8px;">
+            <h4 style="color: #856404;">⚡ Quick Facts</h4>
+            <ul style="margin: 0; padding-left: 1.5rem;">
+                <li>Resets daily at midnight</li>
+                <li>Instant credit to balance</li>
+                <li>No wagering requirements</li>
+                <li>Available to all users</li>
             </ul>
         </div>
     </div>
 </div>
 
 <script>
-let userBonusData = null;
-
-async function loadBonusData() {
-    try {
-        const response = await fetch('/api/user_attraction');
-        const data = await response.json();
-        
-        if (data.success) {
-            userBonusData = data;
-            displayWeeklyBonuses(data.bonuses);
-            displayReferralBonuses(data.referral_bonuses);
-            displayUserStats(data.user_stats, data.total_credits_earned);
-        } else {
-            document.getElementById('weeklyBonuses').innerHTML = '<div class="error">Failed to load bonus data</div>';
-        }
-    } catch (error) {
-        document.getElementById('weeklyBonuses').innerHTML = '<div class="error">Error loading bonus data</div>';
-    }
-}
-
-function displayWeeklyBonuses(bonuses) {
-    let html = '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem;">';
-    
-    Object.keys(bonuses).forEach(week => {
-        const bonus = bonuses[week];
-        let statusClass = '';
-        let statusText = '';
-        let actionButton = '';
-        
-        if (bonus.claimed) {
-            statusClass = 'success';
-            statusText = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 12L11 14L15 10" stroke="#28a745" stroke-width="2" fill="none"/><circle cx="12" cy="12" r="10" stroke="#28a745" stroke-width="2" fill="none"/></svg> Completed';
-            actionButton = '<button class="btn btn-success" disabled>Claimed</button>';
-        } else if (bonus.completed) {
-            statusClass = 'warning';
-            statusText = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M20 12V8H6A2 2 0 0 1 4 6V4A2 2 0 0 1 6 2H12V6H20V4A2 2 0 0 1 22 6V18A2 2 0 0 1 20 20H6A2 2 0 0 1 4 18V16A2 2 0 0 1 6 14H20V12Z" fill="#ffc107"/></svg> Ready to Claim';
-            actionButton = `<button class="btn btn-primary" onclick="claimBonus('${week}')">Claim KSh ${bonus.amount * 130}</button>`;
-        } else {
-            statusClass = 'secondary';
-            statusText = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="10" stroke="#6c757d" stroke-width="2" fill="none"/><path d="M12 6V12L16 14" stroke="#6c757d" stroke-width="2"/></svg> In Progress';
-            actionButton = '<button class="btn btn-secondary" disabled>Not Ready</button>';
-        }
-        
-        html += `
-            <div style="border: 1px solid #ddd; border-radius: 10px; padding: 1rem; background: rgba(${statusClass === 'success' ? '40, 167, 69' : statusClass === 'warning' ? '255, 193, 7' : '108, 117, 125'}, 0.1);">
-                <div style="display: flex; justify-content: between; align-items: center; margin-bottom: 1rem;">
-                    <h4 style="margin: 0;">${week.toUpperCase().replace('WEEK', 'Week ')}</h4>
-                    <span style="font-size: 0.9rem; color: #666;">${statusText}</span>
-                </div>
-                <div style="margin-bottom: 1rem;">
-                    <strong>Task:</strong> ${bonus.requirement}
-                </div>
-                <div style="margin-bottom: 1rem;">
-                    <strong>Reward:</strong> $${bonus.amount} Platform Credits
-                </div>
-                <div style="text-align: center;">
-                    ${actionButton}
-                </div>
-            </div>
-        `;
-    });
-    
-    html += '</div>';
-    document.getElementById('weeklyBonuses').innerHTML = html;
-}
-
-function displayReferralBonuses(referralBonuses) {
-    let html = '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem;">';
-    
-    Object.keys(referralBonuses).forEach(stage => {
-        const bonus = referralBonuses[stage];
-        const progress = bonus.progress || 0;
-        const progressPercent = Math.min(100, progress * 100);
-        
-        html += `
-            <div style="border: 1px solid #ddd; border-radius: 10px; padding: 1rem;">
-                <h4>${stage.charAt(0).toUpperCase() + stage.slice(1).replace('_', ' ')} Bonus</h4>
-                <div style="margin-bottom: 1rem;">
-                    <strong>Task:</strong> ${bonus.requirement}
-                </div>
-                <div style="margin-bottom: 1rem;">
-                    <strong>Reward:</strong> $${bonus.amount} Platform Credits
-                </div>
-                <div style="margin-bottom: 1rem;">
-                    <div style="background: #f8f9fa; border-radius: 10px; height: 20px; overflow: hidden;">
-                        <div style="background: linear-gradient(90deg, #28a745, #20c997); height: 100%; width: ${progressPercent}%; transition: width 0.3s;"></div>
-                    </div>
-                    <div style="text-align: center; font-size: 0.9rem; margin-top: 0.5rem;">
-                        Progress: ${Math.round(progressPercent)}%
-                    </div>
-                </div>
-                <div style="text-align: center;">
-                    <button class="btn btn-secondary" disabled>
-                        ${progressPercent >= 100 ? 'Ready to Claim' : 'In Progress'}
-                    </button>
-                </div>
-            </div>
-        `;
-    });
-    
-    html += '</div>';
-    document.getElementById('referralBonuses').innerHTML = html;
-}
-
-function displayUserStats(stats, totalCredits) {
-    const html = `
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; text-align: center;">
-            <div style="padding: 1rem; background: rgba(40, 167, 69, 0.1); border-radius: 8px;">
-                <div style="font-size: 2rem; font-weight: bold; color: #28a745;">${stats.total_streams}</div>
-                <div>Total Streams</div>
-            </div>
-            <div style="padding: 1rem; background: rgba(23, 162, 184, 0.1); border-radius: 8px;">
-                <div style="font-size: 2rem; font-weight: bold; color: #17a2b8;">${stats.total_viewers}</div>
-                <div>Total Viewers</div>
-            </div>
-            <div style="padding: 1rem; background: rgba(255, 193, 7, 0.1); border-radius: 8px;">
-                <div style="font-size: 2rem; font-weight: bold; color: #ffc107;">${stats.tournaments_joined}</div>
-                <div>Tournaments Joined</div>
-            </div>
-            <div style="padding: 1rem; background: rgba(220, 53, 69, 0.1); border-radius: 8px;">
-                <div style="font-size: 2rem; font-weight: bold; color: #dc3545;">${stats.referrals_count}</div>
-                <div>Friends Referred</div>
-            </div>
-            <div style="padding: 1rem; background: rgba(108, 117, 125, 0.1); border-radius: 8px;">
-                <div style="font-size: 2rem; font-weight: bold; color: #6c757d;">KSh ${totalCredits * 130}</div>
-                <div>Platform Credits Earned</div>
-            </div>
-        </div>
-    `;
-    
-    document.getElementById('userStats').innerHTML = html;
-}
-
-async function claimBonus(bonusType) {
-    const button = event.target;
-    button.disabled = true;
-    button.textContent = 'Claiming...';
-    
-    try {
-        const response = await fetch('/api/claim_bonus', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({
-                bonus_type: bonusType
-            })
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            alert(data.message);
-            loadBonusData(); // Refresh bonus data
-        } else {
-            alert('Error: ' + data.error);
-            button.disabled = false;
-            button.textContent = 'Claim Bonus';
-        }
-    } catch (error) {
-        alert('Failed to claim bonus');
-        button.disabled = false;
-        button.textContent = 'Claim Bonus';
-    }
-}
-
-// Load bonus data on page load
-document.addEventListener('DOMContentLoaded', loadBonusData);
-
-// Refresh bonus data every 30 seconds
-setInterval(loadBonusData, 30000);
+// Auto-refresh bonus status every 30 seconds
+setInterval(() => {
+    fetch('/api/daily_bonus_status')
+        .then(response => response.json())
+        .then(data => {
+            // Update UI if needed
+            console.log('Bonus status:', data);
+        })
+        .catch(error => console.log('Status check failed'));
+}, 30000);
 </script>
 
 <style>

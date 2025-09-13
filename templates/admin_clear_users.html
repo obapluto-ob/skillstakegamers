@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8 mx-auto">
+            <div class="card">
+                <div class="card-header bg-danger text-white">
+                    <h4>⚠️ DANGER ZONE - Reset All Users</h4>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-danger">
+                        <strong>⚠️ WARNING:</strong> This action will permanently delete:
+                        <ul>
+                            <li>All users (except admin)</li>
+                            <li>All transactions and balances</li>
+                            <li>All matches and screenshots</li>
+                            <li>All streams and chat data</li>
+                            <li>All deposits and withdrawals</li>
+                        </ul>
+                        <strong>This cannot be undone!</strong>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Type "DELETE ALL USERS" to confirm:</label>
+                        <input type="text" id="confirmText" class="form-control" placeholder="Type confirmation text">
+                    </div>
+                    
+                    <button id="resetBtn" class="btn btn-danger" disabled onclick="resetAllUsers()">
+                        🗑️ DELETE ALL USERS & DATA
+                    </button>
+                    
+                    <a href="/admin/users" class="btn btn-secondary">Cancel</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('confirmText').addEventListener('input', function() {
+    const btn = document.getElementById('resetBtn');
+    if (this.value === 'DELETE ALL USERS') {
+        btn.disabled = false;
+        btn.classList.remove('btn-secondary');
+        btn.classList.add('btn-danger');
+    } else {
+        btn.disabled = true;
+        btn.classList.remove('btn-danger');
+        btn.classList.add('btn-secondary');
+    }
+});
+
+async function resetAllUsers() {
+    if (!confirm('Are you absolutely sure? This will delete ALL users and data!')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch('/admin/reset_all_users', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'}
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            alert('✅ ' + result.message);
+            window.location.href = '/admin/users';
+        } else {
+            alert('❌ Error: ' + result.message);
+        }
+    } catch (error) {
+        alert('❌ Network error: ' + error.message);
+    }
+}
+</script>
+{% endblock %}

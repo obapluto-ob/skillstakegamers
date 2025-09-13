@@ -74,7 +74,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                 })
                 .catch(err => console.log('Balance refresh failed'));
-        }, 30000);
+        }, 60000);
     }
     
     console.log('All button fixes applied successfully');

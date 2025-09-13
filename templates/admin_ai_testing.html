@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI System Testing - SkillStake Admin</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body class="bg-dark text-light">
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-12">
+                <div class="d-flex justify-content-between align-items-center py-3">
+                    <h2><i class="fas fa-flask text-warning"></i> AI System Testing</h2>
+                    <div>
+                        <a href="{{ url_for('admin_train_ai') }}" class="btn btn-primary me-2">
+                            <i class="fas fa-brain"></i> AI Training
+                        </a>
+                        <a href="{{ url_for('admin_dashboard') }}" class="btn btn-outline-light">
+                            <i class="fas fa-arrow-left"></i> Back to Admin
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Test Categories -->
+        <div class="row mb-4">
+            <div class="col-md-4">
+                <div class="card bg-secondary h-100">
+                    <div class="card-header">
+                        <h5><i class="fas fa-camera text-primary"></i> Screenshot Analysis Test</h5>
+                    </div>
+                    <div class="card-body">
+                        <p>Test AI analysis with generated screenshot containing score data.</p>
+                        <button class="btn btn-primary" onclick="runTest('sample_screenshot')">
+                            <i class="fas fa-play"></i> Test Screenshot Analysis
+                        </button>
+                        <div id="screenshot-result" class="mt-3"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card bg-secondary h-100">
+                    <div class="card-header">
+                        <h5><i class="fas fa-font text-success"></i> OCR Engines Test</h5>
+                    </div>
+                    <div class="card-body">
+                        <p>Verify all OCR engines are properly installed and working.</p>
+                        <button class="btn btn-success" onclick="runTest('ocr_engines')">
+                            <i class="fas fa-cogs"></i> Test OCR Engines
+                        </button>
+                        <div id="ocr-result" class="mt-3"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card bg-secondary h-100">
+                    <div class="card-header">
+                        <h5><i class="fas fa-shield-alt text-warning"></i> Fraud Detection Test</h5>
+                    </div>
+                    <div class="card-body">
+                        <p>Test ML fraud detection with various score patterns.</p>
+                        <button class="btn btn-warning" onclick="runTest('fraud_detection')">
+                            <i class="fas fa-search"></i> Test Fraud Detection
+                        </button>
+                        <div id="fraud-result" class="mt-3"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Training Data Management -->
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="card bg-secondary">
+                    <div class="card-header">
+                        <h5><i class="fas fa-database text-info"></i> Test Data Creation</h5>
+                    </div>
+                    <div class="card-body">
+                        <p>Create sample training data for AI model testing.</p>
+                        <button class="btn btn-info" onclick="createTestData()">
+                            <i class="fas fa-plus"></i> Create Test Screenshots
+                        </button>
+                        <div id="testdata-result" class="mt-3"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card bg-secondary">
+                    <div class="card-header">
+                        <h5><i class="fas fa-chart-bar text-danger"></i> System Status</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="system-status">
+                            <div class="d-flex justify-content-between">
+                                <span>OpenCV:</span>
+                                <span class="badge bg-secondary">Testing...</span>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <span>Tesseract:</span>
+                                <span class="badge bg-secondary">Testing...</span>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <span>EasyOCR:</span>
+                                <span class="badge bg-secondary">Testing...</span>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <span>Scikit-learn:</span>
+                                <span class="badge bg-secondary">Testing...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Test Results Display -->
+        <div class="row">
+            <div class="col-12">
+                <div class="card bg-secondary">
+                    <div class="card-header">
+                        <h5><i class="fas fa-terminal"></i> Test Results Console</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="console-output" style="height: 300px; overflow-y: auto; background: #1a1a1a; padding: 15px; border-radius: 5px; font-family: monospace;">
+                            <div class="text-success">[INFO] AI Testing Console Ready</div>
+                            <div class="text-info">[INFO] Click test buttons to run comprehensive AI system tests</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Testing Instructions -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card bg-secondary">
+                    <div class="card-header">
+                        <h5><i class="fas fa-book"></i> Testing Instructions</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6>Step 1: System Dependencies</h6>
+                                <ol class="small">
+                                    <li>Test OCR Engines to verify installations</li>
+                                    <li>Check system status indicators</li>
+                                    <li>Install missing dependencies if needed</li>
+                                </ol>
+                            </div>
+                            <div class="col-md-6">
+                                <h6>Step 2: AI Analysis Testing</h6>
+                                <ol class="small">
+                                    <li>Run Screenshot Analysis test</li>
+                                    <li>Verify score detection accuracy</li>
+                                    <li>Check confidence levels</li>
+                                </ol>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6>Step 3: Fraud Detection</h6>
+                                <ol class="small">
+                                    <li>Test fraud detection algorithms</li>
+                                    <li>Verify suspicious score flagging</li>
+                                    <li>Check ML model responses</li>
+                                </ol>
+                            </div>
+                            <div class="col-md-6">
+                                <h6>Step 4: Training Data</h6>
+                                <ol class="small">
+                                    <li>Create test screenshots</li>
+                                    <li>Train AI model with sample data</li>
+                                    <li>Monitor accuracy improvements</li>
+                                </ol>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function logToConsole(message, type = 'info') {
+            const console = document.getElementById('console-output');
+            const timestamp = new Date().toLocaleTimeString();
+            const colorClass = type === 'error' ? 'text-danger' : type === 'success' ? 'text-success' : 'text-info';
+            
+            console.innerHTML += `<div class="${colorClass}">[${timestamp}] ${message}</div>`;
+            console.scrollTop = console.scrollHeight;
+        }
+
+        function runTest(testType) {
+            logToConsole(`Starting ${testType} test...`);
+            
+            const formData = new FormData();
+            formData.append('test_type', testType);
+            
+            fetch('/test_ai_analysis', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    logToConsole(`${testType} test completed successfully`, 'success');
+                    displayTestResult(testType, data);
+                } else {
+                    logToConsole(`${testType} test failed: ${data.message}`, 'error');
+                }
+            })
+            .catch(error => {
+                logToConsole(`${testType} test error: ${error}`, 'error');
+            });
+        }
+
+        function displayTestResult(testType, data) {
+            const resultDiv = document.getElementById(`${testType.replace('_', '-')}-result`);
+            
+            if (testType === 'sample_screenshot') {
+                const result = data.test_result;
+                resultDiv.innerHTML = `
+                    <div class="alert ${result.success ? 'alert-success' : 'alert-warning'}">
+                        <strong>Analysis Result:</strong><br>
+                        Success: ${result.success}<br>
+                        ${result.success ? `Scores: ${result.player1_score}-${result.player2_score}<br>Confidence: ${(result.confidence * 100).toFixed(1)}%` : `Error: ${result.error}`}
+                    </div>
+                `;
+            } else if (testType === 'ocr_engines') {
+                let html = '<div class="mt-2">';
+                for (const [engine, status] of Object.entries(data.ocr_engines)) {
+                    const badgeClass = status.available ? 'bg-success' : 'bg-danger';
+                    html += `<div class="d-flex justify-content-between mb-1">
+                        <span>${engine}:</span>
+                        <span class="badge ${badgeClass}">${status.available ? 'Available' : 'Missing'}</span>
+                    </div>`;
+                }
+                html += '</div>';
+                resultDiv.innerHTML = html;
+            } else if (testType === 'fraud_detection') {
+                let html = '<div class="mt-2">';
+                data.fraud_tests.forEach(test => {
+                    const badgeClass = test.is_suspicious ? 'bg-warning' : 'bg-success';
+                    html += `<div class="d-flex justify-content-between mb-1">
+                        <span>Score ${test.scores[0]}-${test.scores[1]}:</span>
+                        <span class="badge ${badgeClass}">${(test.fraud_probability * 100).toFixed(1)}% risk</span>
+                    </div>`;
+                });
+                html += '</div>';
+                resultDiv.innerHTML = html;
+            }
+        }
+
+        function createTestData() {
+            logToConsole('Creating test training data...');
+            
+            fetch('/create_test_data', {
+                method: 'POST'
+            })
+            .then(response => response.json())
+            .then(data => {
+                const resultDiv = document.getElementById('testdata-result');
+                if (data.success) {
+                    logToConsole('Test data created successfully', 'success');
+                    resultDiv.innerHTML = `
+                        <div class="alert alert-success">
+                            <strong>${data.message}</strong><br>
+                            <small>${data.test_data.join(', ')}</small>
+                        </div>
+                    `;
+                } else {
+                    logToConsole(`Test data creation failed: ${data.message}`, 'error');
+                    resultDiv.innerHTML = `
+                        <div class="alert alert-danger">
+                            <strong>Failed:</strong> ${data.message}
+                        </div>
+                    `;
+                }
+            })
+            .catch(error => {
+                logToConsole(`Test data creation error: ${error}`, 'error');
+            });
+        }
+
+        // Auto-run system status check on page load
+        window.onload = function() {
+            setTimeout(() => runTest('ocr_engines'), 1000);
+        };
+    </script>
+</body>
+</html>

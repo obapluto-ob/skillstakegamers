@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card">
+    <h1>⚔️ Battle Status</h1>
+    <p>Track your FPL battle progress in real-time</p>
+</div>
+
+<!-- Battle Info -->
+<div class="card">
+    <h3>Battle Details</h3>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+        <div>
+            <strong>Battle Type:</strong><br>
+            {{ battle[1]|replace('_', ' ')|title }}
+        </div>
+        <div>
+            <strong>Stake:</strong><br>
+            KSh {{ battle[5] }}
+        </div>
+        <div>
+            <strong>Total Pot:</strong><br>
+            KSh {{ battle[6] }}
+        </div>
+        <div>
+            <strong>Status:</strong><br>
+            <span class="status-badge status-{{ battle[9] }}">{{ battle[9]|title }}</span>
+        </div>
+    </div>
+</div>
+
+<!-- Battle Participants -->
+<div class="card">
+    <h3>👥 Participants</h3>
+    <div style="display: grid; grid-template-columns: 1fr auto 1fr; gap: 2rem; align-items: center;">
+        
+        <!-- Creator -->
+        <div style="text-align: center; padding: 1rem; background: rgba(40,167,69,0.1); border-radius: 8px;">
+            <h4>{{ battle[-2] }}</h4>
+            <p>FPL Team ID: {{ battle[3] }}</p>
+            {% if live_data %}
+                <div style="margin-top: 1rem;">
+                    <strong>Captain Score: {{ live_data.creator_captain_score }}</strong><br>
+                    <small>Vice-Captain: {{ live_data.creator_vice_score }}</small>
+                </div>
+            {% endif %}
+            {% if battle[9] == 'completed' and battle[11] %}
+                <div style="margin-top: 1rem;">
+                    <strong>Final Score: {{ battle[12] }}</strong>
+                </div>
+            {% endif %}
+        </div>
+        
+        <!-- VS -->
+        <div style="text-align: center;">
+            <h2 style="color: #666;">VS</h2>
+            {% if battle[9] == 'completed' %}
+                {% if battle[8] == battle[2] %}
+                    <div style="color: #28a745; font-weight: bold;">{{ battle[-2] }} Wins!</div>
+                {% elif battle[8] == battle[4] %}
+                    <div style="color: #28a745; font-weight: bold;">{{ battle[-1] }} Wins!</div>
+                {% else %}
+                    <div style="color: #ffc107; font-weight: bold;">Draw!</div>
+                {% endif %}
+            {% elif battle[9] == 'active' %}
+                <div style="color: #dc3545; font-weight: bold;">Live Battle</div>
+            {% endif %}
+        </div>
+        
+        <!-- Opponent -->
+        <div style="text-align: center; padding: 1rem; background: rgba(220,53,69,0.1); border-radius: 8px;">
+            {% if battle[4] %}
+                <h4>{{ battle[-1] }}</h4>
+                <p>FPL Team ID: {{ battle[4] }}</p>
+                {% if live_data %}
+                    <div style="margin-top: 1rem;">
+                        <strong>Captain Score: {{ live_data.opponent_captain_score }}</strong><br>
+                        <small>Vice-Captain: {{ live_data.opponent_vice_score }}</small>
+                    </div>
+                {% endif %}
+                {% if battle[9] == 'completed' and battle[11] %}
+                    <div style="margin-top: 1rem;">
+                        <strong>Final Score: {{ battle[13] }}</strong>
+                    </div>
+                {% endif %}
+            {% else %}
+                <h4>Waiting for Opponent</h4>
+                <p>Battle is open for others to join</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Battle Timeline -->
+<div class="card">
+    <h3>📅 Battle Timeline</h3>
+    <div style="display: flex; flex-direction: column; gap: 1rem;">
+        <div style="padding: 0.5rem; border-left: 4px solid #28a745;">
+            <strong>Battle Created</strong><br>
+            <small>{{ battle[15] }}</small>
+        </div>
+        
+        {% if battle[4] %}
+        <div style="padding: 0.5rem; border-left: 4px solid #007bff;">
+            <strong>Opponent Joined</strong><br>
+            <small>Battle became active</small>
+        </div>
+        {% endif %}
+        
+        {% if battle[9] == 'active' %}
+        <div style="padding: 0.5rem; border-left: 4px solid #ffc107;">
+            <strong>Battle In Progress</strong><br>
+            <small>Gameweek {{ battle[10] }} - Waiting for results</small>
+        </div>
+        {% elif battle[9] == 'completed' %}
+        <div style="padding: 0.5rem; border-left: 4px solid #dc3545;">
+            <strong>Battle Completed</strong><br>
+            <small>{{ battle[16] }}</small>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Actions -->
+<div class="card">
+    <div style="display: flex; gap: 1rem;">
+        <a href="/my_fpl_battles" class="btn btn-secondary">← Back to My Battles</a>
+        {% if battle[9] == 'active' %}
+            <button onclick="location.reload()" class="btn btn-primary">🔄 Refresh Scores</button>
+        {% endif %}
+    </div>
+</div>
+
+{% if live_data %}
+<script>
+// Auto-refresh every 5 minutes for active battles
+setTimeout(function() {
+    location.reload();
+}, 300000);
+</script>
+{% endif %}
+
+{% endblock %}

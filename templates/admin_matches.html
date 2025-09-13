@@ -2,30 +2,13 @@
 
 {% block content %}
 <div class="card">
-    <h1><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" style="vertical-align: middle; margin-right: 8px;"><path d="M7.5 6.5C7.5 8.981 9.519 11 12 11s4.5-2.019 4.5-4.5S14.481 2 12 2 7.5 4.019 7.5 6.5zM20 21h1v-1c0-3.859-3.141-7-7-7h-4c-3.859 0-7 3.141-7 7v1h1 1 14z"/></svg> Match & Competition Management</h1>
-    <p>View matches and streaming competition data</p>
-</div>
-
-<!-- Competition Stats -->
-{% if competition_data %}
-<div class="card">
-    <h3><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="vertical-align: middle; margin-right: 8px;"><path d="M16 6l2.29 2.29-4.88 4.88-4-4L2 16.59 3.41 18l6-6 4 4 6.3-6.29L22 12V6z"/></svg> Today's Streaming Competition</h3>
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem;">
-        <div class="stat-card">
-            <div class="stat-number">{{ competition_data[0] or 0 }}</div>
-            <div class="stat-label">Participants</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-number">KSh {{ "%.0f"|format(competition_data[1] or 0) }}</div>
-            <div class="stat-label">Total Earnings</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-number">{{ competition_data[2] or 0 }}</div>
-            <div class="stat-label">Live Streams</div>
-        </div>
+    <h1>🎮 Quick Matches Management</h1>
+    <p>View and manage FIFA Mobile and eFootball quick matches</p>
+    <div style="margin-bottom: 1rem;">
+        <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary">← Back to Dashboard</a>
+        <a href="{{ url_for('admin_fpl_battles') }}" class="btn btn-info">🏆 View FPL Battles</a>
     </div>
 </div>
-{% endif %}
 
 <!-- Match Statistics -->
 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
@@ -87,11 +70,7 @@
                 </div>
                 <div>
                     <strong>Verification:</strong> 
-                    {% if match[17] == 'streaming' %}
-                        <span style="color: #dc3545;"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="vertical-align: middle; margin-right: 4px;"><circle cx="12" cy="12" r="8"/></svg> Live Stream</span>
-                    {% else %}
-                        <span style="color: #007bff;"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="vertical-align: middle; margin-right: 4px;"><path d="M9 2L7.17 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2h-3.17L15 2H9zm3 15c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5z"/></svg> OCR Screenshot</span>
-                    {% endif %}
+                    <span style="color: #007bff;">📸 Screenshot Proof</span>
                 </div>
                 <div>
                     {% if match[7] == 'active' %}
@@ -116,16 +95,10 @@
                     KSh {{ "%.0f"|format(match[5]|float or 0) }}
                 </div>
                 <div>
-                    <strong>Admin Commission:</strong><br>
-                    {% if match[7] == 'completed' %}
-                        <span style="color: #00ff88;">KSh {{ "%.0f"|format((match[5]|float or 0) * 0.32) }}</span>
-                    {% elif match[7] == 'cancelled_fake_ss' and match[18] > 0 %}
-                        <span style="color: #dc3545;">KSh {{ "%.0f"|format(match[18]) }} (Fraud Penalties)</span>
-                    {% elif match[7] == 'cancelled_fake_ss' %}
-                        <span style="color: #ffc107;">KSh 0 (No Penalties Applied)</span>
-                    {% else %}
-                        <span style="color: #666;">Pending</span>
-                    {% endif %}
+                    <strong>Match Type:</strong><br>
+                    <span style="background: #e3f2fd; color: #1976d2; padding: 0.2rem 0.5rem; border-radius: 12px; font-size: 0.8rem;">
+                        Quick Match
+                    </span>
                 </div>
             </div>
             

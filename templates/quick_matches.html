@@ -1,10 +1,44 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="card" style="background: linear-gradient(135deg, #28a745, #20c997); color: white; border: none;">
-    <h1>INSTANT PLAY MODE</h1>
-    <p>OCR Screenshot Verification - Submit victory proof, get verified automatically (70% success rate)</p>
+<div class="card">
+    <h1>🎮 Quick Matches</h1>
+    <p>Challenge other players in FIFA Mobile and eFootball matches with automatic verification</p>
+    <div style="margin-bottom: 1rem;">
+        <a href="{{ url_for('my_game_matches') }}" class="btn btn-info">📊 My Matches</a>
+        <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">← Dashboard</a>
+    </div>
 </div>
+
+<!-- Open Matches -->
+{% if open_matches %}
+<div class="card">
+    <h2>🔥 Open Matches - Join Now!</h2>
+    <div style="display: grid; gap: 1rem;">
+        {% for match in open_matches %}
+        <div style="background: #2a2a2a; padding: 1.5rem; border-radius: 12px; border-left: 4px solid #17a2b8;">
+            <div style="display: flex; justify-content: between; align-items: center;">
+                <div style="flex: 1;">
+                    <h3 style="margin: 0 0 0.5rem 0; color: #fff;">{{ match[1].replace('_', ' ').title() }} - {{ match[2].replace('_', ' ').title() }}</h3>
+                    <div style="color: #ccc; font-size: 0.9rem;">
+                        <strong>Creator:</strong> {{ match[17] }} ({{ match[4] }}) | 
+                        <strong>Stake:</strong> KSh {{ "%.0f"|format(match[7]) }} | 
+                        <strong>Prize:</strong> KSh {{ "%.0f"|format(match[8]) }}
+                    </div>
+                </div>
+                <button onclick="joinGameMatch({{ match[0] }}, '{{ match[1] }}')" class="btn btn-success">Join Match</button>
+                {% if match[10] == 'active' %}
+                <button onclick="uploadResult({{ match[0] }})" class="btn btn-warning ms-2">📸 Upload Result</button>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<div class="card">
+    <h2>🎮 Create New Match</h2>
 
 <div class="games-grid">
     {% for game in games %}
@@ -15,64 +49,274 @@
         <p style="color: #28a745; font-size: 0.9rem; font-weight: bold;">OCR SCREENSHOT VERIFICATION</p>
         <p style="color: #666; font-size: 0.9rem;">Balance: KSh {{ "%.0f"|format(session.balance if session.balance else 0) }}</p>
         
-        <div class="quick-match-form">
-            <input type="number" id="bet-{{ game.id }}" placeholder="Bet Amount" min="{{ game.min_bet }}" max="{{ game.max_bet }}" required style="width: 100%; padding: 0.5rem; margin-bottom: 0.5rem; background: #333; color: white; border: 1px solid #555; border-radius: 4px;">
-            <select id="mode-{{ game.id }}" required style="width: 100%; padding: 0.5rem; margin-bottom: 0.5rem; background: #333; color: white; border: 1px solid #555; border-radius: 4px;">
-                <option value="">Select Mode</option>
-                {% for mode in game.modes %}
-                <option value="{{ mode }}">{{ mode }}</option>
-                {% endfor %}
-            </select>
-            <button onclick="joinQuickMatch('{{ game.id }}')" class="btn btn-primary" style="width: 100%;">Join Quick Match</button>
-        </div>
+                <div class="game-modes">
+                    <h4>Game Modes:</h4>
+                    {% for mode in game.modes %}
+                    <div class="mode-item">
+                        <strong>{{ mode.name }}</strong>: {{ mode.description }}
+                    </div>
+                    {% endfor %}
+                </div>
+                
+                <button class="btn btn-primary" onclick="createMatch('{{ game.id }}', '{{ game.name }}', {{ game.modes|tojson }})">Create Match</button>
     </div>
     {% endfor %}
 </div>
 
+</div>
+
+<!-- Create Match Modal -->
+<div id="createMatchModal" class="modal">
+    <div class="modal-content" style="max-width: 500px;">
+        <span class="close" onclick="closeCreateModal()">&times;</span>
+        <h2>🎮 Create Game Match</h2>
+        <form id="createMatchForm">
+            <input type="hidden" id="gameType" name="game_type">
+            
+            <div style="margin-bottom: 1rem;">
+                <label><strong>Game:</strong></label>
+                <div id="selectedGame" style="font-size: 1.1rem; color: #17a2b8; font-weight: bold;"></div>
+            </div>
+            
+            <div style="margin-bottom: 1rem;">
+                <label for="gameMode"><strong>Game Mode:</strong></label>
+                <select id="gameMode" name="game_mode" required class="form-control">
+                    <option value="">Select game mode...</option>
+                </select>
+            </div>
+            
+            <div style="margin-bottom: 1rem;">
+                <label for="gameUsername"><strong>Your Game Username:</strong></label>
+                <input type="text" id="gameUsername" name="game_username" required class="form-control" placeholder="Enter your in-game username" minlength="3" maxlength="20">
+                <small style="color: #999;">This is your username in FIFA Mobile or eFootball (3-20 characters)</small>
+            </div>
+            
+            <div style="margin-bottom: 1rem;">
+                <label for="stakeAmount"><strong>Stake Amount (KSh):</strong></label>
+                <input type="number" id="stakeAmount" name="stake_amount" min="50" max="1000" required class="form-control" placeholder="50-1000">
+                <small style="color: #999;">Winner gets 92% of total pot (KSh <span id="prizeAmount">0</span>)</small>
+            </div>
+            
+            <div style="display: flex; gap: 1rem;">
+                <button type="submit" class="btn btn-success" style="flex: 1;">Create Match</button>
+                <button type="button" class="btn btn-secondary" onclick="closeCreateModal()">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Join Match Modal -->
+<div id="joinMatchModal" class="modal">
+    <div class="modal-content" style="max-width: 400px;">
+        <span class="close" onclick="closeJoinModal()">&times;</span>
+        <h2>🎮 Join Match</h2>
+        <form id="joinMatchForm">
+            <input type="hidden" id="joinMatchId" name="match_id">
+            
+            <div style="margin-bottom: 1rem;">
+                <label for="joinGameUsername"><strong>Your Game Username:</strong></label>
+                <input type="text" id="joinGameUsername" name="game_username" required class="form-control" placeholder="Enter your in-game username">
+                <small style="color: #999;">Must match your username in <span id="joinGameType"></span></small>
+            </div>
+            
+            <div style="display: flex; gap: 1rem;">
+                <button type="submit" class="btn btn-success" style="flex: 1;">Join Match</button>
+                <button type="button" class="btn btn-secondary" onclick="closeJoinModal()">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Upload Result Modal -->
+<div id="uploadResultModal" class="modal">
+    <div class="modal-content" style="max-width: 500px;">
+        <span class="close" onclick="closeUploadModal()">&times;</span>
+        <h2>📸 Upload Match Result</h2>
+        <form id="uploadResultForm" enctype="multipart/form-data">
+            <input type="hidden" id="uploadMatchId" name="match_id">
+            
+            <div style="margin-bottom: 1rem;">
+                <label for="player1Score"><strong>Your Score:</strong></label>
+                <input type="number" id="player1Score" name="player1_score" min="0" max="10" required class="form-control">
+            </div>
+            
+            <div style="margin-bottom: 1rem;">
+                <label for="player2Score"><strong>Opponent Score:</strong></label>
+                <input type="number" id="player2Score" name="player2_score" min="0" max="10" required class="form-control">
+            </div>
+            
+            <div style="margin-bottom: 1rem;">
+                <label for="screenshot"><strong>Match Screenshot:</strong></label>
+                <input type="file" id="screenshot" name="screenshot" accept="image/*" required class="form-control">
+                <small style="color: #999;">Upload a clear screenshot showing the final score</small>
+            </div>
+            
+            <div style="display: flex; gap: 1rem;">
+                <button type="submit" class="btn btn-success" style="flex: 1;">Upload Result</button>
+                <button type="button" class="btn btn-secondary" onclick="closeUploadModal()">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <script>
-function joinQuickMatch(gameId) {
-    const betAmount = document.getElementById('bet-' + gameId).value;
-    const gameMode = document.getElementById('mode-' + gameId).value;
+function createMatch(gameId, gameName, modes) {
+    document.getElementById('gameType').value = gameId;
+    document.getElementById('selectedGame').textContent = gameName;
     
-    if (!betAmount || !gameMode) {
-        alert('Please fill in all fields');
-        return;
-    }
+    // Populate game modes
+    const modeSelect = document.getElementById('gameMode');
+    modeSelect.innerHTML = '<option value="">Select game mode...</option>';
     
-    const button = event.target;
-    button.disabled = true;
-    button.textContent = 'Joining...';
+    modes.forEach(mode => {
+        const option = document.createElement('option');
+        option.value = mode.id;
+        option.textContent = `${mode.name} - ${mode.description}`;
+        modeSelect.appendChild(option);
+    });
     
-    fetch('/create_match', {
+    document.getElementById('createMatchModal').style.display = 'block';
+}
+
+function joinGameMatch(matchId, gameType) {
+    document.getElementById('joinMatchId').value = matchId;
+    document.getElementById('joinGameType').textContent = gameType.replace('_', ' ').toUpperCase();
+    document.getElementById('joinMatchModal').style.display = 'block';
+}
+
+function closeCreateModal() {
+    document.getElementById('createMatchModal').style.display = 'none';
+}
+
+function closeJoinModal() {
+    document.getElementById('joinMatchModal').style.display = 'none';
+}
+
+function uploadResult(matchId) {
+    document.getElementById('uploadMatchId').value = matchId;
+    document.getElementById('uploadResultModal').style.display = 'block';
+}
+
+function closeUploadModal() {
+    document.getElementById('uploadResultModal').style.display = 'none';
+}
+
+// Calculate prize amount
+document.getElementById('stakeAmount').addEventListener('input', function() {
+    const stake = parseFloat(this.value) || 0;
+    const totalPot = stake * 2;
+    const commission = totalPot * 0.08;
+    const prize = totalPot - commission;
+    document.getElementById('prizeAmount').textContent = Math.round(prize);
+});
+
+// Create match form submission
+document.getElementById('createMatchForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const formData = new FormData(this);
+    
+    // Show loading state
+    const submitBtn = this.querySelector('button[type="submit"]');
+    const originalText = submitBtn.textContent;
+    submitBtn.textContent = 'Creating...';
+    submitBtn.disabled = true;
+    
+    fetch('/create_game_match', {
         method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({
-            game: gameId,
-            bet_amount: parseFloat(betAmount),
-            game_mode: gameMode,
-            verification_type: 'ocr'
-        })
+        body: formData
+    })
+    .then(response => {
+        if (response.headers.get('content-type')?.includes('application/json')) {
+            return response.json();
+        } else {
+            // Handle redirect response
+            location.reload();
+            return null;
+        }
+    })
+    .then(data => {
+        if (data) {
+            if (data.success) {
+                alert(data.message);
+                closeCreateModal();
+                location.reload();
+            } else {
+                alert('Error: ' + data.message);
+                submitBtn.textContent = originalText;
+                submitBtn.disabled = false;
+            }
+        }
+    })
+    .catch(error => {
+        console.error('Match creation error:', error);
+        alert('Error creating match. Please try again.');
+        submitBtn.textContent = originalText;
+        submitBtn.disabled = false;
+    });
+});
+
+// Join match form submission
+document.getElementById('joinMatchForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const formData = new FormData(this);
+    const matchId = document.getElementById('joinMatchId').value;
+    
+    fetch(`/join_game_match/${matchId}`, {
+        method: 'POST',
+        body: formData
     })
     .then(response => response.json())
     .then(data => {
         if (data.success) {
             alert(data.message);
-            if (data.redirect) {
-                window.location.href = data.redirect;
-            } else if (data.match_id) {
-                window.location.href = '/match_lobby/' + data.match_id;
-            }
+            location.reload();
         } else {
-            alert('Error: ' + data.error);
-            button.disabled = false;
-            button.textContent = 'Join Quick Match';
+            alert('Error: ' + data.message);
         }
     })
     .catch(error => {
-        alert('Connection error');
-        button.disabled = false;
-        button.textContent = 'Join Quick Match';
+        alert('Error joining match');
     });
-}
+});
+
+// Upload result form submission
+document.getElementById('uploadResultForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const formData = new FormData(this);
+    
+    fetch('/upload_match_screenshot', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            closeUploadModal();
+            location.reload();
+        } else {
+            alert('Error: ' + data.message);
+        }
+    })
+    .catch(error => {
+        alert('Error uploading result');
+    });
+});
+
+// Close modal when clicking outside
+window.onclick = function(event) {
+    const createModal = document.getElementById('createMatchModal');
+    const joinModal = document.getElementById('joinMatchModal');
+    const uploadModal = document.getElementById('uploadResultModal');
+    if (event.target == createModal) {
+        createModal.style.display = 'none';
+    }
+    if (event.target == joinModal) {
+        joinModal.style.display = 'none';
+    }
+    if (event.target == uploadModal) {
+        uploadModal.style.display = 'none';
+    }
+};
 </script>
 {% endblock %}

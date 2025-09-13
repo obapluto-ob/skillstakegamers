@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card">
+    <h1>🎮 Game Matches Management</h1>
+    
+    <div class="stats-grid" style="margin-bottom: 2rem;">
+        <div class="stat-card">
+            <div class="stat-number">{{ matches|length }}</div>
+            <div class="stat-label">Total Matches</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number">{{ matches|selectattr('10', 'equalto', 'active')|list|length }}</div>
+            <div class="stat-label">Active Matches</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number">{{ matches|selectattr('10', 'equalto', 'completed')|list|length }}</div>
+            <div class="stat-label">Completed</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number">{{ matches|selectattr('10', 'equalto', 'open')|list|length }}</div>
+            <div class="stat-label">Open Matches</div>
+        </div>
+    </div>
+
+    <div style="margin-bottom: 1rem;">
+        <a href="{{ url_for('resolve_game_matches') }}" class="btn btn-success">🔄 Resolve Active Matches</a>
+        <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary">← Back to Dashboard</a>
+    </div>
+
+    {% if matches %}
+        <div style="overflow-x: auto;">
+            <table style="width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                <thead style="background: #f8f9fa;">
+                    <tr>
+                        <th style="padding: 1rem; text-align: left; border-bottom: 1px solid #dee2e6;">ID</th>
+                        <th style="padding: 1rem; text-align: left; border-bottom: 1px solid #dee2e6;">Game</th>
+                        <th style="padding: 1rem; text-align: left; border-bottom: 1px solid #dee2e6;">Creator</th>
+                        <th style="padding: 1rem; text-align: left; border-bottom: 1px solid #dee2e6;">Opponent</th>
+                        <th style="padding: 1rem; text-align: left; border-bottom: 1px solid #dee2e6;">Stake</th>
+                        <th style="padding: 1rem; text-align: left; border-bottom: 1px solid #dee2e6;">Status</th>
+                        <th style="padding: 1rem; text-align: left; border-bottom: 1px solid #dee2e6;">Created</th>
+                        <th style="padding: 1rem; text-align: left; border-bottom: 1px solid #dee2e6;">Result</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for match in matches %}
+                    <tr style="border-bottom: 1px solid #f1f3f4;">
+                        <td style="padding: 1rem;">#{{ match[0] }}</td>
+                        <td style="padding: 1rem;">
+                            <span style="background: #e3f2fd; color: #1976d2; padding: 0.2rem 0.5rem; border-radius: 12px; font-size: 0.8rem;">
+                                {{ match[1].replace('_', ' ').title() }}
+                            </span><br>
+                            <small style="color: #666;">{{ match[2].replace('_', ' ').title() }}</small>
+                        </td>
+                        <td style="padding: 1rem;">
+                            <strong>{{ match[18] or 'Unknown' }}</strong><br>
+                            <small style="color: #666;">Game: {{ match[4] }}</small>
+                        </td>
+                        <td style="padding: 1rem;">
+                            {% if match[19] %}
+                                <strong>{{ match[19] }}</strong><br>
+                                <small style="color: #666;">Game: {{ match[6] }}</small>
+                            {% else %}
+                                <span style="color: #999; font-style: italic;">Waiting for opponent</span>
+                            {% endif %}
+                        </td>
+                        <td style="padding: 1rem;">
+                            <strong>KSh {{ "%.0f"|format(match[7]) }}</strong><br>
+                            <small style="color: #666;">Prize: KSh {{ "%.0f"|format(match[8]) }}</small>
+                        </td>
+                        <td style="padding: 1rem;">
+                            {% if match[10] == 'open' %}
+                                <span style="background: #fff3cd; color: #856404; padding: 0.3rem 0.6rem; border-radius: 12px; font-size: 0.8rem;">🟡 Open</span>
+                            {% elif match[10] == 'active' %}
+                                <span style="background: #d4edda; color: #155724; padding: 0.3rem 0.6rem; border-radius: 12px; font-size: 0.8rem;">🟢 Active</span>
+                            {% elif match[10] == 'completed' %}
+                                <span style="background: #cce5ff; color: #004085; padding: 0.3rem 0.6rem; border-radius: 12px; font-size: 0.8rem;">✅ Completed</span>
+                            {% elif match[10] == 'draw' %}
+                                <span style="background: #f8d7da; color: #721c24; padding: 0.3rem 0.6rem; border-radius: 12px; font-size: 0.8rem;">🤝 Draw</span>
+                            {% endif %}
+                        </td>
+                        <td style="padding: 1rem;">
+                            <small>{{ match[16] }}</small>
+                            {% if match[14] %}
+                                <br><small style="color: #666;">Started: {{ match[14] }}</small>
+                            {% endif %}
+                        </td>
+                        <td style="padding: 1rem;">
+                            {% if match[10] == 'completed' %}
+                                {% if match[9] == match[3] %}
+                                    <span style="color: #28a745; font-weight: bold;">{{ match[18] }} Won</span><br>
+                                    <small>{{ match[11] }} - {{ match[12] }}</small>
+                                {% elif match[9] == match[5] %}
+                                    <span style="color: #28a745; font-weight: bold;">{{ match[19] }} Won</span><br>
+                                    <small>{{ match[11] }} - {{ match[12] }}</small>
+                                {% endif %}
+                            {% elif match[10] == 'draw' %}
+                                <span style="color: #6c757d;">Refunded</span>
+                            {% elif match[10] == 'active' %}
+                                <span style="color: #ffc107;">In Progress</span><br>
+                                <small>Monitoring for results...</small>
+                            {% else %}
+                                <span style="color: #999;">-</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div style="text-align: center; padding: 3rem; color: #6c757d;">
+            <div style="font-size: 3rem; margin-bottom: 1rem;">🎮</div>
+            <h3>No Game Matches Yet</h3>
+            <p>Game matches will appear here once users start creating them.</p>
+        </div>
+    {% endif %}
+</div>
+
+<div class="card">
+    <h2>📊 Testing Mode Information</h2>
+    <div style="background: rgba(255, 193, 7, 0.1); padding: 1.5rem; border-radius: 8px; border-left: 4px solid #ffc107;">
+        <h3 style="color: #ffc107; margin-top: 0;">⚠️ Currently in Testing Mode</h3>
+        <p><strong>API Status:</strong> Mock APIs for testing - Real game APIs coming soon</p>
+        <ul>
+            <li><strong>Username Validation:</strong> Accepts any username (3+ characters)</li>
+            <li><strong>Match Results:</strong> Randomly generated for testing (30% chance of finding results)</li>
+            <li><strong>Real Integration:</strong> FIFA Mobile and eFootball APIs will be integrated next</li>
+        </ul>
+        <p style="color: #856404; font-weight: bold;">This allows you to test the complete system flow before connecting real game APIs.</p>
+    </div>
+</div>
+{% endblock %}

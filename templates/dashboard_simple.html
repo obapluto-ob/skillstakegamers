@@ -1,16 +1,66 @@
-{% extends "base_simple.html" %}
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Dashboard - SkillStake</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f0f0f0; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 10px; }
+        .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin: 20px 0; }
+        .stat-card { background: #007bff; color: white; padding: 20px; border-radius: 8px; text-align: center; }
+        .nav { background: #333; color: white; padding: 10px; margin: -20px -20px 20px -20px; }
+        .nav a { color: white; text-decoration: none; margin-right: 20px; }
+        .alert { padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .alert-success { background: #d4edda; color: #155724; }
+        .alert-error { background: #f8d7da; color: #721c24; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="nav">
+            <a href="{{ url_for('dashboard') }}">Dashboard</a>
+            <a href="{{ url_for('games') }}">Games</a>
+            <a href="{{ url_for('matches') }}">Matches</a>
+            <a href="{{ url_for('logout') }}">Logout</a>
+            <span style="float: right;">Welcome, {{ session.username }}!</span>
+        </div>
 
-{% block content %}
-<div class="card">
-    <h1>Welcome to GameBet Dashboard</h1>
-    <p>You are logged in as: {{ session.username }}</p>
-    <p>Your balance: KSh {{ session.balance }}</p>
-    
-    <div style="margin-top: 2rem;">
-        <h3>Quick Actions</h3>
-        <a href="#" class="btn">Create Match</a>
-        <a href="#" class="btn">Join Match</a>
-        <a href="#" class="btn">Add Funds</a>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <h1>Dashboard</h1>
+        
+        <div class="stats">
+            <div class="stat-card">
+                <h3>Balance</h3>
+                <p>KSh {{ stats.balance }}</p>
+            </div>
+            <div class="stat-card">
+                <h3>Wins</h3>
+                <p>{{ stats.wins }}</p>
+            </div>
+            <div class="stat-card">
+                <h3>Losses</h3>
+                <p>{{ stats.losses }}</p>
+            </div>
+            <div class="stat-card">
+                <h3>Earnings</h3>
+                <p>KSh {{ stats.earnings }}</p>
+            </div>
+        </div>
+
+        <h2>Recent Matches</h2>
+        {% if recent_matches %}
+            {% for match in recent_matches %}
+                <p>Match #{{ match[0] }} - {{ match[1] }} - KSh {{ match[2] }} - {{ match[3] }}</p>
+            {% endfor %}
+        {% else %}
+            <p>No recent matches found.</p>
+        {% endif %}
     </div>
-</div>
-{% endblock %}
+</body>
+</html>

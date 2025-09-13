@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card">
+    <h1>User Details - {{ user[1] }}</h1>
+    
+    <div style="margin-bottom: 1rem;">
+        <a href="{{ url_for('admin_users') }}" class="btn btn-secondary">← Back to Users</a>
+    </div>
+    
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+        <div style="background: #f8f9fa; padding: 1rem; border-radius: 8px;">
+            <h3>Account Information</h3>
+            <p><strong>ID:</strong> {{ user[0] }}</p>
+            <p><strong>Username:</strong> {{ user[1] }}</p>
+            <p><strong>Email:</strong> {{ user[2] }}</p>
+            <p><strong>Phone:</strong> {{ user[3] }}</p>
+            <p><strong>Balance:</strong> KSh {{ "%.0f"|format(user[4]) }}</p>
+            <p><strong>Status:</strong> 
+                <span style="color: {{ '#dc3545' if user[5] else '#28a745' }}; font-weight: bold;">
+                    {{ 'BANNED' if user[5] else 'ACTIVE' }}
+                </span>
+            </p>
+            <p><strong>Fake Count:</strong> {{ user[7] or 0 }}/3</p>
+            <p><strong>Joined:</strong> {{ user[6] }}</p>
+        </div>
+        
+        <div style="background: #f8f9fa; padding: 1rem; border-radius: 8px;">
+            <h3>Quick Actions</h3>
+            <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                {% if user[5] %}
+                    <a href="{{ url_for('unban_user', user_id=user[0]) }}" class="btn btn-success" 
+                       onclick="return confirm('Unban this user?')">Unban User</a>
+                {% else %}
+                    <a href="{{ url_for('ban_user', user_id=user[0]) }}" class="btn btn-danger" 
+                       onclick="return confirm('Ban this user?')">Ban User</a>
+                {% endif %}
+                <button onclick="adjustBalance()" class="btn btn-warning">Adjust Balance</button>
+                <button onclick="resetPassword()" class="btn btn-info">Reset Password</button>
+            </div>
+        </div>
+    </div>
+    
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+        <div class="card">
+            <h3>Recent Transactions</h3>
+            {% if transactions %}
+                <div style="max-height: 300px; overflow-y: auto;">
+                    {% for tx in transactions %}
+                    <div style="border-bottom: 1px solid #eee; padding: 0.5rem 0;">
+                        <div style="display: flex; justify-content: space-between;">
+                            <span>{{ tx[0] }}</span>
+                            <span style="color: {{ '#28a745' if tx[1] > 0 else '#dc3545' }}; font-weight: bold;">
+                                KSh {{ tx[1] }}
+                            </span>
+                        </div>
+                        <div style="font-size: 0.8rem; color: #666;">{{ tx[2] }}</div>
+                        <div style="font-size: 0.7rem; color: #999;">{{ tx[3] }}</div>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p>No transactions found</p>
+            {% endif %}
+        </div>
+        
+        <div class="card">
+            <h3>Recent Matches</h3>
+            {% if matches %}
+                <div style="max-height: 300px; overflow-y: auto;">
+                    {% for match in matches %}
+                    <div style="border-bottom: 1px solid #eee; padding: 0.5rem 0;">
+                        <div><strong>{{ match[1] }} - {{ match[2] }}</strong></div>
+                        <div>Amount: KSh {{ match[3] }}</div>
+                        <div>Status: {{ match[4] }}</div>
+                        <div style="font-size: 0.7rem; color: #999;">{{ match[5] }}</div>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p>No matches found</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+function adjustBalance() {
+    const amount = prompt('Enter adjustment amount (positive to add, negative to subtract):');
+    if (amount && !isNaN(amount)) {
+        if (confirm(`Adjust balance by KSh ${amount}?`)) {
+            // Add AJAX call to adjust balance
+            alert('Balance adjustment feature coming soon');
+        }
+    }
+}
+
+function resetPassword() {
+    if (confirm('Reset password to "password123"?')) {
+        // Add AJAX call to reset password
+        alert('Password reset feature coming soon');
+    }
+}
+</script>
+{% endblock %}

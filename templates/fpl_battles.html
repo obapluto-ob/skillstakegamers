@@ -1,0 +1,206 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card">
+    <h1><img src="https://upload.wikimedia.org/wikipedia/en/f/f2/Premier_League_Logo.svg" alt="Premier League" style="width: 55px; height: 55px; vertical-align: middle; margin-right: 10px;"> FPL Live Battles</h1>
+    <p>Fantasy Premier League battles using real FPL data</p>
+</div>
+
+<!-- Live Matches Today -->
+<div class="card">
+    <h3>⚽ Upcoming Premier League Matches</h3>
+    {% if live_matches %}
+        <div style="display: grid; gap: 1rem; margin-bottom: 2rem;">
+            {% for match in live_matches %}
+            <div style="background: rgba(220,53,69,0.1); padding: 1rem; border-radius: 8px; border-left: 4px solid #dc3545;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div style="display: flex; align-items: center; gap: 1rem;">
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <img src="{{ match.home_logo }}" alt="{{ match.home }}" style="width: 30px; height: 30px; object-fit: contain;" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                            <div style="display: none; width: 30px; height: 30px; border-radius: 50%; background: {% if match.home == 'ARS' %}#DC143C{% elif match.home == 'CHE' %}#034694{% elif match.home == 'LIV' %}#C8102E{% elif match.home == 'MCI' %}#6CABDD{% elif match.home == 'MUN' %}#DA020E{% elif match.home == 'TOT' %}#132257{% elif match.home == 'EVE' %}#003399{% elif match.home == 'FUL' %}#000000{% elif match.home == 'NEW' %}#241F20{% elif match.home == 'WOL' %}#FDB913{% elif match.home == 'AVL' %}#95BFE5{% elif match.home == 'BOU' %}#DA020E{% elif match.home == 'BRE' %}#DC143C{% elif match.home == 'BHA' %}#0057B8{% elif match.home == 'CRY' %}#1B458F{% elif match.home == 'LEI' %}#003090{% elif match.home == 'SOU' %}#D71920{% elif match.home == 'WHU' %}#7A263A{% else %}linear-gradient(45deg, #ff6b6b, #4ecdc4){% endif %}; display: flex; align-items: center; justify-content: center; color: {% if match.home == 'FUL' %}white{% else %}white{% endif %}; font-weight: bold; font-size: 0.7rem; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">{{ match.home[:3] }}</div>
+                            <strong>{{ match.home }}</strong>
+                        </div>
+                        <span style="color: #666; font-weight: bold;">VS</span>
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <img src="{{ match.away_logo }}" alt="{{ match.away }}" style="width: 30px; height: 30px; object-fit: contain;" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                            <div style="display: none; width: 30px; height: 30px; border-radius: 50%; background: {% if match.away == 'ARS' %}#DC143C{% elif match.away == 'CHE' %}#034694{% elif match.away == 'LIV' %}#C8102E{% elif match.away == 'MCI' %}#6CABDD{% elif match.away == 'MUN' %}#DA020E{% elif match.away == 'TOT' %}#132257{% elif match.away == 'EVE' %}#003399{% elif match.away == 'FUL' %}#000000{% elif match.away == 'NEW' %}#241F20{% elif match.away == 'WOL' %}#FDB913{% elif match.away == 'AVL' %}#95BFE5{% elif match.away == 'BOU' %}#DA020E{% elif match.away == 'BRE' %}#DC143C{% elif match.away == 'BHA' %}#0057B8{% elif match.away == 'CRY' %}#1B458F{% elif match.away == 'LEI' %}#003090{% elif match.away == 'SOU' %}#D71920{% elif match.away == 'WHU' %}#7A263A{% else %}linear-gradient(45deg, #667eea, #764ba2){% endif %}; display: flex; align-items: center; justify-content: center; color: {% if match.away == 'FUL' %}white{% else %}white{% endif %}; font-weight: bold; font-size: 0.7rem; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">{{ match.away[:3] }}</div>
+                            <strong>{{ match.away }}</strong>
+                        </div>
+                        <div style="margin-left: 1rem;">
+                            <small style="font-weight: bold;">{{ match.time }}</small>
+                        </div>
+                    </div>
+                    <div>
+                        <button onclick="createLiveMatchBattle({{ match.id }})" class="btn btn-danger">
+                            Create Battle
+                        </button>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <p>No upcoming Premier League matches. Check back later!</p>
+    {% endif %}
+</div>
+
+<!-- Battle Types -->
+<div class="card">
+    <h3>🎯 Battle Types</h3>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem;">
+        {% for battle in battle_types %}
+        <div class="match-card">
+            <div class="match-header">
+                <div><strong>{{ battle.name }}</strong></div>
+                <span class="status-badge status-pending">{{ battle.min_bet }}-{{ battle.max_bet }} KSh</span>
+            </div>
+            <p style="margin: 1rem 0;">{{ battle.description }}</p>
+            <button onclick="showCreateBattleForm('{{ battle.id }}')" class="btn btn-primary" style="width: 100%;">
+                Create Battle
+            </button>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Open Battles -->
+<div class="card">
+    <h3>⚔️ Open Battles</h3>
+    <div id="openBattles">
+        {% if open_battles %}
+            <div style="display: grid; gap: 1rem;">
+                {% for battle in open_battles %}
+                <div style="background: rgba(40,167,69,0.1); padding: 1rem; border-radius: 8px; border-left: 4px solid #28a745;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <strong>{{ battle[1]|replace('_', ' ')|title }}</strong> by {{ battle[-1] }}<br>
+                            <small>Stake: KSh {{ battle[5] }} • Total Pot: KSh {{ battle[6] }}</small>
+                        </div>
+                        <button onclick="joinBattle({{ battle[0] }})" class="btn btn-success">
+                            Join Battle
+                        </button>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p>No open battles available. Create one to get started!</p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Join Battle Modal -->
+<div id="joinBattleModal" class="modal">
+    <div class="modal-content">
+        <span class="close" onclick="closeJoinBattleModal()">&times;</span>
+        <h2>Join FPL Battle</h2>
+        <form id="joinBattleForm">
+            <input type="hidden" id="joinBattleId" name="battle_id">
+            
+            <div style="margin-bottom: 1rem;">
+                <label>Your FPL Team ID:</label>
+                <input type="number" id="joinFplTeamId" name="fpl_team_id" placeholder="e.g., 1234567" required class="form-control">
+                <small>Find your team ID in the FPL app URL</small>
+            </div>
+            
+            <div style="display: flex; gap: 1rem;">
+                <button type="submit" class="btn btn-success" style="flex: 1;">Join Battle</button>
+                <button type="button" class="btn btn-secondary" onclick="closeJoinBattleModal()">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Create Battle Modal -->
+<div id="createBattleModal" class="modal">
+    <div class="modal-content">
+        <span class="close" onclick="closeCreateBattleModal()">&times;</span>
+        <h2>Create FPL Battle</h2>
+        <form action="/create_fpl_battle" method="POST">
+            <input type="hidden" id="battleType" name="battle_type">
+            
+            <div style="margin-bottom: 1rem;">
+                <label>Your FPL Team ID:</label>
+                <input type="number" name="fpl_team_id" placeholder="e.g., 1234567" required class="form-control">
+                <small>Find your team ID in the FPL app URL</small>
+            </div>
+            
+            <div style="margin-bottom: 1rem;">
+                <label>Stake Amount (KSh):</label>
+                <input type="number" name="stake_amount" min="50" max="1000" placeholder="100" required class="form-control">
+            </div>
+            
+            <div style="display: flex; gap: 1rem;">
+                <button type="submit" class="btn btn-success" style="flex: 1;">Create Battle</button>
+                <button type="button" class="btn btn-secondary" onclick="closeCreateBattleModal()">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function showCreateBattleForm(battleType) {
+    document.getElementById('battleType').value = battleType;
+    document.getElementById('createBattleModal').style.display = 'block';
+}
+
+function closeCreateBattleModal() {
+    document.getElementById('createBattleModal').style.display = 'none';
+}
+
+function createLiveMatchBattle(matchId) {
+    // For live match battles
+    document.getElementById('battleType').value = 'live_match_' + matchId;
+    document.getElementById('createBattleModal').style.display = 'block';
+}
+
+function joinBattle(battleId) {
+    document.getElementById('joinBattleId').value = battleId;
+    document.getElementById('joinBattleModal').style.display = 'block';
+}
+
+function closeJoinBattleModal() {
+    document.getElementById('joinBattleModal').style.display = 'none';
+}
+
+// Handle join battle form submission
+document.getElementById('joinBattleForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const battleId = document.getElementById('joinBattleId').value;
+    const fplTeamId = document.getElementById('joinFplTeamId').value;
+    
+    fetch(`/join_fpl_battle/${battleId}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: `fpl_team_id=${fplTeamId}`
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            location.reload();
+        } else {
+            alert(data.message);
+        }
+    })
+    .catch(error => {
+        alert('Error joining battle');
+    });
+});
+
+// Close modal when clicking outside
+window.onclick = function(event) {
+    const createModal = document.getElementById('createBattleModal');
+    const joinModal = document.getElementById('joinBattleModal');
+    if (event.target == createModal) {
+        createModal.style.display = 'none';
+    }
+    if (event.target == joinModal) {
+        joinModal.style.display = 'none';
+    }
+}
+</script>
+{% endblock %}

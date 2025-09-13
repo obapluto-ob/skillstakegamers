@@ -148,6 +148,8 @@
                         {% elif transaction[2] == 'rejected_deposit' %}[REJECTED]
                         {% elif transaction[2] in ['failed_crypto_deposit'] %}[FAILED]
                         {% elif transaction[2] in ['failed_paypal_deposit'] %}[FAILED]
+                        {% elif transaction[2] == 'crypto_cancelled' %}❌[CANCELLED]
+                        {% elif transaction[2] == 'paypal_cancelled' %}❌[CANCELLED]
                         {% elif transaction[2] in ['crypto_initiated', 'paypal_initiated'] %}[STARTED]
                         {% elif transaction[2] == 'withdrawal' %}[PAID]
                         {% elif transaction[2] == 'pending_withdrawal' %}[PENDING]
@@ -173,6 +175,8 @@
                         {% elif transaction[2] == 'admin_adjustment' %}Admin Adjustment
                         {% elif transaction[2] == 'match_win' %}Match Victory
                         {% elif transaction[2] == 'refund' %}Refund
+                        {% elif transaction[2] == 'crypto_cancelled' %}Crypto Payment Cancelled
+                        {% elif transaction[2] == 'paypal_cancelled' %}PayPal Payment Cancelled
                         {% elif transaction[2] == 'crypto_initiated' %}Crypto Payment Started
                         {% elif transaction[2] == 'paypal_initiated' %}PayPal Payment Started
                         {% elif transaction[2] == 'failed_crypto_deposit' %}Crypto Deposit Failed
@@ -250,7 +254,7 @@
             <p style="margin: 0; font-size: 0.9rem;">Withdraw via your deposit method for optimal rates, or choose flexible alternatives!</p>
         </div>
         
-        <form method="POST" action="{{ url_for('withdraw') }}">
+        <form method="POST" action="{{ url_for('withdraw_funds') }}">
             <div style="margin-bottom: 1rem;">
                 <label><strong>Withdrawal Method</strong></label>
                 <select name="withdrawal_method" id="withdrawalMethod" class="form-control" onchange="updateWithdrawalForm()" required>

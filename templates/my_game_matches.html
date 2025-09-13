@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card">
+    <h1>🎮 My Game Matches</h1>
+    <div style="margin-bottom: 1rem;">
+        <a href="{{ url_for('quick_matches') }}" class="btn btn-primary">+ Create New Match</a>
+        <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">← Back to Dashboard</a>
+    </div>
+    
+    {% if matches %}
+        {% for match in matches %}
+        <div class="match-card" style="margin-bottom: 1rem; padding: 1.5rem; background: #2a2a2a; border-radius: 12px; border-left: 4px solid {% if match[10] == 'completed' %}#28a745{% elif match[10] == 'active' %}#ffc107{% elif match[10] == 'draw' %}#6c757d{% else %}#17a2b8{% endif %};">
+            <div style="display: flex; justify-content: between; align-items: start; margin-bottom: 1rem;">
+                <div style="flex: 1;">
+                    <h3 style="margin: 0 0 0.5rem 0; color: #fff;">
+                        {{ match[1].replace('_', ' ').title() }} - {{ match[2].replace('_', ' ').title() }}
+                        <span style="font-size: 0.8rem; background: {% if match[10] == 'completed' %}#28a745{% elif match[10] == 'active' %}#ffc107{% elif match[10] == 'draw' %}#6c757d{% else %}#17a2b8{% endif %}; color: white; padding: 0.2rem 0.5rem; border-radius: 12px; margin-left: 0.5rem;">
+                            {% if match[10] == 'open' %}🟡 Open
+                            {% elif match[10] == 'active' %}🟢 Active
+                            {% elif match[10] == 'completed' %}✅ Completed
+                            {% elif match[10] == 'draw' %}🤝 Draw
+                            {% endif %}
+                        </span>
+                    </h3>
+                    <div style="color: #ccc; font-size: 0.9rem;">
+                        <strong>Match #{{ match[0] }}</strong> | 
+                        <strong>Stake:</strong> KSh {{ "%.0f"|format(match[7]) }} | 
+                        <strong>Prize:</strong> KSh {{ "%.0f"|format(match[8]) }}
+                    </div>
+                </div>
+                <div style="text-align: right;">
+                    <div style="font-size: 0.8rem; color: #999;">{{ match[16] }}</div>
+                </div>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin: 1rem 0;">
+                <div style="text-align: center;">
+                    <div style="font-weight: bold; color: #fff; margin-bottom: 0.5rem;">{{ match[18] }}</div>
+                    <div style="color: #ccc; font-size: 0.9rem;">{{ match[4] }}</div>
+                    {% if match[10] in ['completed', 'draw'] %}
+                        <div style="font-size: 1.5rem; font-weight: bold; margin: 0.5rem 0; color: {% if match[9] == match[3] %}#28a745{% else %}#dc3545{% endif %};">
+                            {{ match[11] }}
+                        </div>
+                    {% endif %}
+                </div>
+                
+                <div style="text-align: center;">
+                    {% if match[6] %}
+                        <div style="font-weight: bold; color: #fff; margin-bottom: 0.5rem;">{{ match[19] or 'Opponent' }}</div>
+                        <div style="color: #ccc; font-size: 0.9rem;">{{ match[6] }}</div>
+                        {% if match[10] in ['completed', 'draw'] %}
+                            <div style="font-size: 1.5rem; font-weight: bold; margin: 0.5rem 0; color: {% if match[9] == match[5] %}#28a745{% else %}#dc3545{% endif %};">
+                                {{ match[12] }}
+                            </div>
+                        {% endif %}
+                    {% else %}
+                        <div style="color: #999; font-style: italic;">Waiting for opponent...</div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            {% if match[10] == 'completed' %}
+                <div style="text-align: center; padding: 1rem; background: rgba(40, 167, 69, 0.1); border-radius: 8px; margin-top: 1rem;">
+                    {% if match[9] == session['user_id'] %}
+                        <div style="color: #28a745; font-weight: bold; font-size: 1.1rem;">🏆 YOU WON!</div>
+                        <div style="color: #28a745;">Prize: KSh {{ "%.0f"|format(match[8]) }}</div>
+                    {% else %}
+                        <div style="color: #dc3545; font-weight: bold; font-size: 1.1rem;">😔 You Lost</div>
+                        <div style="color: #dc3545;">Better luck next time!</div>
+                    {% endif %}
+                </div>
+            {% elif match[10] == 'draw' %}
+                <div style="text-align: center; padding: 1rem; background: rgba(108, 117, 125, 0.1); border-radius: 8px; margin-top: 1rem;">
+                    <div style="color: #6c757d; font-weight: bold; font-size: 1.1rem;">🤝 DRAW</div>
+                    <div style="color: #6c757d;">Stake refunded: KSh {{ "%.0f"|format(match[7]) }}</div>
+                </div>
+            {% elif match[10] == 'active' %}
+                <div style="text-align: center; padding: 1rem; background: rgba(255, 193, 7, 0.1); border-radius: 8px; margin-top: 1rem;">
+                    <div style="color: #ffc107; font-weight: bold; font-size: 1.1rem;">🎮 MATCH IN PROGRESS</div>
+                    <div style="color: #ffc107;">Play your game now! Results will be detected automatically.</div>
+                </div>
+            {% elif match[10] == 'open' %}
+                <div style="text-align: center; padding: 1rem; background: rgba(23, 162, 184, 0.1); border-radius: 8px; margin-top: 1rem;">
+                    <div style="color: #17a2b8; font-weight: bold; font-size: 1.1rem;">⏳ WAITING FOR OPPONENT</div>
+                    <div style="color: #17a2b8;">Share this match with friends to join!</div>
+                </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    {% else %}
+        <div style="text-align: center; padding: 3rem; color: #6c757d;">
+            <div style="font-size: 3rem; margin-bottom: 1rem;">🎮</div>
+            <h3>No Game Matches Yet</h3>
+            <p>Create your first match to start playing!</p>
+            <a href="{{ url_for('quick_matches') }}" class="btn btn-primary">Create Match</a>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Unique Features - SkillStake</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: 'Segoe UI', sans-serif; 
+            background: linear-gradient(135deg, rgba(0,255,136,0.2), rgba(102,126,234,0.2)), url('https://images.unsplash.com/photo-1542751371-adc38448a05e?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80') center/cover;
+            min-height: 100vh;
+            color: white;
+        }
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        .header { text-align: center; margin-bottom: 2rem; }
+        .header h1 { font-size: 2.5rem; margin-bottom: 0.5rem; }
+        .features-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem; }
+        .feature-card { 
+            background: rgba(255,255,255,0.1); 
+            backdrop-filter: blur(10px);
+            border-radius: 15px; 
+            padding: 2rem; 
+            border: 1px solid rgba(255,255,255,0.2);
+            text-align: center;
+        }
+        .feature-icon { width: 64px; height: 64px; margin: 0 auto 1rem auto; display: block; }
+        .btn { 
+            background: linear-gradient(135deg, #00ff88, #00cc6a);
+            color: #000;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-weight: 700;
+            cursor: pointer;
+            margin: 10px;
+            transition: transform 0.2s;
+        }
+        .btn:hover { transform: translateY(-2px); }
+        .btn-secondary { background: linear-gradient(135deg, #ffa502, #ff6348); color: white; }
+        .back-btn { 
+            background: linear-gradient(135deg, #6c757d, #495057);
+            color: white;
+            padding: 12px 24px;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            display: inline-block;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 UNIQUE FEATURES</h1>
+            <p>Exclusive SkillStake gaming features</p>
+        </div>
+        
+        <div class="features-grid">
+            <div class="feature-card">
+                <img src="https://cdn-icons-png.flaticon.com/64/3062/3062634.png" alt="Gift" class="feature-icon">
+                <h3>Daily Bonus</h3>
+                <p>Claim KSh 75 every day just for logging in!</p>
+                <button class="btn" onclick="claimDailyBonus()">CLAIM NOW</button>
+            </div>
+            
+            <div class="feature-card">
+                <img src="https://cdn-icons-png.flaticon.com/64/159/159478.png" alt="Shield" class="feature-icon">
+                <h3>Skill Insurance</h3>
+                <p>Protect your matches with insurance. Get 50% back if you lose by 1 goal!</p>
+                <div style="margin: 10px 0;">
+                    <select id="insuranceMatch" style="padding: 8px; border-radius: 5px; margin-bottom: 10px; width: 100%;">
+                        <option value="">Select a match to insure...</option>
+                    </select>
+                </div>
+                <button class="btn" onclick="buyInsurance()">BUY INSURANCE (KSh 50)</button>
+            </div>
+            
+            <div class="feature-card">
+                <img src="https://cdn-icons-png.flaticon.com/64/2972/2972531.png" alt="Target" class="feature-icon">
+                <h3>Revenge Matches</h3>
+                <p>Challenge players who beat you with 1.5x stakes!</p>
+                <div style="margin: 10px 0;">
+                    <select id="revengeOpponent" style="padding: 8px; border-radius: 5px; margin-bottom: 10px; width: 100%;">
+                        <option value="">Select opponent...</option>
+                    </select>
+                </div>
+                <button class="btn" onclick="createRevengeMatch()">CREATE REVENGE MATCH</button>
+            </div>
+            
+            <div class="feature-card">
+                <img src="https://cdn-icons-png.flaticon.com/64/2583/2583788.png" alt="Trophy" class="feature-icon">
+                <h3>Skill Ratings</h3>
+                <p>Track your wins, losses, and skill progression!</p>
+                <div id="ratingDisplay" style="margin: 10px 0; font-weight: bold; color: #00ff88;">Loading...</div>
+                <button class="btn" onclick="viewSkillRating()">VIEW DETAILED STATS</button>
+            </div>
+            
+            <div class="feature-card">
+                <img src="https://cdn-icons-png.flaticon.com/64/3135/3135706.png" alt="Coin" class="feature-icon">
+                <h3>Skill Tokens</h3>
+                <p>Earn tokens for wins and daily activities!</p>
+                <div id="tokenDisplay" style="margin: 10px 0; font-weight: bold; color: #ffc107;">Loading...</div>
+                <button class="btn" onclick="earnTokens()">EARN 10 TOKENS</button>
+            </div>
+            
+            <div class="feature-card">
+                <img src="https://cdn-icons-png.flaticon.com/64/1040/1040230.png" alt="Lightning" class="feature-icon">
+                <h3>Live Betting</h3>
+                <p>Bet on live matches with other players!</p>
+                <div id="liveMatchCount" style="margin: 10px 0; font-weight: bold; color: #17a2b8;">Loading...</div>
+                <button class="btn" onclick="viewLiveMatches()">VIEW LIVE MATCHES</button>
+            </div>
+        </div>
+        
+        <div style="text-align: center; margin-top: 2rem;">
+            <a href="/dashboard" class="back-btn">← Back to Dashboard</a>
+        </div>
+    </div>
+    
+    <script>
+        function claimDailyBonus() {
+            fetch('/claim_daily_bonus', {method: 'POST'})
+            .then(r => r.json())
+            .then(d => {
+                alert(d.message);
+                if (d.success) {
+                    location.reload();
+                }
+            })
+            .catch(e => alert('Error claiming bonus'));
+        }
+        
+        function buyInsurance() {
+            const matchSelect = document.getElementById('insuranceMatch');
+            const matchId = matchSelect.value;
+            if (!matchId) {
+                alert('Please select a match to insure');
+                return;
+            }
+            
+            if (confirm(`Buy insurance for Match #${matchId} for KSh 50?`)) {
+                fetch('/buy_skill_insurance', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({match_id: matchId})
+                })
+                .then(r => r.json())
+                .then(d => {
+                    alert(d.message);
+                    if (d.success) loadUserMatches();
+                });
+            }
+        }
+        
+        function createRevengeMatch() {
+            const opponentSelect = document.getElementById('revengeOpponent');
+            const selectedValue = opponentSelect.value;
+            if (!selectedValue) {
+                alert('Please select an opponent for revenge');
+                return;
+            }
+            
+            const [opponentId, originalMatchId] = selectedValue.split('|');
+            
+            if (confirm(`Create revenge match against this opponent with 1.5x stakes?`)) {
+                fetch('/create_revenge_match', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({opponent_id: opponentId, original_match_id: originalMatchId})
+                })
+                .then(r => r.json())
+                .then(d => {
+                    alert(d.message);
+                    if (d.success) loadRevengeOpponents();
+                });
+            }
+        }
+        
+        function viewSkillRating() {
+            fetch('/get_skill_rating')
+            .then(r => r.json())
+            .then(d => {
+                if (d.success) {
+                    alert(`🏆 SKILL RATING DETAILS\n\n⭐ Rating: ${d.rating}\n🏅 Rank: #${d.rank}\n\n📊 MATCH STATS\n✅ Wins: ${d.wins}\n❌ Losses: ${d.losses}\n🤝 Draws: ${d.draws}\n📈 Total: ${d.total_matches}\n\n💡 Play more matches to improve your rating!`);
+                    document.getElementById('ratingDisplay').textContent = `Rating: ${d.rating} (Rank #${d.rank})`;
+                } else {
+                    alert(d.message);
+                }
+            });
+        }
+        
+        function earnTokens() {
+            fetch('/earn_skill_tokens', {method: 'POST'})
+            .then(r => r.json())
+            .then(d => {
+                if (d.success) {
+                    alert(`🪙 ${d.message}\n\n💰 Total Tokens: ${d.total_tokens}\n\n🎯 Use tokens for:\n• Match entry fees\n• Special tournaments\n• Exclusive rewards`);
+                    document.getElementById('tokenDisplay').textContent = `Tokens: ${d.total_tokens}`;
+                } else {
+                    alert(d.message);
+                }
+            });
+        }
+        
+        function viewLiveMatches() {
+            fetch('/get_live_matches')
+            .then(r => r.json())
+            .then(d => {
+                if (d.success && d.matches.length > 0) {
+                    let matchList = '⚡ LIVE MATCHES\n\n';
+                    d.matches.forEach((m, i) => {
+                        matchList += `${i+1}. ${m.player1} vs ${m.player2}\n   💰 Stake: KSh ${m.bet_amount} | 🎮 ${m.game_type}\n\n`;
+                    });
+                    
+                    const matchIndex = prompt(matchList + 'Enter match number to bet on (1-' + d.matches.length + '):');
+                    if (matchIndex && matchIndex >= 1 && matchIndex <= d.matches.length) {
+                        const selectedMatch = d.matches[matchIndex - 1];
+                        const betAmount = prompt(`🎯 Betting on: ${selectedMatch.player1} vs ${selectedMatch.player2}\n\nEnter bet amount (KSh 10-500):`);
+                        
+                        if (betAmount && betAmount >= 10 && betAmount <= 500) {
+                            const winner = prompt(`💡 Who will win?\n\n1. ${selectedMatch.player1}\n2. ${selectedMatch.player2}\n\nEnter 1 or 2:`);
+                            const predictedWinner = winner === '1' ? 'player1' : winner === '2' ? 'player2' : null;
+                            
+                            if (predictedWinner) {
+                                fetch('/place_live_bet', {
+                                    method: 'POST',
+                                    headers: {'Content-Type': 'application/json'},
+                                    body: JSON.stringify({match_id: selectedMatch.id, bet_amount: betAmount, predicted_winner: predictedWinner})
+                                })
+                                .then(r => r.json())
+                                .then(d => {
+                                    alert(d.message);
+                                    if (d.success) loadLiveMatches();
+                                });
+                            }
+                        } else {
+                            alert('Invalid bet amount. Must be between KSh 10-500');
+                        }
+                    }
+                } else {
+                    alert('⏰ No live matches available right now\n\n💡 Live matches appear when players are actively competing.\nCheck back in a few minutes!');
+                }
+            });
+        }
+        
+        // Load user data on page load
+        function loadUserData() {
+            // Load skill rating
+            fetch('/get_skill_rating')
+            .then(r => r.json())
+            .then(d => {
+                if (d.success) {
+                    document.getElementById('ratingDisplay').textContent = `Rating: ${d.rating} (Rank #${d.rank})`;
+                } else {
+                    document.getElementById('ratingDisplay').textContent = 'Rating: 1000 (New Player)';
+                }
+            })
+            .catch(() => document.getElementById('ratingDisplay').textContent = 'Rating: 1000');
+            
+            // Load skill tokens
+            fetch('/get_skill_tokens')
+            .then(r => r.json())
+            .then(d => {
+                if (d.success) {
+                    document.getElementById('tokenDisplay').textContent = `Tokens: ${d.total_tokens}`;
+                } else {
+                    document.getElementById('tokenDisplay').textContent = 'Tokens: 0';
+                }
+            })
+            .catch(() => document.getElementById('tokenDisplay').textContent = 'Tokens: 0');
+            
+            // Load live matches count
+            loadLiveMatches();
+            loadUserMatches();
+            loadRevengeOpponents();
+        }
+        
+        function loadLiveMatches() {
+            fetch('/get_live_matches')
+            .then(r => r.json())
+            .then(d => {
+                const count = d.success ? d.matches.length : 0;
+                document.getElementById('liveMatchCount').textContent = `${count} Live Matches`;
+            })
+            .catch(() => document.getElementById('liveMatchCount').textContent = '0 Live Matches');
+        }
+        
+        function loadUserMatches() {
+            fetch('/get_user_matches')
+            .then(r => r.json())
+            .then(d => {
+                const select = document.getElementById('insuranceMatch');
+                select.innerHTML = '<option value="">Select a match to insure...</option>';
+                if (d.success && d.matches) {
+                    d.matches.forEach(m => {
+                        if (m.status === 'active' || m.status === 'open') {
+                            select.innerHTML += `<option value="${m.id}">Match #${m.id} - ${m.game_type} (KSh ${m.stake_amount})</option>`;
+                        }
+                    });
+                }
+            })
+            .catch(() => {});
+        }
+        
+        function loadRevengeOpponents() {
+            fetch('/get_revenge_opponents')
+            .then(r => r.json())
+            .then(d => {
+                const select = document.getElementById('revengeOpponent');
+                select.innerHTML = '<option value="">Select opponent for revenge...</option>';
+                if (d.success && d.opponents) {
+                    d.opponents.forEach(o => {
+                        select.innerHTML += `<option value="${o.user_id}|${o.match_id}">${o.username} (Beat you in Match #${o.match_id})</option>`;
+                    });
+                }
+            })
+            .catch(() => {});
+        }
+        
+        // Load data when page loads
+        document.addEventListener('DOMContentLoaded', loadUserData);
+    </script>
+</body>
+</html>

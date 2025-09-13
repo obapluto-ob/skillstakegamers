@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card">
+    <h1>🚀 VIRAL GROWTH STATS</h1>
+    <p>See how SkillStake is exploding across Kenya!</p>
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+    <div style="background: linear-gradient(135deg, #28a745, #20c997); color: white; padding: 1.5rem; border-radius: 15px; text-align: center;">
+        <div style="font-size: 2.5rem; font-weight: bold;">{{ stats.total_users }}</div>
+        <div>Total Gamers</div>
+    </div>
+    <div style="background: linear-gradient(135deg, #007bff, #0056b3); color: white; padding: 1.5rem; border-radius: 15px; text-align: center;">
+        <div style="font-size: 2.5rem; font-weight: bold;">{{ stats.users_this_week }}</div>
+        <div>New This Week</div>
+    </div>
+    <div style="background: linear-gradient(135deg, #ffc107, #e0a800); color: white; padding: 1.5rem; border-radius: 15px; text-align: center;">
+        <div style="font-size: 2.5rem; font-weight: bold;">{{ stats.growth_rate }}</div>
+        <div>Growth Rate</div>
+    </div>
+    <div style="background: linear-gradient(135deg, #dc3545, #c82333); color: white; padding: 1.5rem; border-radius: 15px; text-align: center;">
+        <div style="font-size: 2.5rem; font-weight: bold;">KSh {{ "%.0f"|format(stats.bonus_fund) }}</div>
+        <div>Bonus Pool</div>
+    </div>
+</div>
+
+<div class="card">
+    <h3>💰 How The Viral Bonus System Works</h3>
+    <div style="background: #e7f3ff; padding: 1.5rem; border-radius: 10px; margin-bottom: 1rem;">
+        <h4 style="color: #0c5460; margin-top: 0;">🎯 Self-Sustaining Model:</h4>
+        <ol style="color: #0c5460; margin: 0; padding-left: 1.5rem;">
+            <li><strong>New users deposit money</strong> to start playing</li>
+            <li><strong>10% of deposits</strong> go to the viral bonus pool</li>
+            <li><strong>Daily bonuses</strong> are paid from this pool</li>
+            <li><strong>More users = bigger bonus pool</strong> for everyone!</li>
+        </ol>
+    </div>
+    
+    <div style="background: #d4edda; padding: 1.5rem; border-radius: 10px; margin-bottom: 1rem;">
+        <h4 style="color: #155724; margin-top: 0;">📊 This Week's Numbers:</h4>
+        <ul style="color: #155724; margin: 0; padding-left: 1.5rem;">
+            <li><strong>New Deposits:</strong> KSh {{ "%.0f"|format(stats.deposits_this_week) }}</li>
+            <li><strong>Bonuses Paid:</strong> KSh {{ "%.0f"|format(stats.bonuses_paid) }}</li>
+            <li><strong>Available Pool:</strong> KSh {{ "%.0f"|format(stats.bonus_fund) }}</li>
+            <li><strong>New Gamers:</strong> {{ stats.users_this_week }} joined!</li>
+        </ul>
+    </div>
+</div>
+
+<div class="card">
+    <h3>🔥 Viral Marketing Strategy</h3>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem;">
+        <div style="background: rgba(40, 167, 69, 0.1); padding: 1rem; border-radius: 8px;">
+            <h4 style="color: #28a745;">💸 Free Money Daily</h4>
+            <p style="margin: 0;">75 KSh every day attracts youth who need money for airtime, transport, food</p>
+        </div>
+        <div style="background: rgba(0, 123, 255, 0.1); padding: 1rem; border-radius: 8px;">
+            <h4 style="color: #007bff;">🎮 Gaming Culture</h4>
+            <p style="margin: 0;">FIFA & eFootball are massive in Kenya - tap into existing passion</p>
+        </div>
+        <div style="background: rgba(255, 193, 7, 0.1); padding: 1rem; border-radius: 8px;">
+            <h4 style="color: #ffc107;">📱 Mobile First</h4>
+            <p style="margin: 0;">Works on any phone - no barriers to entry for youth</p>
+        </div>
+        <div style="background: rgba(220, 53, 69, 0.1); padding: 1rem; border-radius: 8px;">
+            <h4 style="color: #dc3545;">🚀 Viral Loop</h4>
+            <p style="margin: 0;">More users = bigger bonus pool = more attraction = exponential growth</p>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <h3>📈 Growth Projections</h3>
+    <div style="background: #f8f9fa; padding: 1.5rem; border-radius: 10px;">
+        <h4>If growth continues at {{ stats.growth_rate }} per week:</h4>
+        <ul>
+            <li><strong>Month 1:</strong> ~{{ (stats.total_users * 1.5)|round|int }} users</li>
+            <li><strong>Month 3:</strong> ~{{ (stats.total_users * 3)|round|int }} users</li>
+            <li><strong>Month 6:</strong> ~{{ (stats.total_users * 8)|round|int }} users</li>
+            <li><strong>Year 1:</strong> ~{{ (stats.total_users * 20)|round|int }} users</li>
+        </ul>
+        <p style="color: #666; font-size: 0.9rem; margin-bottom: 0;">
+            <strong>Key:</strong> Each new user deposits ~KSh 1,000 on average. 
+            10% funds bonuses, 8% match commission = 18% platform revenue.
+        </p>
+    </div>
+</div>
+
+<div style="text-align: center; margin-top: 2rem;">
+    <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">← Back to Dashboard</a>
+    <a href="{{ url_for('user_bonuses_page') }}" class="btn">💰 Claim Daily Bonus</a>
+</div>
+{% endblock %}

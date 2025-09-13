@@ -1,6 +1,18 @@
 {% extends "base.html" %}
 
 {% block content %}
+<style>
+@keyframes slideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+</style>
 <div class="card">
     <h1>Admin Dashboard</h1>
     <div id="notifications" style="margin-bottom: 1rem;"></div>
@@ -52,27 +64,34 @@
         </div>
     </div>
     {% endif %}
-    <div style="display: flex; gap: 1rem; margin-bottom: 2rem; flex-wrap: wrap;">
-        <a href="{{ url_for('admin_users') }}" class="btn btn-primary">Manage Users</a>
-        <a href="{{ url_for('admin_live_streams_page') }}" class="btn btn-danger">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                <circle cx="12" cy="12" r="8"/>
-            </svg>
-            LIVE
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+        <a href="{{ url_for('admin_users') }}" class="btn btn-primary" style="display: flex; align-items: center; gap: 8px;">
+            <img src="https://cdn-icons-png.flaticon.com/24/1077/1077114.png" alt="Users" style="filter: invert(1);">
+            Users
         </a>
-        <a href="{{ url_for('admin_stream_control') }}" class="btn btn-warning">🎮 Stream Control</a>
-        <a href="{{ url_for('admin_matches') }}" class="btn btn-info">📊 Match History</a>
-        <a href="{{ url_for('admin_transactions') }}" class="btn btn-secondary">💳 Transactions</a>
-        <a href="{{ url_for('admin_support_center') }}" class="btn btn-warning">🎧 Support Center</a>
-        <button onclick="showFakeScreenshotPanel()" class="btn btn-danger">⚠️ Fake Screenshots</button>
-        <button onclick="downloadFinancialStatement()" class="btn btn-success">📄 Download Statement</button>
+        <a href="{{ url_for('admin_transactions') }}" class="btn btn-secondary" style="display: flex; align-items: center; gap: 8px;">
+            <img src="https://cdn-icons-png.flaticon.com/24/633/633611.png" alt="Transactions" style="filter: invert(1);">
+            Transactions
+        </a>
+        <a href="{{ url_for('admin_matches') }}" class="btn btn-info" style="display: flex; align-items: center; gap: 8px;">
+            <img src="https://cdn-icons-png.flaticon.com/24/2972/2972531.png" alt="Matches" style="filter: invert(1);">
+            Matches
+        </a>
+        <a href="{{ url_for('admin_support_center') }}" class="btn btn-warning" style="display: flex; align-items: center; gap: 8px;">
+            <img src="https://cdn-icons-png.flaticon.com/24/3135/3135715.png" alt="Support" style="filter: invert(1);">
+            Support Center
+        </a>
+        <a href="{{ url_for('api_test') }}" class="btn btn-warning" style="display: flex; align-items: center; gap: 8px;">
+            <img src="https://cdn-icons-png.flaticon.com/24/2972/2972185.png" alt="API" style="filter: invert(1);">
+            API Testing
+        </a>
+        <button onclick="downloadFinancialStatement()" class="btn btn-success" style="display: flex; align-items: center; gap: 8px;">
+            <img src="https://cdn-icons-png.flaticon.com/24/337/337946.png" alt="Download" style="filter: invert(1);">
+            Download Statement
+        </button>
     </div>
     
-    <!-- Live Streams Section -->
-    <div class="card">
-        <h2>📺 Live Streams</h2>
-        <div id="liveStreams"></div>
-    </div>
+
     <div class="stats-grid">
         <div class="stat-card">
             <div class="stat-number">{{ stats.total_users }}</div>
@@ -105,21 +124,22 @@
             <p><strong>How it works:</strong></p>
             <ul>
                 <li>User deposits KSh 1000 via M-Pesa</li>
-                <li>Platform charges 3% fee = KSh 30</li>
-                <li>User gets KSh 970 in account</li>
-                <li><span style="color: #28a745;">Platform earns: KSh 30</span></li>
+                <li>Platform charges 0% fee = KSh 0</li>
+                <li>User gets KSh 1000 in account</li>
+                <li><span style="color: #28a745;">Platform earns: KSh 0 (FREE DEPOSITS)</span></li>
             </ul>
         </div>
         
         <div style="background: rgba(255, 193, 7, 0.1); padding: 1.5rem; border-radius: 8px; border-left: 4px solid #ffc107;">
-            <h3 style="color: #ffc107; margin-top: 0;">🎮 Match System</h3>
+            <h3 style="color: #ffc107; margin-top: 0;">🏆 FPL Battle System</h3>
             <p><strong>How it works:</strong></p>
             <ul>
-                <li>Player A bets KSh 100</li>
-                <li>Player B bets KSh 100</li>
+                <li>Player A stakes KSh 100</li>
+                <li>Player B stakes KSh 100</li>
                 <li>Total pot = KSh 200</li>
-                <li>Winner gets KSh 136 (68%)</li>
-                <li><span style="color: #ffc107;">Platform keeps: KSh 64 (32%)</span></li>
+                <li>Commission (8%) = KSh 16</li>
+                <li>Winner gets KSh 184 (92%)</li>
+                <li><span style="color: #ffc107;">Platform earns: KSh 16 (8%)</span></li>
             </ul>
         </div>
         
@@ -140,11 +160,11 @@
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
             <div style="text-align: center; background: white; padding: 1rem; border-radius: 6px;">
                 <div style="font-size: 1.2rem; font-weight: bold;">User Deposits</div>
-                <div style="color: #28a745;">KSh 1000 → Earn KSh 30</div>
+                <div style="color: #28a745;">KSh 1000 → Earn KSh 0 (FREE)</div>
             </div>
             <div style="text-align: center; background: white; padding: 1rem; border-radius: 6px;">
-                <div style="font-size: 1.2rem; font-weight: bold;">Plays 5 Matches</div>
-                <div style="color: #ffc107;">KSh 100 each → Earn KSh 160</div>
+                <div style="font-size: 1.2rem; font-weight: bold;">Plays 5 FPL Battles</div>
+                <div style="color: #ffc107;">KSh 100 each → Earn KSh 40</div>
             </div>
             <div style="text-align: center; background: white; padding: 1rem; border-radius: 6px;">
                 <div style="font-size: 1.2rem; font-weight: bold;">Withdraws</div>
@@ -152,7 +172,7 @@
             </div>
             <div style="text-align: center; background: white; padding: 1rem; border-radius: 6px; border: 2px solid #28a745;">
                 <div style="font-size: 1.2rem; font-weight: bold; color: #28a745;">Total Earned</div>
-                <div style="color: #28a745; font-size: 1.1rem; font-weight: bold;">KSh 215</div>
+                <div style="color: #28a745; font-size: 1.1rem; font-weight: bold;">KSh 65</div>
             </div>
         </div>
     </div>
@@ -167,27 +187,24 @@
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
         <div style="background: rgba(40, 167, 69, 0.1); padding: 1rem; border-radius: 8px; border-left: 4px solid #28a745;">
             <div style="font-size: 1.2rem; font-weight: bold; color: #28a745;">KSh {{ "%.0f"|format(earnings_data.match_commission) }}</div>
-            <div style="font-size: 0.9rem; opacity: 0.8;">Match Commission ({{ earnings_data.commission_rate }}%)</div>
+            <div style="font-size: 0.9rem; opacity: 0.8;">FPL Battle Commission ({{ earnings_data.commission_rate }}%)</div>
         </div>
         <div style="background: rgba(23, 162, 184, 0.1); padding: 1rem; border-radius: 8px; border-left: 4px solid #17a2b8;">
             <div style="font-size: 1.2rem; font-weight: bold; color: #17a2b8;">KSh {{ "%.0f"|format(earnings_data.deposit_fees) }}</div>
-            <div style="font-size: 0.9rem; opacity: 0.8;">Deposit Processing (3%)</div>
+            <div style="font-size: 0.9rem; opacity: 0.8;">Deposit Processing (0% - FREE)</div>
         </div>
         <div style="background: rgba(255, 193, 7, 0.1); padding: 1rem; border-radius: 8px; border-left: 4px solid #ffc107;">
             <div style="font-size: 1.2rem; font-weight: bold; color: #ffc107;">KSh {{ "%.0f"|format(earnings_data.withdrawal_fees) }}</div>
             <div style="font-size: 0.9rem; opacity: 0.8;">Withdrawal Fees (KSh 25 each)</div>
         </div>
-        <div style="background: rgba(102, 16, 242, 0.1); padding: 1rem; border-radius: 8px; border-left: 4px solid #6610f2;">
-            <div style="font-size: 1.2rem; font-weight: bold; color: #6610f2;">KSh {{ "%.0f"|format(earnings_data.tournament_fees) }}</div>
-            <div style="font-size: 0.9rem; opacity: 0.8;">Tournament Fees (15%)</div>
-        </div>
+
         <div style="background: rgba(13, 202, 240, 0.1); padding: 1rem; border-radius: 8px; border-left: 4px solid #0dcaf0;">
             <div style="font-size: 1.2rem; font-weight: bold; color: #0dcaf0;">KSh {{ "%.0f"|format(earnings_data.referral_profits) }}</div>
             <div style="font-size: 0.9rem; opacity: 0.8;">Referral Profits</div>
         </div>
         <div style="background: rgba(220, 53, 69, 0.1); padding: 1rem; border-radius: 8px; border-left: 4px solid #dc3545;">
             <div style="font-size: 1.2rem; font-weight: bold; color: #dc3545;">KSh {{ "%.0f"|format(earnings_data.fraud_commissions) }}</div>
-            <div style="font-size: 0.9rem; opacity: 0.8;">Fraud Penalties ({{ earnings_data.fake_ss_matches }} matches)</div>
+            <div style="font-size: 0.9rem; opacity: 0.8;">Auto-Resolved Battles ({{ earnings_data.total_battles }} total)</div>
         </div>
     </div>
     
@@ -198,10 +215,7 @@
             <div style="font-size: 1.2rem; font-weight: bold; color: #dc3545;">-KSh {{ "%.0f"|format(earnings_data.bank_fees) }}</div>
             <div style="font-size: 0.9rem; opacity: 0.8;">Bank/M-Pesa Processing</div>
         </div>
-        <div style="background: rgba(220, 53, 69, 0.1); padding: 1rem; border-radius: 8px; border-left: 4px solid #dc3545;">
-            <div style="font-size: 1.2rem; font-weight: bold; color: #dc3545;">-KSh {{ "%.0f"|format(earnings_data.streaming_costs) }}</div>
-            <div style="font-size: 0.9rem; opacity: 0.8;">Streaming Bonuses Paid</div>
-        </div>
+
     </div>
     
     <!-- Net Profit Summary -->
@@ -211,7 +225,7 @@
             <div style="font-size: 1rem; opacity: 0.8;">Gross Revenue</div>
         </div>
         <div style="text-align: center; padding: 1.5rem; background: rgba(220, 53, 69, 0.1); border-radius: 8px; border: 2px solid #dc3545;">
-            <div style="font-size: 1.8rem; font-weight: bold; color: #dc3545;">-KSh {{ "%.0f"|format(earnings_data.bank_fees + earnings_data.streaming_costs) }}</div>
+            <div style="font-size: 1.8rem; font-weight: bold; color: #dc3545;">-KSh {{ "%.0f"|format(earnings_data.bank_fees) }}</div>
             <div style="font-size: 1rem; opacity: 0.8;">Total Costs</div>
         </div>
         <div style="text-align: center; padding: 1.5rem; background: rgba(255, 193, 7, 0.1); border-radius: 8px; border: 2px solid #ffc107;">
@@ -291,7 +305,10 @@
 <div class="card">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
         <h2>Pending Deposits ({{ pending_deposits|length }})</h2>
-        <a href="{{ url_for('clear_all_deposits') }}" class="btn btn-danger" onclick="return confirm('Clear ALL deposits? This cannot be undone!')">Clear All Deposits</a>
+        <div style="display: flex; gap: 0.5rem;">
+            <button onclick="clearAllNotifications()" class="btn btn-warning">Clear All Notifications</button>
+            <a href="{{ url_for('clear_all_deposits') }}" class="btn btn-danger" onclick="return confirm('Clear ALL deposits? This cannot be undone!')">Clear All Deposits</a>
+        </div>
     </div>
     {% if pending_deposits %}
         {% for deposit in pending_deposits %}
@@ -319,7 +336,7 @@
 
 <!-- Pending Withdrawals -->
 <div class="card">
-    <h2>Pending Withdrawals ({{ pending_withdrawals|length }})</h2>
+    <h2>Pending Withdrawals ({{ earnings_data.pending_withdrawals }})</h2>
     {% if pending_withdrawals %}
         {% for withdrawal in pending_withdrawals %}
         <div class="match-card" style="margin-bottom: 1rem;">
@@ -351,49 +368,59 @@
 
 <!-- Disputed Matches -->
 <div class="card">
-    <h2>Disputed Matches ({{ disputed_matches|length }})</h2>
-    {% if disputed_matches %}
-        {% for dispute in disputed_matches %}
-        <div class="match-card" style="margin-bottom: 1rem; border: 2px solid #dc3545;">
-            <div style="margin-bottom: 1rem;">
-                <strong>{{ dispute[1].upper() }}</strong> - KSh {{ "%.0f"|format(dispute[2]) }} bet<br>
-                <strong>{{ dispute[4] }}</strong> claims: <span style="color: {% if dispute[6] == 'won' %}#28a745{% else %}#dc3545{% endif %};">{{ dispute[6] or 'No result' }}</span> | 
-                <strong>{{ dispute[5] }}</strong> claims: <span style="color: {% if dispute[7] == 'won' %}#28a745{% else %}#dc3545{% endif %};">{{ dispute[7] or 'No result' }}</span><br>
-                <span style="color: #dc3545;">WARNING: Conflicting results - both players claim they won!</span>
-            </div>
-            <div style="display: flex; gap: 1rem; margin-bottom: 1rem;">
-                <div style="flex: 1; text-align: center;">
-                    <strong>{{ dispute[4] }}'s Screenshot Proof:</strong><br>
-                    {% if dispute[8] and dispute[8]|length > 10 %}
-                        <img src="data:image/jpeg;base64,{{ dispute[8] }}" style="max-width: 200px; max-height: 150px; border: 1px solid #ddd; cursor: pointer;" onclick="window.open(this.src)">
-                        <br><small>Click to enlarge</small>
-                    {% else %}
-                        <span style="color: #dc3545;">No screenshot provided ({{ dispute[8]|length if dispute[8] else 0 }} chars)</span>
-                    {% endif %}
+    <h2>🎮 Active Game Matches ({{ active_game_matches|length if active_game_matches else 0 }})</h2>
+    {% if active_game_matches %}
+        {% for match in active_game_matches %}
+        <div class="match-card" style="margin-bottom: 1rem; background: #2a2a2a; padding: 1rem; border-radius: 8px; border-left: 4px solid #ffc107;">
+            <div style="display: flex; justify-content: between; align-items: center;">
+                <div style="flex: 1;">
+                    <strong>{{ match[1].replace('_', ' ').title() }} - {{ match[2].replace('_', ' ').title() }}</strong><br>
+                    <small style="color: #ccc;">{{ match[18] }} vs {{ match[19] or 'Waiting...' }} | KSh {{ "%.0f"|format(match[7]) }}</small>
                 </div>
-                <div style="flex: 1; text-align: center;">
-                    <strong>{{ dispute[5] }}'s Screenshot Proof:</strong><br>
-                    {% if dispute[9] and dispute[9]|length > 10 %}
-                        <img src="data:image/jpeg;base64,{{ dispute[9] }}" style="max-width: 200px; max-height: 150px; border: 1px solid #ddd; cursor: pointer;" onclick="window.open(this.src)">
-                        <br><small>Click to enlarge</small>
-                    {% else %}
-                        <span style="color: #dc3545;">No screenshot provided ({{ dispute[9]|length if dispute[9] else 0 }} chars)</span>
-                    {% endif %}
-                </div>
-            </div>
-            <div style="display: flex; gap: 0.5rem; justify-content: center;">
-                <a href="{{ url_for('resolve_dispute', match_id=dispute[0], winner='player1') }}" 
-                   class="btn btn-success" onclick="return confirm('Award win to {{ dispute[4] }}?')">{{ dispute[4] }} Wins</a>
-                <a href="{{ url_for('resolve_dispute', match_id=dispute[0], winner='player2') }}" 
-                   class="btn btn-success" onclick="return confirm('Award win to {{ dispute[5] }}?')">{{ dispute[5] }} Wins</a>
-                <a href="{{ url_for('resolve_dispute', match_id=dispute[0], winner='draw') }}" 
-                   class="btn btn-secondary" onclick="return confirm('Refund both players?')">Refund Both</a>
+                <span style="background: #ffc107; color: #000; padding: 0.2rem 0.5rem; border-radius: 12px; font-size: 0.8rem;">🟢 Active</span>
             </div>
         </div>
         {% endfor %}
     {% else %}
-        <p>No disputed matches</p>
+        <p style="color: #666;">No active game matches</p>
     {% endif %}
+
+    <h2 style="color: #333; margin-bottom: 1rem;">FPL Battle System ({{ earnings_data.total_battles }})</h2>
+    <div style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); padding: 1.5rem; border-radius: 12px; border: 1px solid #dee2e6; margin-bottom: 1rem; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+        <h3 style="color: #28a745; margin-top: 0; font-size: 1.3rem;">Automated Battle Resolution</h3>
+        <p style="color: #495057; margin-bottom: 1rem;"><strong>How FPL battles are resolved:</strong></p>
+        <ul style="color: #495057; line-height: 1.6;">
+            <li><strong>Real-time FPL API integration</strong> - Live captain scores from Fantasy Premier League</li>
+            <li><strong>Captain vs Captain scoring</strong> - Doubled captain points determine winner</li>
+            <li><strong>Automatic tiebreakers</strong> - Vice-captain score, then total team score</li>
+            <li><strong>Instant payouts</strong> - Winners receive funds immediately after gameweek</li>
+            <li><strong>Zero disputes</strong> - All results verified through official FPL data</li>
+        </ul>
+        <div style="background: white; padding: 1.5rem; border-radius: 8px; margin-top: 1rem; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1.5rem; text-align: center;">
+                <div style="padding: 1rem; background: rgba(40, 167, 69, 0.1); border-radius: 8px;">
+                    <div style="font-size: 2rem; font-weight: bold; color: #28a745;">{{ earnings_data.total_battles + earnings_data.total_game_matches }}</div>
+                    <div style="font-size: 0.9rem; color: #495057; font-weight: 500;">Total Matches</div>
+                </div>
+                <div style="padding: 1rem; background: rgba(23, 162, 184, 0.1); border-radius: 8px;">
+                    <div style="font-size: 2rem; font-weight: bold; color: #17a2b8;">{{ stats.active_matches }}</div>
+                    <div style="font-size: 0.9rem; color: #495057; font-weight: 500;">Active Now</div>
+                </div>
+                <div style="padding: 1rem; background: rgba(255, 193, 7, 0.1); border-radius: 8px;">
+                    <div style="font-size: 2rem; font-weight: bold; color: #ffc107;">{{ earnings_data.total_game_matches }}</div>
+                    <div style="font-size: 0.9rem; color: #495057; font-weight: 500;">Game Matches</div>
+                </div>
+                <div style="padding: 1rem; background: rgba(220, 53, 69, 0.1); border-radius: 8px;">
+                    <div style="font-size: 2rem; font-weight: bold; color: #dc3545;">0</div>
+                    <div style="font-size: 0.9rem; color: #495057; font-weight: 500;">Disputes</div>
+                </div>
+                <div style="padding: 1rem; background: rgba(40, 167, 69, 0.1); border-radius: 8px;">
+                    <div style="font-size: 2rem; font-weight: bold; color: #28a745;">100%</div>
+                    <div style="font-size: 0.9rem; color: #495057; font-weight: 500;">Auto-Resolved</div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <!-- Deposit Details Modal -->
@@ -443,6 +470,39 @@
 </div>
 
 <script>
+// Notification functions
+function showNotification(message, type = 'info') {
+    const notification = document.createElement('div');
+    notification.style.cssText = `
+        position: fixed; top: 20px; right: 20px; z-index: 10000;
+        padding: 1rem 1.5rem; border-radius: 8px; color: white;
+        font-weight: 500; box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        animation: slideIn 0.3s ease;
+    `;
+    
+    const colors = {
+        success: '#28a745',
+        error: '#dc3545', 
+        warning: '#ffc107',
+        info: '#17a2b8'
+    };
+    
+    notification.style.background = colors[type] || colors.info;
+    notification.textContent = message;
+    
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        notification.remove();
+    }, 5000);
+}
+
+// Global notification functions
+window.success = (msg) => showNotification(msg, 'success');
+window.error = (msg) => showNotification(msg, 'error');
+window.warning = (msg) => showNotification(msg, 'warning');
+window.info = (msg) => showNotification(msg, 'info');
+
 function viewDeposit(transactionId) {
     fetch(`/admin/view_deposit/${transactionId}`)
         .then(response => response.json())
@@ -479,54 +539,7 @@ function closeDepositModal() {
     document.getElementById('depositModal').style.display = 'none';
 }
 
-// Load live streams
-function loadLiveStreams() {
-    fetch('/admin/live_streams')
-        .then(response => response.json())
-        .then(data => {
-            const container = document.getElementById('liveStreams');
-            if (data.streams && data.streams.length > 0) {
-                container.innerHTML = data.streams.map(stream => `
-                    <div style="background: rgba(220,53,69,0.1); padding: 1rem; border-radius: 8px; border-left: 4px solid #dc3545;">
-                        <div style="display: flex; justify-content: between; align-items: center; margin-bottom: 0.5rem;">
-                            <strong>📺 ${stream.title}</strong>
-                            <span style="background: #dc3545; color: white; padding: 0.2rem 0.5rem; border-radius: 10px; font-size: 0.8rem;">LIVE</span>
-                        </div>
-                        <div style="font-size: 0.9rem; opacity: 0.8; margin-bottom: 0.5rem;">
-                            Streamer: ${stream.username}<br>
-                            Viewers: ${stream.viewers}<br>
-                            Duration: ${stream.duration} minutes<br>
-                            Game: ${stream.game || 'Unknown'}
-                        </div>
-                        <div style="display: flex; gap: 0.5rem;">
-                            <a href="/watch_stream/${stream.id}" class="btn btn-primary btn-sm">Watch</a>
-                            <button onclick="endStream(${stream.id})" class="btn btn-danger btn-sm">End Stream</button>
-                        </div>
-                    </div>
-                `).join('');
-            } else {
-                container.innerHTML = '<p style="text-align: center; opacity: 0.6;">No live streams currently active</p>';
-            }
-        })
-        .catch(error => {
-            console.error('Error loading streams:', error);
-            document.getElementById('liveStreams').innerHTML = '<p style="color: #dc3545;">Error loading live streams</p>';
-        });
-}
-
-function endStream(streamId) {
-    if (confirm('End this live stream?')) {
-        fetch(`/admin/end_stream/${streamId}`, {method: 'POST'})
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    loadLiveStreams();
-                } else {
-                    alert('Failed to end stream');
-                }
-            });
-    }
-}
+// Streaming features removed - only quick matches remain
 
 // Load notifications
 function loadNotifications() {
@@ -565,11 +578,8 @@ function markAlertRead(alertId) {
     });
 }
 
-// Load streams on page load and refresh every 30 seconds
-loadLiveStreams();
+// Load notifications only
 loadNotifications();
-setInterval(loadLiveStreams, 30000);
-setInterval(() => location.reload(), 60000); // Refresh page every minute for notifications
 
 function showPaymentForm(withdrawalId) {
     document.getElementById('withdrawalId').value = withdrawalId;
@@ -1068,6 +1078,24 @@ document.addEventListener('DOMContentLoaded', function() {
 function downloadFinancialStatement() {
     if (confirm('Download comprehensive financial statement as CSV?')) {
         window.location.href = '/admin/download_financial_statement';
+    }
+}
+
+function clearAllNotifications() {
+    if (confirm('Clear all notifications? This will mark them as reviewed.')) {
+        fetch('/admin/mark_all_read', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'}
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message);
+                location.reload();
+            } else {
+                alert('Error: ' + data.message);
+            }
+        });
     }
 }
 
