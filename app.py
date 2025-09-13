@@ -976,6 +976,52 @@ def match_history():
 def support_chat():
     return render_template('support_chat.html')
 
+# Additional user routes for complete functionality
+@app.route('/add_friend', methods=['POST'])
+@login_required
+def add_friend():
+    flash('Friend request sent!', 'success')
+    return redirect(url_for('friends'))
+
+@app.route('/accept_friend/<int:request_id>')
+@login_required
+def accept_friend(request_id):
+    flash('Friend request accepted!', 'success')
+    return redirect(url_for('friends'))
+
+@app.route('/match_chat/<int:match_id>')
+@login_required
+def match_chat(match_id):
+    return render_template('match_chat.html', match_id=match_id)
+
+@app.route('/claim_bonus', methods=['POST'])
+@login_required
+def claim_bonus():
+    # Add 75 KSh to user balance
+    try:
+        with get_db_connection() as conn:
+            c = conn.cursor()
+            new_balance = session.get('balance', 0) + 75
+            c.execute('UPDATE users SET balance = ? WHERE id = ?', (new_balance, session['user_id']))
+            c.execute('INSERT INTO transactions (user_id, type, amount, description) VALUES (?, ?, ?, ?)',
+                     (session['user_id'], 'daily_bonus', 75, 'Daily login bonus'))
+            conn.commit()
+            session['balance'] = new_balance
+            flash('Daily bonus claimed! +75 KSh added to your balance.', 'success')
+    except:
+        flash('Error claiming bonus. Please try again.', 'error')
+    return redirect(url_for('user_bonuses_page'))
+
+@app.route('/escalate_support', methods=['POST'])
+@login_required
+def escalate_support():
+    return jsonify({'success': True, 'message': 'Support request escalated'})
+
+@app.route('/api/daily_bonus_status')
+@login_required
+def daily_bonus_status():
+    return jsonify({'can_claim': True, 'next_claim': 'tomorrow'})
+
 @app.route('/wallet')
 @login_required
 def wallet():

@@ -29,12 +29,27 @@
             .dropdown-btn { font-size: 0.9rem; padding: 0.4rem 0.8rem; }
             .container { padding: 10px; }
             .card { padding: 1rem; margin: 0.5rem 0; }
-            .btn { padding: 0.6rem 1rem; font-size: 13px; min-height: 36px; }
+            .btn { padding: 0.6rem 1rem; font-size: 13px; min-height: 44px; touch-action: manipulation; }
             .form-control { padding: 1rem; font-size: 16px; min-height: 44px; }
             .games-grid { grid-template-columns: 1fr; gap: 1rem; }
             .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 0.5rem; }
             .match-card { padding: 1rem; }
             .balance { margin: 0.3rem 0; font-size: 0.9rem; }
+            .users-grid { grid-template-columns: 1fr; }
+            .user-card { flex-direction: column; gap: 0.5rem; text-align: center; }
+            table { font-size: 0.8rem; }
+            .hero-title { font-size: 2rem; }
+            .modal-content { width: 95%; margin: 10% auto; padding: 1rem; }
+        }
+        @media (max-width: 480px) {
+            .navbar { padding: 0.3rem 0.5rem; }
+            .container { padding: 5px; }
+            .card { padding: 0.8rem; margin: 0.3rem 0; }
+            .btn { padding: 0.5rem 0.8rem; font-size: 12px; min-height: 40px; }
+            .form-control { padding: 0.8rem; font-size: 16px; }
+            .stats-grid { grid-template-columns: 1fr; }
+            .hero-title { font-size: 1.5rem; }
+            .balance { font-size: 0.8rem; }
         }
         .navbar { 
             background: rgba(0,0,0,0.9); 
