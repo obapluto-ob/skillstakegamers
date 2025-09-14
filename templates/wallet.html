@@ -403,7 +403,8 @@ function showPayPalDeposit() {
         return;
     }
     
-    window.open('/paypal_checkout?amount=' + amount, '_blank', 'width=500,height=600');
+    // Redirect in same window for better mobile experience
+    window.location.href = '/paypal_checkout?amount=' + amount;
 }
 
 let selectedCryptoAmount = 0;

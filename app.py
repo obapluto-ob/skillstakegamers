@@ -1027,7 +1027,50 @@ def admin_settings():
 def admin_tournaments():
     if session.get('username') != 'admin':
         return redirect(url_for('dashboard'))
-    return render_template('admin_tournaments.html')
+    
+    try:
+        with get_db_connection() as conn:
+            c = conn.cursor()
+            
+            # Get all tournaments with participant count
+            c.execute('''SELECT t.*, COUNT(tp.user_id) as participants
+                       FROM tournaments t
+                       LEFT JOIN tournament_participants tp ON t.id = tp.tournament_id
+                       GROUP BY t.id
+                       ORDER BY t.created_at DESC''')
+            tournaments = c.fetchall()
+            
+            return render_template('admin_tournaments.html', tournaments=tournaments)
+    except:
+        return render_template('admin_tournaments.html', tournaments=[])
+
+@app.route('/create_tournament', methods=['POST'])
+@login_required
+def create_tournament():
+    if session.get('username') != 'admin':
+        return jsonify({'success': False, 'message': 'Unauthorized'})
+    
+    try:
+        data = request.get_json()
+        name = data.get('name', '').strip()
+        game_type = data.get('game_type', '').strip()
+        entry_fee = float(data.get('entry_fee', 0))
+        max_players = int(data.get('max_players', 16))
+        
+        if not all([name, game_type]) or entry_fee < 50:
+            return jsonify({'success': False, 'message': 'Invalid tournament data'})
+        
+        with get_db_connection() as conn:
+            c = conn.cursor()
+            c.execute('''INSERT INTO tournaments (name, game_type, entry_fee, max_players, whatsapp_group) 
+                       VALUES (?, ?, ?, ?, ?)''',
+                     (name, game_type, entry_fee, max_players, os.getenv('TOURNAMENT_WHATSAPP_GROUP', '')))
+            conn.commit()
+        
+        return jsonify({'success': True, 'message': 'Tournament created successfully'})
+        
+    except Exception as e:
+        return jsonify({'success': False, 'message': 'Error creating tournament'})
 
 @app.route('/admin_support_center')
 @login_required
@@ -1222,7 +1265,118 @@ def leaderboard():
 @app.route('/tournaments')
 @login_required
 def tournaments():
-    return render_template('tournaments.html')
+    try:
+        with get_db_connection() as conn:
+            c = conn.cursor()
+            
+            # Create tournaments table if not exists
+            c.execute('''CREATE TABLE IF NOT EXISTS tournaments (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                game_type TEXT NOT NULL,
+                entry_fee REAL NOT NULL,
+                max_players INTEGER DEFAULT 16,
+                prize_pool REAL DEFAULT 0,
+                status TEXT DEFAULT 'open',
+                current_players INTEGER DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                starts_at TIMESTAMP,
+                whatsapp_group TEXT
+            )''')
+            
+            # Create tournament_participants table
+            c.execute('''CREATE TABLE IF NOT EXISTS tournament_participants (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                tournament_id INTEGER NOT NULL,
+                user_id INTEGER NOT NULL,
+                joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (tournament_id) REFERENCES tournaments (id),
+                FOREIGN KEY (user_id) REFERENCES users (id)
+            )''')
+            
+            # Get active tournaments
+            c.execute('''SELECT t.*, COUNT(tp.user_id) as participants
+                       FROM tournaments t
+                       LEFT JOIN tournament_participants tp ON t.id = tp.tournament_id
+                       WHERE t.status = "open"
+                       GROUP BY t.id
+                       ORDER BY t.created_at DESC''')
+            active_tournaments = c.fetchall()
+            
+            # Get user's tournament history
+            c.execute('''SELECT t.name, t.game_type, t.entry_fee, tp.joined_at
+                       FROM tournaments t
+                       JOIN tournament_participants tp ON t.id = tp.tournament_id
+                       WHERE tp.user_id = ?
+                       ORDER BY tp.joined_at DESC LIMIT 10''', (session['user_id'],))
+            user_tournaments = c.fetchall()
+            
+            return render_template('tournaments.html', 
+                                 active_tournaments=active_tournaments,
+                                 user_tournaments=user_tournaments)
+    except:
+        return render_template('tournaments.html', 
+                             active_tournaments=[],
+                             user_tournaments=[])
+
+@app.route('/join_tournament/<int:tournament_id>', methods=['POST'])
+@login_required
+def join_tournament(tournament_id):
+    try:
+        with get_db_connection() as conn:
+            c = conn.cursor()
+            
+            # Get tournament details
+            c.execute('SELECT * FROM tournaments WHERE id = ? AND status = "open"', (tournament_id,))
+            tournament = c.fetchone()
+            
+            if not tournament:
+                return jsonify({'success': False, 'message': 'Tournament not found or closed'})
+            
+            # Check if user already joined
+            c.execute('SELECT id FROM tournament_participants WHERE tournament_id = ? AND user_id = ?', 
+                     (tournament_id, session['user_id']))
+            if c.fetchone():
+                return jsonify({'success': False, 'message': 'Already joined this tournament'})
+            
+            entry_fee = tournament[3]
+            max_players = tournament[4]
+            current_players = tournament[7]
+            
+            # Check if tournament is full
+            if current_players >= max_players:
+                return jsonify({'success': False, 'message': 'Tournament is full'})
+            
+            # Check user balance
+            if session.get('balance', 0) < entry_fee:
+                return jsonify({'success': False, 'message': 'Insufficient balance'})
+            
+            # Deduct entry fee and join tournament
+            new_balance = session['balance'] - entry_fee
+            c.execute('UPDATE users SET balance = ? WHERE id = ?', (new_balance, session['user_id']))
+            session['balance'] = new_balance
+            
+            # Add participant
+            c.execute('INSERT INTO tournament_participants (tournament_id, user_id) VALUES (?, ?)',
+                     (tournament_id, session['user_id']))
+            
+            # Update tournament stats
+            new_players = current_players + 1
+            new_prize_pool = tournament[5] + (entry_fee * 0.85)  # 85% goes to prize pool
+            c.execute('UPDATE tournaments SET current_players = ?, prize_pool = ? WHERE id = ?',
+                     (new_players, new_prize_pool, tournament_id))
+            
+            # Add transaction
+            c.execute('''INSERT INTO transactions (user_id, type, amount, description) 
+                       VALUES (?, ?, ?, ?)''',
+                     (session['user_id'], 'tournament_entry', -entry_fee, f'Tournament entry: {tournament[1]}'))
+            
+            conn.commit()
+            
+            return jsonify({'success': True, 'message': f'Successfully joined tournament! Entry fee: KSh {entry_fee}'})
+            
+    except Exception as e:
+        return jsonify({'success': False, 'message': 'Error joining tournament'})
 
 @app.route('/my_game_matches')
 @login_required

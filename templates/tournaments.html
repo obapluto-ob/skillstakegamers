@@ -69,19 +69,19 @@
 {% if user_tournaments %}
 <div class="card">
     <h2>📊 Your Tournament History</h2>
-    <table style="width: 100%; border-collapse: collapse;">
-        <tr style="background: #f8f9fa;">
-            <th style="padding: 0.5rem; border: 1px solid #ddd;">Tournament</th>
-            <th style="padding: 0.5rem; border: 1px solid #ddd;">Game</th>
-            <th style="padding: 0.5rem; border: 1px solid #ddd;">Entry Fee</th>
-            <th style="padding: 0.5rem; border: 1px solid #ddd;">Joined</th>
+    <table style="width: 100%; border-collapse: collapse; background: white;">
+        <tr style="background: #343a40; color: white;">
+            <th style="padding: 0.8rem; border: 1px solid #ddd; text-align: left; font-weight: bold;">Tournament</th>
+            <th style="padding: 0.8rem; border: 1px solid #ddd; text-align: left; font-weight: bold;">Game</th>
+            <th style="padding: 0.8rem; border: 1px solid #ddd; text-align: left; font-weight: bold;">Entry Fee</th>
+            <th style="padding: 0.8rem; border: 1px solid #ddd; text-align: left; font-weight: bold;">Joined</th>
         </tr>
         {% for tournament in user_tournaments %}
-        <tr>
-            <td style="padding: 0.5rem; border: 1px solid #ddd;">{{ tournament[0] }}</td>
-            <td style="padding: 0.5rem; border: 1px solid #ddd;">{{ tournament[1] }}</td>
-            <td style="padding: 0.5rem; border: 1px solid #ddd;">KSh {{ tournament[2] }}</td>
-            <td style="padding: 0.5rem; border: 1px solid #ddd;">{{ tournament[3][:10] }}</td>
+        <tr style="{% if loop.index % 2 == 0 %}background: #f8f9fa;{% else %}background: white;{% endif %}">
+            <td style="padding: 0.8rem; border: 1px solid #ddd; color: #333;">{{ tournament[0] }}</td>
+            <td style="padding: 0.8rem; border: 1px solid #ddd; color: #333;">{{ tournament[1] }}</td>
+            <td style="padding: 0.8rem; border: 1px solid #ddd; color: #333; font-weight: bold;">KSh {{ tournament[2] }}</td>
+            <td style="padding: 0.8rem; border: 1px solid #ddd; color: #666;">{{ tournament[3][:10] }}</td>
         </tr>
         {% endfor %}
     </table>

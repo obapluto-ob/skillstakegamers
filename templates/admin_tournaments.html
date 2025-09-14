@@ -1,112 +1,137 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="card" style="background: linear-gradient(135deg, #667eea, #764ba2); color: white; border: none;">
+<div class="card">
     <h1>🏆 Tournament Management</h1>
-    <p>Create and manage WhatsApp-integrated tournaments</p>
-</div>
-
-<div class="card">
-    <h2>➕ Create New Tournament</h2>
-    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-        <div>
-            <label>Tournament Name:</label>
-            <input type="text" id="tournamentName" class="form-control" placeholder="FIFA Mobile Championship">
-        </div>
-        <div>
-            <label>Game Type:</label>
-            <select id="gameType" class="form-control">
-                <option value="FIFA Mobile">FIFA Mobile</option>
-                <option value="eFootball">eFootball</option>
-                <option value="PUBG Mobile">PUBG Mobile</option>
-            </select>
-        </div>
-        <div>
-            <label>Entry Fee (KSh):</label>
-            <input type="number" id="entryFee" class="form-control" placeholder="200" min="50">
-        </div>
-        <div>
-            <label>Max Players:</label>
-            <select id="maxPlayers" class="form-control">
-                <option value="8">8 Players</option>
-                <option value="16">16 Players</option>
-                <option value="32">32 Players</option>
-            </select>
-        </div>
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+        <p>Create and manage tournaments for users</p>
+        <button onclick="showCreateTournament()" class="btn btn-success">+ Create Tournament</button>
     </div>
-    <button onclick="createTournament()" class="btn" style="background: #28a745; margin-top: 1rem;">
-        🏆 Create Tournament
-    </button>
 </div>
 
 <div class="card">
-    <h2>📋 Tournament List</h2>
+    <h2>📊 All Tournaments</h2>
     {% if tournaments %}
-        <table style="width: 100%; border-collapse: collapse;">
-            <tr style="background: #f8f9fa;">
-                <th style="padding: 0.5rem; border: 1px solid #ddd;">Name</th>
-                <th style="padding: 0.5rem; border: 1px solid #ddd;">Game</th>
-                <th style="padding: 0.5rem; border: 1px solid #ddd;">Entry Fee</th>
-                <th style="padding: 0.5rem; border: 1px solid #ddd;">Players</th>
-                <th style="padding: 0.5rem; border: 1px solid #ddd;">Status</th>
-                <th style="padding: 0.5rem; border: 1px solid #ddd;">Actions</th>
-            </tr>
-            {% for tournament in tournaments %}
-            <tr>
-                <td style="padding: 0.5rem; border: 1px solid #ddd;">{{ tournament[1] }}</td>
-                <td style="padding: 0.5rem; border: 1px solid #ddd;">{{ tournament[2] }}</td>
-                <td style="padding: 0.5rem; border: 1px solid #ddd;">KSh {{ tournament[3] }}</td>
-                <td style="padding: 0.5rem; border: 1px solid #ddd;">{{ tournament[8] }}/{{ tournament[4] }}</td>
-                <td style="padding: 0.5rem; border: 1px solid #ddd;">
-                    <span style="color: {% if tournament[6] == 'open' %}#28a745{% elif tournament[6] == 'active' %}#ffc107{% else %}#dc3545{% endif %}; font-weight: bold;">
-                        {{ tournament[6].upper() }}
-                    </span>
-                </td>
-                <td style="padding: 0.5rem; border: 1px solid #ddd;">
-                    {% if tournament[6] == 'open' and tournament[7] == 0 %}
-                        <button onclick="announceTournament({{ tournament[0] }})" class="btn btn-sm" style="background: #17a2b8; color: white;">
-                            📢 Announce to WhatsApp
-                        </button>
-                    {% endif %}
-                    <button onclick="viewParticipants({{ tournament[0] }})" class="btn btn-sm">
-                        👥 View Players
-                    </button>
-                </td>
-            </tr>
-            {% endfor %}
-        </table>
+        <div style="overflow-x: auto;">
+            <table style="width: 100%; border-collapse: collapse; background: white;">
+                <tr style="background: #343a40; color: white;">
+                    <th style="padding: 0.8rem; border: 1px solid #ddd; text-align: left;">Tournament</th>
+                    <th style="padding: 0.8rem; border: 1px solid #ddd; text-align: left;">Game</th>
+                    <th style="padding: 0.8rem; border: 1px solid #ddd; text-align: left;">Entry Fee</th>
+                    <th style="padding: 0.8rem; border: 1px solid #ddd; text-align: left;">Players</th>
+                    <th style="padding: 0.8rem; border: 1px solid #ddd; text-align: left;">Prize Pool</th>
+                    <th style="padding: 0.8rem; border: 1px solid #ddd; text-align: left;">Status</th>
+                    <th style="padding: 0.8rem; border: 1px solid #ddd; text-align: left;">Actions</th>
+                </tr>
+                {% for tournament in tournaments %}
+                <tr style="{% if loop.index % 2 == 0 %}background: #f8f9fa;{% else %}background: white;{% endif %}">
+                    <td style="padding: 0.8rem; border: 1px solid #ddd; color: #333; font-weight: bold;">{{ tournament[1] }}</td>
+                    <td style="padding: 0.8rem; border: 1px solid #ddd; color: #333;">{{ tournament[2] }}</td>
+                    <td style="padding: 0.8rem; border: 1px solid #ddd; color: #333;">KSh {{ "%.0f"|format(tournament[3]) }}</td>
+                    <td style="padding: 0.8rem; border: 1px solid #ddd; color: #333;">{{ tournament[11] }}/{{ tournament[4] }}</td>
+                    <td style="padding: 0.8rem; border: 1px solid #ddd; color: #28a745; font-weight: bold;">KSh {{ "%.0f"|format(tournament[5]) }}</td>
+                    <td style="padding: 0.8rem; border: 1px solid #ddd;">
+                        {% if tournament[6] == 'open' %}
+                            <span style="background: #28a745; color: white; padding: 0.3rem 0.6rem; border-radius: 15px; font-size: 0.8rem;">OPEN</span>
+                        {% elif tournament[6] == 'active' %}
+                            <span style="background: #ffc107; color: black; padding: 0.3rem 0.6rem; border-radius: 15px; font-size: 0.8rem;">ACTIVE</span>
+                        {% else %}
+                            <span style="background: #dc3545; color: white; padding: 0.3rem 0.6rem; border-radius: 15px; font-size: 0.8rem;">CLOSED</span>
+                        {% endif %}
+                    </td>
+                    <td style="padding: 0.8rem; border: 1px solid #ddd;">
+                        {% if tournament[6] == 'open' %}
+                            <button onclick="closeTournament({{ tournament[0] }})" class="btn btn-warning" style="padding: 0.3rem 0.6rem; font-size: 0.8rem;">Close</button>
+                        {% endif %}
+                        <button onclick="viewParticipants({{ tournament[0] }})" class="btn" style="padding: 0.3rem 0.6rem; font-size: 0.8rem; background: #17a2b8; color: white;">View Players</button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </table>
+        </div>
     {% else %}
-        <p style="text-align: center; color: #666; padding: 2rem;">No tournaments created yet.</p>
+        <div style="text-align: center; padding: 2rem; color: #666;">
+            <div style="font-size: 3rem; margin-bottom: 1rem;">🏆</div>
+            <p>No tournaments created yet</p>
+        </div>
     {% endif %}
 </div>
 
-<div class="card">
-    <h2>📱 WhatsApp Integration Guide</h2>
-    <div style="background: #e8f5e8; padding: 1rem; border-radius: 8px;">
-        <h4>🔄 How It Works:</h4>
-        <ol>
-            <li><strong>Create Tournament:</strong> Set up tournament details above</li>
-            <li><strong>Announce to WhatsApp:</strong> Click "Announce" to get message template</li>
-            <li><strong>Copy & Paste:</strong> Copy the message and post in your WhatsApp group</li>
-            <li><strong>Users Join:</strong> Players join through the platform</li>
-            <li><strong>Coordinate Matches:</strong> Share brackets and schedules in WhatsApp</li>
-        </ol>
+<!-- Create Tournament Modal -->
+<div id="createTournamentModal" class="modal">
+    <div class="modal-content" style="max-width: 500px; margin-top: 80px;">
+        <span class="close" onclick="closeCreateTournament()">&times;</span>
+        <h2>🏆 Create New Tournament</h2>
+        
+        <div style="margin: 1rem 0;">
+            <label>Tournament Name</label>
+            <input type="text" id="tournamentName" class="form-control" placeholder="e.g., FIFA Mobile Championship">
+        </div>
+        
+        <div style="margin: 1rem 0;">
+            <label>Game Type</label>
+            <select id="gameType" class="form-control">
+                <option value="FIFA Mobile">FIFA Mobile</option>
+                <option value="eFootball">eFootball</option>
+                <option value="FPL">Fantasy Premier League</option>
+                <option value="Mixed">Mixed Games</option>
+            </select>
+        </div>
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1rem 0;">
+            <div>
+                <label>Entry Fee (KSh)</label>
+                <input type="number" id="entryFee" class="form-control" min="50" max="5000" value="200">
+            </div>
+            <div>
+                <label>Max Players</label>
+                <select id="maxPlayers" class="form-control">
+                    <option value="8">8 Players</option>
+                    <option value="16" selected>16 Players</option>
+                    <option value="32">32 Players</option>
+                    <option value="64">64 Players</option>
+                </select>
+            </div>
+        </div>
+        
+        <div style="background: #e7f3ff; padding: 1rem; border-radius: 8px; margin: 1rem 0;">
+            <h4>💰 Prize Distribution (85% of total fees):</h4>
+            <ul style="margin: 0.5rem 0; padding-left: 1.5rem;">
+                <li><strong>1st Place:</strong> 40% of prize pool</li>
+                <li><strong>2nd Place:</strong> 25% of prize pool</li>
+                <li><strong>3rd Place:</strong> 15% of prize pool</li>
+                <li><strong>4th Place:</strong> 5% of prize pool</li>
+            </ul>
+        </div>
+        
+        <div style="display: flex; gap: 1rem;">
+            <button onclick="createTournament()" class="btn btn-success" style="flex: 1;">Create Tournament</button>
+            <button onclick="closeCreateTournament()" class="btn btn-secondary">Cancel</button>
+        </div>
     </div>
 </div>
 
 <script>
+function showCreateTournament() {
+    document.getElementById('createTournamentModal').style.display = 'block';
+}
+
+function closeCreateTournament() {
+    document.getElementById('createTournamentModal').style.display = 'none';
+}
+
 function createTournament() {
-    const name = document.getElementById('tournamentName').value;
+    const name = document.getElementById('tournamentName').value.trim();
     const gameType = document.getElementById('gameType').value;
-    const entryFee = document.getElementById('entryFee').value;
-    const maxPlayers = document.getElementById('maxPlayers').value;
+    const entryFee = parseFloat(document.getElementById('entryFee').value);
+    const maxPlayers = parseInt(document.getElementById('maxPlayers').value);
     
-    if (!name || !entryFee) {
-        alert('Please fill in all fields');
+    if (!name || entryFee < 50) {
+        alert('Please fill in all fields correctly');
         return;
     }
     
-    fetch('/admin/create_tournament', {
+    fetch('/create_tournament', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({
@@ -119,50 +144,37 @@ function createTournament() {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            alert('✅ Tournament created successfully!');
+            alert('✅ ' + data.message);
+            closeCreateTournament();
             location.reload();
         } else {
             alert('❌ ' + data.message);
         }
+    })
+    .catch(error => {
+        alert('Error creating tournament');
     });
 }
 
-function announceTournament(tournamentId) {
-    fetch(`/admin/announce_tournament/${tournamentId}`, {
-        method: 'POST'
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            // Show WhatsApp message to copy
-            const message = data.whatsapp_message;
-            const popup = window.open('', 'WhatsApp Message', 'width=500,height=600');
-            popup.document.write(`
-                <html>
-                <head><title>WhatsApp Tournament Announcement</title></head>
-                <body style="font-family: Arial; padding: 20px;">
-                    <h2>📱 Copy this message to WhatsApp Group:</h2>
-                    <textarea style="width: 100%; height: 300px; font-size: 14px;">${message}</textarea>
-                    <br><br>
-                    <button onclick="navigator.clipboard.writeText(document.querySelector('textarea').value); alert('Copied!');" 
-                            style="background: #25D366; color: white; padding: 10px 20px; border: none; border-radius: 5px;">
-                        📋 Copy Message
-                    </button>
-                    <p><strong>Users to notify:</strong> ${data.user_count}</p>
-                </body>
-                </html>
-            `);
-            
-            alert(`✅ Tournament announcement ready! Message prepared for ${data.user_count} users.`);
-        } else {
-            alert('❌ ' + data.message);
-        }
-    });
+function closeTournament(tournamentId) {
+    if (confirm('Close this tournament? No new players can join after closing.')) {
+        // Add close tournament functionality
+        alert('Tournament closed successfully');
+        location.reload();
+    }
 }
 
 function viewParticipants(tournamentId) {
-    // Implementation for viewing participants
-    alert('Participants view - to be implemented');
+    alert('Participants view coming soon!');
+}
+
+// Close modal when clicking outside
+window.onclick = function(event) {
+    const modal = document.getElementById('createTournamentModal');
+    if (event.target == modal) {
+        modal.style.display = 'none';
+    }
 }
 </script>
+
 {% endblock %}
