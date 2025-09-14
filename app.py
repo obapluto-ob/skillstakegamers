@@ -1293,16 +1293,15 @@ def create_crypto_payment():
         if not api_key:
             return jsonify({'success': False, 'error': 'Payment service unavailable'})
             
-        order_id = f'{session["user_id"]}_{int(time.time())}'
+        order_id = f'SK_{session["user_id"]}_{int(time.time())}'
+        usd_amount = round(amount / 130, 2)
         
         payment_data = {
-            'price_amount': round(amount/130, 2),
-            'price_currency': 'USD',
-            'pay_currency': 'USDTTRC20',
+            'price_amount': usd_amount,
+            'price_currency': 'usd',
+            'pay_currency': 'usdttrc20',
             'order_id': order_id,
-            'order_description': f'SkillStake Deposit - KSh {amount}',
-            'success_url': f'https://skillstakegamers-wxc6.onrender.com/crypto_success',
-            'cancel_url': f'https://skillstakegamers-wxc6.onrender.com/crypto_cancel'
+            'order_description': f'SkillStake Gaming Deposit - KSh {amount}'
         }
         
         headers = {
@@ -1313,29 +1312,41 @@ def create_crypto_payment():
         response = requests.post('https://api.nowpayments.io/v1/payment',
                                headers=headers,
                                json=payment_data,
-                               timeout=10)
+                               timeout=15)
         
         if response.status_code == 201:
             payment = response.json()
+            payment_url = payment.get('payment_url')
             
-            with get_db_connection() as conn:
-                c = conn.cursor()
-                description = f'Crypto payment initiated - KSh {amount} (${amount/130:.2f})'
-                c.execute('''INSERT INTO transactions (user_id, type, amount, description) 
-                           VALUES (?, ?, ?, ?)''',
-                         (session['user_id'], 'crypto_initiated', amount, description))
-                conn.commit()
-            
-            return jsonify({
-                'success': True,
-                'payment_url': payment.get('payment_url', '#'),
-                'message': 'Payment created successfully'
-            })
+            if payment_url:
+                with get_db_connection() as conn:
+                    c = conn.cursor()
+                    description = f'Crypto payment initiated - KSh {amount} (${usd_amount})'
+                    c.execute('''INSERT INTO transactions (user_id, type, amount, description) 
+                               VALUES (?, ?, ?, ?)''',
+                             (session['user_id'], 'crypto_initiated', amount, description))
+                    conn.commit()
+                
+                return jsonify({
+                    'success': True,
+                    'payment_url': payment_url,
+                    'message': 'Redirecting to crypto payment...'
+                })
+            else:
+                return jsonify({'success': False, 'error': 'Payment URL not received'})
         else:
-            return jsonify({'success': False, 'error': f'API Error: {response.status_code}'})
+            error_msg = 'Payment service error'
+            try:
+                error_data = response.json()
+                error_msg = error_data.get('message', error_msg)
+            except:
+                pass
+            return jsonify({'success': False, 'error': error_msg})
         
-    except requests.exceptions.RequestException as e:
-        return jsonify({'success': False, 'error': 'Network error - please try again'})
+    except requests.exceptions.Timeout:
+        return jsonify({'success': False, 'error': 'Payment service timeout - please try again'})
+    except requests.exceptions.RequestException:
+        return jsonify({'success': False, 'error': 'Network error - check connection'})
     except Exception as e:
         return jsonify({'success': False, 'error': 'Payment creation failed'})
 
@@ -1401,40 +1412,41 @@ def paypal_checkout():
         
         client_id = os.getenv('PAYPAL_CLIENT_ID')
         client_secret = os.getenv('PAYPAL_CLIENT_SECRET')
+        base_url = os.getenv('PAYPAL_BASE_URL', 'https://api.paypal.com')
         
         if not client_id or not client_secret:
             flash('PayPal service unavailable', 'error')
             return redirect(url_for('wallet'))
         
-        # Use sandbox for testing
-        base_url = 'https://api.sandbox.paypal.com'
-        
+        # Get OAuth token
         auth = base64.b64encode(f'{client_id}:{client_secret}'.encode()).decode()
-        headers = {
+        token_headers = {
             'Authorization': f'Basic {auth}',
             'Content-Type': 'application/x-www-form-urlencoded'
         }
         
         token_response = requests.post(f'{base_url}/v1/oauth2/token', 
-                                     headers=headers, 
+                                     headers=token_headers, 
                                      data='grant_type=client_credentials',
-                                     timeout=10)
+                                     timeout=15)
         
         if token_response.status_code != 200:
             flash('PayPal authentication failed', 'error')
             return redirect(url_for('wallet'))
         
         access_token = token_response.json()['access_token']
+        usd_amount = round(amount / 130, 2)
         
+        # Create payment
         payment_data = {
             'intent': 'sale',
             'payer': {'payment_method': 'paypal'},
             'transactions': [{
                 'amount': {
-                    'total': f'{amount/130:.2f}',
+                    'total': str(usd_amount),
                     'currency': 'USD'
                 },
-                'description': f'SkillStake Deposit - KSh {amount}'
+                'description': f'SkillStake Gaming Deposit - KSh {amount}'
             }],
             'redirect_urls': {
                 'return_url': 'https://skillstakegamers-wxc6.onrender.com/paypal_success',
@@ -1450,16 +1462,21 @@ def paypal_checkout():
         payment_response = requests.post(f'{base_url}/v1/payments/payment',
                                        headers=payment_headers,
                                        json=payment_data,
-                                       timeout=10)
+                                       timeout=15)
         
         if payment_response.status_code == 201:
             payment = payment_response.json()
-            approval_url = next((link['href'] for link in payment['links'] if link['rel'] == 'approval_url'), None)
+            approval_url = None
+            
+            for link in payment.get('links', []):
+                if link.get('rel') == 'approval_url':
+                    approval_url = link.get('href')
+                    break
             
             if approval_url:
                 with get_db_connection() as conn:
                     c = conn.cursor()
-                    description = f'PayPal payment initiated - KSh {amount} (${amount/130:.2f})'
+                    description = f'PayPal payment initiated - KSh {amount} (${usd_amount})'
                     c.execute('''INSERT INTO transactions (user_id, type, amount, description) 
                                VALUES (?, ?, ?, ?)''',
                              (session['user_id'], 'paypal_initiated', amount, description))
@@ -1467,14 +1484,23 @@ def paypal_checkout():
                 
                 return redirect(approval_url)
             else:
-                flash('PayPal redirect URL not found', 'error')
+                flash('PayPal approval URL not found', 'error')
                 return redirect(url_for('wallet'))
         else:
-            flash(f'PayPal payment creation failed: {payment_response.status_code}', 'error')
+            error_msg = 'PayPal payment creation failed'
+            try:
+                error_data = payment_response.json()
+                error_msg = error_data.get('message', error_msg)
+            except:
+                pass
+            flash(error_msg, 'error')
             return redirect(url_for('wallet'))
         
-    except requests.exceptions.RequestException as e:
-        flash('PayPal network error - please try again', 'error')
+    except requests.exceptions.Timeout:
+        flash('PayPal timeout - please try again', 'error')
+        return redirect(url_for('wallet'))
+    except requests.exceptions.RequestException:
+        flash('PayPal network error', 'error')
         return redirect(url_for('wallet'))
     except Exception as e:
         flash('PayPal error occurred', 'error')
@@ -1513,22 +1539,24 @@ def paypal_success():
         
         client_id = os.getenv('PAYPAL_CLIENT_ID')
         client_secret = os.getenv('PAYPAL_CLIENT_SECRET')
-        base_url = 'https://api.sandbox.paypal.com'
+        base_url = os.getenv('PAYPAL_BASE_URL', 'https://api.paypal.com')
         
+        # Get OAuth token
         auth = base64.b64encode(f'{client_id}:{client_secret}'.encode()).decode()
-        headers = {
+        token_headers = {
             'Authorization': f'Basic {auth}',
             'Content-Type': 'application/x-www-form-urlencoded'
         }
         
         token_response = requests.post(f'{base_url}/v1/oauth2/token', 
-                                     headers=headers, 
+                                     headers=token_headers, 
                                      data='grant_type=client_credentials',
-                                     timeout=10)
+                                     timeout=15)
         
         if token_response.status_code == 200:
             access_token = token_response.json()['access_token']
             
+            # Execute payment
             execute_data = {'payer_id': payer_id}
             execute_headers = {
                 'Authorization': f'Bearer {access_token}',
@@ -1538,7 +1566,7 @@ def paypal_success():
             execute_response = requests.post(f'{base_url}/v1/payments/payment/{payment_id}/execute',
                                            headers=execute_headers,
                                            json=execute_data,
-                                           timeout=10)
+                                           timeout=15)
             
             if execute_response.status_code == 200:
                 payment_data = execute_response.json()
@@ -1567,7 +1595,10 @@ def paypal_success():
         
         return redirect(url_for('wallet'))
         
-    except requests.exceptions.RequestException as e:
+    except requests.exceptions.Timeout:
+        flash('PayPal timeout error', 'error')
+        return redirect(url_for('wallet'))
+    except requests.exceptions.RequestException:
         flash('PayPal network error', 'error')
         return redirect(url_for('wallet'))
     except Exception as e:
