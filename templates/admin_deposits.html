@@ -1,0 +1,179 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card">
+    <h1>💰 M-Pesa Deposit Management</h1>
+    <p>Review and approve/reject M-Pesa deposit requests from users</p>
+</div>
+
+<div class="card">
+    <h2>🔍 Pending Deposits ({{ pending_deposits|length }})</h2>
+    {% if pending_deposits %}
+        {% for deposit in pending_deposits %}
+        <div style="border: 2px solid #ffc107; padding: 1rem; margin-bottom: 1rem; border-radius: 8px; background: #fff3cd;">
+            <div style="display: flex; justify-content: between; align-items: center; margin-bottom: 0.5rem;">
+                <div style="flex: 1;">
+                    <h4>{{ deposit[6] }} - KSh {{ "%.0f"|format(deposit[3]) }}</h4>
+                    <p><strong>Description:</strong> {{ deposit[4] }}</p>
+                    <p><strong>Submitted:</strong> {{ deposit[5] }}</p>
+                </div>
+                {% if deposit[7] %}
+                <div style="margin-left: 1rem;">
+                    <button onclick="viewReceipt('{{ deposit[7] }}')" class="btn" style="background: #17a2b8; color: white; padding: 0.5rem 1rem;">📱 View Receipt</button>
+                </div>
+                {% endif %}
+            </div>
+            
+            <div style="display: flex; gap: 1rem; margin-top: 1rem;">
+                <button onclick="approveDeposit({{ deposit[0] }}, {{ deposit[3] }})" class="btn btn-success" style="flex: 1;">
+                    ✅ Approve KSh {{ "%.0f"|format(deposit[3]) }}
+                </button>
+                <button onclick="rejectDeposit({{ deposit[0] }})" class="btn btn-danger" style="flex: 1;">
+                    ❌ Reject Deposit
+                </button>
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <div style="text-align: center; padding: 2rem; color: #666;">
+            <div style="font-size: 3rem; margin-bottom: 1rem;">✅</div>
+            <p>No pending deposits to review</p>
+        </div>
+    {% endif %}
+</div>
+
+<div class="card">
+    <h2>📋 Recent Processed Deposits</h2>
+    {% if processed_deposits %}
+        {% for deposit in processed_deposits %}
+        <div style="padding: 1rem; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; border-left: 4px solid {% if deposit[2] == 'deposit' %}#28a745{% else %}#dc3545{% endif %};">
+            <div>
+                <div><strong>{{ deposit[6] }}</strong> - KSh {{ "%.0f"|format(deposit[3]) }}</div>
+                <div style="font-size: 0.9rem; color: #666;">{{ deposit[4] }}</div>
+                <small style="color: #999;">{{ deposit[5] }}</small>
+            </div>
+            <div>
+                {% if deposit[2] == 'deposit' %}
+                    <span style="background: #28a745; color: white; padding: 0.3rem 0.8rem; border-radius: 15px; font-size: 0.8rem;">✅ APPROVED</span>
+                {% else %}
+                    <span style="background: #dc3545; color: white; padding: 0.3rem 0.8rem; border-radius: 15px; font-size: 0.8rem;">❌ REJECTED</span>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <p>No processed deposits yet.</p>
+    {% endif %}
+</div>
+
+<!-- Receipt Modal -->
+<div id="receiptModal" class="modal">
+    <div class="modal-content" style="max-width: 500px; margin-top: 80px;">
+        <span class="close" onclick="closeReceiptModal()">&times;</span>
+        <h3>📱 M-Pesa Receipt</h3>
+        <div style="text-align: center; padding: 1rem;">
+            <img id="receiptImage" src="" style="max-width: 100%; height: auto; border-radius: 8px; border: 1px solid #ddd;">
+        </div>
+    </div>
+</div>
+
+<!-- Reject Modal -->
+<div id="rejectModal" class="modal">
+    <div class="modal-content" style="max-width: 400px; margin-top: 80px;">
+        <span class="close" onclick="closeRejectModal()">&times;</span>
+        <h3>❌ Reject Deposit</h3>
+        <div style="margin: 1rem 0;">
+            <label>Reason for rejection:</label>
+            <textarea id="rejectReason" class="form-control" rows="3" placeholder="e.g., Invalid receipt, wrong amount, etc."></textarea>
+        </div>
+        <div style="display: flex; gap: 1rem;">
+            <button onclick="confirmReject()" class="btn btn-danger" style="flex: 1;">Reject Deposit</button>
+            <button onclick="closeRejectModal()" class="btn btn-secondary">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentDepositId = null;
+
+function viewReceipt(receiptData) {
+    document.getElementById('receiptImage').src = 'data:image/jpeg;base64,' + receiptData;
+    document.getElementById('receiptModal').style.display = 'block';
+}
+
+function closeReceiptModal() {
+    document.getElementById('receiptModal').style.display = 'none';
+}
+
+function approveDeposit(depositId, amount) {
+    if (confirm(`Approve deposit of KSh ${amount}? This will add the amount to user's balance.`)) {
+        fetch(`/approve_deposit/${depositId}`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'}
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('✅ ' + data.message);
+                location.reload();
+            } else {
+                alert('❌ Error: ' + data.message);
+            }
+        })
+        .catch(error => {
+            alert('❌ Error approving deposit');
+        });
+    }
+}
+
+function rejectDeposit(depositId) {
+    currentDepositId = depositId;
+    document.getElementById('rejectModal').style.display = 'block';
+}
+
+function closeRejectModal() {
+    document.getElementById('rejectModal').style.display = 'none';
+    currentDepositId = null;
+}
+
+function confirmReject() {
+    const reason = document.getElementById('rejectReason').value.trim();
+    if (!reason) {
+        alert('Please provide a reason for rejection');
+        return;
+    }
+    
+    fetch(`/reject_deposit/${currentDepositId}`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({reason: reason})
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('✅ ' + data.message);
+            closeRejectModal();
+            location.reload();
+        } else {
+            alert('❌ Error: ' + data.message);
+        }
+    })
+    .catch(error => {
+        alert('❌ Error rejecting deposit');
+    });
+}
+
+// Close modal when clicking outside
+window.onclick = function(event) {
+    const receiptModal = document.getElementById('receiptModal');
+    const rejectModal = document.getElementById('rejectModal');
+    if (event.target == receiptModal) {
+        receiptModal.style.display = 'none';
+    }
+    if (event.target == rejectModal) {
+        rejectModal.style.display = 'none';
+    }
+}
+</script>
+
+{% endblock %}

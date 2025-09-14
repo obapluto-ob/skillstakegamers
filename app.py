@@ -982,7 +982,31 @@ def admin_matches():
 def admin_deposits():
     if session.get('username') != 'admin':
         return redirect(url_for('dashboard'))
-    return render_template('admin_deposits.html')
+    
+    try:
+        with get_db_connection() as conn:
+            c = conn.cursor()
+            c.execute('''SELECT t.*, u.username 
+                       FROM transactions t
+                       JOIN users u ON t.user_id = u.id
+                       WHERE t.type = "pending_deposit"
+                       ORDER BY t.created_at DESC''')
+            pending_deposits = c.fetchall()
+            
+            c.execute('''SELECT t.*, u.username 
+                       FROM transactions t
+                       JOIN users u ON t.user_id = u.id
+                       WHERE t.type IN ("deposit", "rejected_deposit")
+                       ORDER BY t.created_at DESC LIMIT 20''')
+            processed_deposits = c.fetchall()
+            
+        return render_template('admin_deposits.html', 
+                             pending_deposits=pending_deposits,
+                             processed_deposits=processed_deposits)
+    except:
+        return render_template('admin_deposits.html', 
+                             pending_deposits=[],
+                             processed_deposits=[])
 
 @app.route('/admin_withdrawals')
 @login_required
@@ -1213,6 +1237,7 @@ def add_funds():
             amount = float(request.form.get('amount', 0))
             mpesa_number = request.form.get('mpesa_number', '').strip()
             sender_name = request.form.get('sender_name', '').strip()
+            receipt_file = request.files.get('receipt_screenshot')
             
             if not all([amount, mpesa_number, sender_name]):
                 flash('Please fill in all fields', 'error')
@@ -1222,14 +1247,23 @@ def add_funds():
                 flash('Minimum deposit amount is KSh 100', 'error')
                 return redirect(url_for('wallet'))
             
+            # Handle receipt screenshot
+            receipt_data = None
+            if receipt_file and receipt_file.filename:
+                try:
+                    import base64
+                    receipt_data = base64.b64encode(receipt_file.read()).decode('utf-8')
+                except:
+                    pass
+            
             with get_db_connection() as conn:
                 c = conn.cursor()
                 
-                # Create pending deposit transaction
+                # Create pending deposit transaction with receipt
                 description = f'M-Pesa deposit - {sender_name} ({mpesa_number}) - KSh {amount}'
-                c.execute('''INSERT INTO transactions (user_id, type, amount, description) 
-                           VALUES (?, ?, ?, ?)''',
-                         (session['user_id'], 'pending_deposit', amount, description))
+                c.execute('''INSERT INTO transactions (user_id, type, amount, description, payment_proof) 
+                           VALUES (?, ?, ?, ?, ?)''',
+                         (session['user_id'], 'pending_deposit', amount, description, receipt_data))
                 
                 conn.commit()
             
@@ -1256,16 +1290,19 @@ def create_crypto_payment():
             return jsonify({'success': False, 'error': 'Minimum amount is KSh 1,950'})
         
         api_key = os.getenv('NOWPAYMENTS_API_KEY')
+        if not api_key:
+            return jsonify({'success': False, 'error': 'Payment service unavailable'})
+            
         order_id = f'{session["user_id"]}_{int(time.time())}'
         
         payment_data = {
-            'price_amount': amount/130,
+            'price_amount': round(amount/130, 2),
             'price_currency': 'USD',
             'pay_currency': 'USDTTRC20',
             'order_id': order_id,
             'order_description': f'SkillStake Deposit - KSh {amount}',
-            'success_url': f'{request.host_url}crypto_success',
-            'cancel_url': f'{request.host_url}crypto_cancel'
+            'success_url': f'https://skillstakegamers-wxc6.onrender.com/crypto_success',
+            'cancel_url': f'https://skillstakegamers-wxc6.onrender.com/crypto_cancel'
         }
         
         headers = {
@@ -1275,29 +1312,32 @@ def create_crypto_payment():
         
         response = requests.post('https://api.nowpayments.io/v1/payment',
                                headers=headers,
-                               json=payment_data)
+                               json=payment_data,
+                               timeout=10)
         
-        if response.status_code != 201:
-            return jsonify({'success': False, 'error': 'Failed to create crypto payment'})
+        if response.status_code == 201:
+            payment = response.json()
+            
+            with get_db_connection() as conn:
+                c = conn.cursor()
+                description = f'Crypto payment initiated - KSh {amount} (${amount/130:.2f})'
+                c.execute('''INSERT INTO transactions (user_id, type, amount, description) 
+                           VALUES (?, ?, ?, ?)''',
+                         (session['user_id'], 'crypto_initiated', amount, description))
+                conn.commit()
+            
+            return jsonify({
+                'success': True,
+                'payment_url': payment.get('payment_url', '#'),
+                'message': 'Payment created successfully'
+            })
+        else:
+            return jsonify({'success': False, 'error': f'API Error: {response.status_code}'})
         
-        payment = response.json()
-        
-        with get_db_connection() as conn:
-            c = conn.cursor()
-            description = f'Crypto payment initiated - KSh {amount} (${amount/130:.2f})'
-            c.execute('''INSERT INTO transactions (user_id, type, amount, description) 
-                       VALUES (?, ?, ?, ?)''',
-                     (session['user_id'], 'crypto_initiated', amount, description))
-            conn.commit()
-        
-        return jsonify({
-            'success': True,
-            'payment_url': payment['payment_url'],
-            'message': 'Payment created successfully'
-        })
-        
+    except requests.exceptions.RequestException as e:
+        return jsonify({'success': False, 'error': 'Network error - please try again'})
     except Exception as e:
-        return jsonify({'success': False, 'error': 'Failed to create payment'})
+        return jsonify({'success': False, 'error': 'Payment creation failed'})
 
 @app.route('/crypto_demo_payment')
 @login_required
@@ -1354,13 +1394,20 @@ def paypal_checkout():
         amount = float(request.args.get('amount', 0))
         
         if amount < 130:
-            return 'Minimum amount is KSh 130', 400
+            flash('Minimum amount is KSh 130', 'error')
+            return redirect(url_for('wallet'))
         
         import base64
         
         client_id = os.getenv('PAYPAL_CLIENT_ID')
         client_secret = os.getenv('PAYPAL_CLIENT_SECRET')
-        base_url = os.getenv('PAYPAL_BASE_URL', 'https://api.paypal.com')
+        
+        if not client_id or not client_secret:
+            flash('PayPal service unavailable', 'error')
+            return redirect(url_for('wallet'))
+        
+        # Use sandbox for testing
+        base_url = 'https://api.sandbox.paypal.com'
         
         auth = base64.b64encode(f'{client_id}:{client_secret}'.encode()).decode()
         headers = {
@@ -1370,10 +1417,12 @@ def paypal_checkout():
         
         token_response = requests.post(f'{base_url}/v1/oauth2/token', 
                                      headers=headers, 
-                                     data='grant_type=client_credentials')
+                                     data='grant_type=client_credentials',
+                                     timeout=10)
         
         if token_response.status_code != 200:
-            raise Exception('Failed to get PayPal token')
+            flash('PayPal authentication failed', 'error')
+            return redirect(url_for('wallet'))
         
         access_token = token_response.json()['access_token']
         
@@ -1388,8 +1437,8 @@ def paypal_checkout():
                 'description': f'SkillStake Deposit - KSh {amount}'
             }],
             'redirect_urls': {
-                'return_url': f'{request.host_url}paypal_success',
-                'cancel_url': f'{request.host_url}paypal_cancel'
+                'return_url': 'https://skillstakegamers-wxc6.onrender.com/paypal_success',
+                'cancel_url': 'https://skillstakegamers-wxc6.onrender.com/paypal_cancel'
             }
         }
         
@@ -1400,26 +1449,35 @@ def paypal_checkout():
         
         payment_response = requests.post(f'{base_url}/v1/payments/payment',
                                        headers=payment_headers,
-                                       json=payment_data)
+                                       json=payment_data,
+                                       timeout=10)
         
-        if payment_response.status_code != 201:
-            raise Exception('Failed to create PayPal payment')
+        if payment_response.status_code == 201:
+            payment = payment_response.json()
+            approval_url = next((link['href'] for link in payment['links'] if link['rel'] == 'approval_url'), None)
+            
+            if approval_url:
+                with get_db_connection() as conn:
+                    c = conn.cursor()
+                    description = f'PayPal payment initiated - KSh {amount} (${amount/130:.2f})'
+                    c.execute('''INSERT INTO transactions (user_id, type, amount, description) 
+                               VALUES (?, ?, ?, ?)''',
+                             (session['user_id'], 'paypal_initiated', amount, description))
+                    conn.commit()
+                
+                return redirect(approval_url)
+            else:
+                flash('PayPal redirect URL not found', 'error')
+                return redirect(url_for('wallet'))
+        else:
+            flash(f'PayPal payment creation failed: {payment_response.status_code}', 'error')
+            return redirect(url_for('wallet'))
         
-        payment = payment_response.json()
-        approval_url = next(link['href'] for link in payment['links'] if link['rel'] == 'approval_url')
-        
-        with get_db_connection() as conn:
-            c = conn.cursor()
-            description = f'PayPal payment initiated - KSh {amount} (${amount/130:.2f})'
-            c.execute('''INSERT INTO transactions (user_id, type, amount, description) 
-                       VALUES (?, ?, ?, ?)''',
-                     (session['user_id'], 'paypal_initiated', amount, description))
-            conn.commit()
-        
-        return redirect(approval_url)
-        
+    except requests.exceptions.RequestException as e:
+        flash('PayPal network error - please try again', 'error')
+        return redirect(url_for('wallet'))
     except Exception as e:
-        flash(f'PayPal error: {str(e)}', 'error')
+        flash('PayPal error occurred', 'error')
         return redirect(url_for('wallet'))
 
 @app.route('/alert_admin_deposit', methods=['POST'])
@@ -1455,7 +1513,7 @@ def paypal_success():
         
         client_id = os.getenv('PAYPAL_CLIENT_ID')
         client_secret = os.getenv('PAYPAL_CLIENT_SECRET')
-        base_url = os.getenv('PAYPAL_BASE_URL', 'https://api.paypal.com')
+        base_url = 'https://api.sandbox.paypal.com'
         
         auth = base64.b64encode(f'{client_id}:{client_secret}'.encode()).decode()
         headers = {
@@ -1465,47 +1523,55 @@ def paypal_success():
         
         token_response = requests.post(f'{base_url}/v1/oauth2/token', 
                                      headers=headers, 
-                                     data='grant_type=client_credentials')
+                                     data='grant_type=client_credentials',
+                                     timeout=10)
         
-        access_token = token_response.json()['access_token']
-        
-        execute_data = {'payer_id': payer_id}
-        execute_headers = {
-            'Authorization': f'Bearer {access_token}',
-            'Content-Type': 'application/json'
-        }
-        
-        execute_response = requests.post(f'{base_url}/v1/payments/payment/{payment_id}/execute',
-                                       headers=execute_headers,
-                                       json=execute_data)
-        
-        if execute_response.status_code == 200:
-            payment_data = execute_response.json()
-            usd_amount = float(payment_data['transactions'][0]['amount']['total'])
-            ksh_amount = usd_amount * 130
+        if token_response.status_code == 200:
+            access_token = token_response.json()['access_token']
             
-            with get_db_connection() as conn:
-                c = conn.cursor()
-                
-                current_balance = session.get('balance', 0)
-                new_balance = current_balance + ksh_amount
-                c.execute('UPDATE users SET balance = ? WHERE id = ?', (new_balance, session['user_id']))
-                session['balance'] = new_balance
-                
-                c.execute('''INSERT INTO transactions (user_id, type, amount, description) 
-                           VALUES (?, ?, ?, ?)''',
-                         (session['user_id'], 'paypal_deposit', ksh_amount, f'PayPal deposit completed - ${usd_amount:.2f} (KSh {ksh_amount:.0f})'))
-                
-                conn.commit()
+            execute_data = {'payer_id': payer_id}
+            execute_headers = {
+                'Authorization': f'Bearer {access_token}',
+                'Content-Type': 'application/json'
+            }
             
-            flash(f'PayPal deposit successful! KSh {ksh_amount:.0f} added to your balance.', 'success')
+            execute_response = requests.post(f'{base_url}/v1/payments/payment/{payment_id}/execute',
+                                           headers=execute_headers,
+                                           json=execute_data,
+                                           timeout=10)
+            
+            if execute_response.status_code == 200:
+                payment_data = execute_response.json()
+                usd_amount = float(payment_data['transactions'][0]['amount']['total'])
+                ksh_amount = usd_amount * 130
+                
+                with get_db_connection() as conn:
+                    c = conn.cursor()
+                    
+                    current_balance = session.get('balance', 0)
+                    new_balance = current_balance + ksh_amount
+                    c.execute('UPDATE users SET balance = ? WHERE id = ?', (new_balance, session['user_id']))
+                    session['balance'] = new_balance
+                    
+                    c.execute('''INSERT INTO transactions (user_id, type, amount, description) 
+                               VALUES (?, ?, ?, ?)''',
+                             (session['user_id'], 'paypal_deposit', ksh_amount, f'PayPal deposit completed - ${usd_amount:.2f} (KSh {ksh_amount:.0f})'))
+                    
+                    conn.commit()
+                
+                flash(f'PayPal deposit successful! KSh {ksh_amount:.0f} added to your balance.', 'success')
+            else:
+                flash('PayPal payment execution failed', 'error')
         else:
-            flash('PayPal payment execution failed', 'error')
+            flash('PayPal authentication failed', 'error')
         
         return redirect(url_for('wallet'))
         
+    except requests.exceptions.RequestException as e:
+        flash('PayPal network error', 'error')
+        return redirect(url_for('wallet'))
     except Exception as e:
-        flash(f'PayPal error: {str(e)}', 'error')
+        flash('PayPal processing error', 'error')
         return redirect(url_for('wallet'))
 
 @app.route('/paypal_cancel')
@@ -2181,6 +2247,69 @@ def withdrawal_chat(withdrawal_id):
         return redirect(url_for('wallet'))
 
 
+
+@app.route('/approve_deposit/<int:transaction_id>', methods=['POST'])
+@login_required
+def approve_deposit(transaction_id):
+    if session.get('username') != 'admin':
+        return jsonify({'success': False, 'message': 'Unauthorized'})
+    
+    try:
+        with get_db_connection() as conn:
+            c = conn.cursor()
+            
+            # Get transaction details
+            c.execute('SELECT * FROM transactions WHERE id = ? AND type = "pending_deposit"', (transaction_id,))
+            transaction = c.fetchone()
+            
+            if not transaction:
+                return jsonify({'success': False, 'message': 'Transaction not found'})
+            
+            user_id = transaction[1]
+            amount = transaction[3]
+            
+            # Update user balance
+            c.execute('SELECT balance FROM users WHERE id = ?', (user_id,))
+            current_balance = c.fetchone()[0] or 0
+            new_balance = current_balance + amount
+            c.execute('UPDATE users SET balance = ? WHERE id = ?', (new_balance, user_id))
+            
+            # Update transaction status
+            c.execute('UPDATE transactions SET type = "deposit" WHERE id = ?', (transaction_id,))
+            
+            conn.commit()
+            
+        return jsonify({'success': True, 'message': f'Deposit approved! KSh {amount} added to user balance.'})
+        
+    except Exception as e:
+        return jsonify({'success': False, 'message': 'Error approving deposit'})
+
+@app.route('/reject_deposit/<int:transaction_id>', methods=['POST'])
+@login_required
+def reject_deposit(transaction_id):
+    if session.get('username') != 'admin':
+        return jsonify({'success': False, 'message': 'Unauthorized'})
+    
+    try:
+        data = request.get_json()
+        reason = data.get('reason', 'No reason provided')
+        
+        with get_db_connection() as conn:
+            c = conn.cursor()
+            
+            # Update transaction status
+            c.execute('UPDATE transactions SET type = "rejected_deposit", description = description || " - Rejected: " || ? WHERE id = ? AND type = "pending_deposit"', 
+                     (reason, transaction_id))
+            
+            if c.rowcount == 0:
+                return jsonify({'success': False, 'message': 'Transaction not found'})
+            
+            conn.commit()
+            
+        return jsonify({'success': True, 'message': 'Deposit rejected successfully'})
+        
+    except Exception as e:
+        return jsonify({'success': False, 'message': 'Error rejecting deposit'})
 
 @app.route('/nowpayments_webhook', methods=['POST'])
 def nowpayments_webhook():
