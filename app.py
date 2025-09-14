@@ -989,7 +989,7 @@ def admin_deposits():
             c.execute('''SELECT t.*, u.username 
                        FROM transactions t
                        JOIN users u ON t.user_id = u.id
-                       WHERE t.type = "pending_deposit"
+                       WHERE t.type IN ("pending_deposit", "pending_crypto_deposit")
                        ORDER BY t.created_at DESC''')
             pending_deposits = c.fetchall()
             
@@ -1224,7 +1224,7 @@ def wallet():
             if user_balance:
                 session['balance'] = user_balance[0]
             
-            c.execute('''SELECT id, type, amount, description, created_at 
+            c.execute('''SELECT id, user_id, type, amount, description, created_at 
                        FROM transactions 
                        WHERE user_id = ? 
                        ORDER BY created_at DESC LIMIT 20''', (user_id,))
@@ -1545,7 +1545,7 @@ def crypto_manual_payment():
                 <p style="color: #666; font-size: 0.9rem;">Send exactly ${amount/130:.2f} USDT to the address above</p>
                 
                 <div style="margin: 2rem 0;">
-                    <a href="/crypto_success" class="btn">✅ Payment Sent</a>
+                    <a href="/crypto_success?amount={amount}" class="btn">✅ Payment Sent</a>
                     <a href="/crypto_cancel" class="btn btn-cancel">❌ Cancel</a>
                 </div>
                 
@@ -1620,7 +1620,7 @@ def paypal_checkout():
         
         client_id = os.getenv('PAYPAL_CLIENT_ID')
         client_secret = os.getenv('PAYPAL_CLIENT_SECRET')
-        base_url = 'https://api.sandbox.paypal.com'
+        base_url = 'https://api.paypal.com'
         
         if not client_id or not client_secret:
             flash('PayPal service unavailable', 'error')
@@ -1747,7 +1747,7 @@ def paypal_success():
         
         client_id = os.getenv('PAYPAL_CLIENT_ID')
         client_secret = os.getenv('PAYPAL_CLIENT_SECRET')
-        base_url = 'https://api.sandbox.paypal.com'
+        base_url = 'https://api.paypal.com'
         
         # Get OAuth token
         auth = base64.b64encode(f'{client_id}:{client_secret}'.encode()).decode()
@@ -1822,7 +1822,21 @@ def paypal_cancel():
 @app.route('/crypto_success')
 @login_required
 def crypto_success():
-    flash('Crypto payment initiated! You will be credited once payment is confirmed.', 'info')
+    try:
+        amount = float(request.args.get('amount', 0))
+        if amount > 0:
+            with get_db_connection() as conn:
+                c = conn.cursor()
+                description = f'Crypto payment pending verification - KSh {amount} (${amount/130:.2f})'
+                c.execute('''INSERT INTO transactions (user_id, type, amount, description) 
+                           VALUES (?, ?, ?, ?)''',
+                         (session['user_id'], 'pending_crypto_deposit', amount, description))
+                conn.commit()
+            flash(f'Crypto payment submitted! KSh {amount} will be credited after admin verification.', 'info')
+        else:
+            flash('Crypto payment initiated! You will be credited once payment is confirmed.', 'info')
+    except:
+        flash('Crypto payment initiated! You will be credited once payment is confirmed.', 'info')
     return redirect(url_for('wallet'))
 
 @app.route('/crypto_cancel')
@@ -2498,7 +2512,7 @@ def approve_deposit(transaction_id):
             c = conn.cursor()
             
             # Get transaction details
-            c.execute('SELECT * FROM transactions WHERE id = ? AND type = "pending_deposit"', (transaction_id,))
+            c.execute('SELECT * FROM transactions WHERE id = ? AND type IN ("pending_deposit", "pending_crypto_deposit")', (transaction_id,))
             transaction = c.fetchone()
             
             if not transaction:
@@ -2514,7 +2528,10 @@ def approve_deposit(transaction_id):
             c.execute('UPDATE users SET balance = ? WHERE id = ?', (new_balance, user_id))
             
             # Update transaction status
-            c.execute('UPDATE transactions SET type = "deposit" WHERE id = ?', (transaction_id,))
+            if transaction[2] == 'pending_crypto_deposit':
+                c.execute('UPDATE transactions SET type = "crypto_deposit" WHERE id = ?', (transaction_id,))
+            else:
+                c.execute('UPDATE transactions SET type = "deposit" WHERE id = ?', (transaction_id,))
             
             conn.commit()
             
