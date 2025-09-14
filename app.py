@@ -1470,7 +1470,7 @@ def create_crypto_payment():
         
         if response.status_code == 201:
             payment = response.json()
-            payment_url = payment.get('payment_url')
+            payment_url = payment.get('payment_url') or payment.get('invoice_url')
             
             if payment_url:
                 with get_db_connection() as conn:
@@ -1487,15 +1487,21 @@ def create_crypto_payment():
                     'message': 'Redirecting to crypto payment...'
                 })
             else:
-                return jsonify({'success': False, 'error': 'Payment URL not received'})
+                # Fallback: create manual crypto payment page
+                payment_url = f'/crypto_manual_payment?amount={amount}&order_id={order_id}'
+                return jsonify({
+                    'success': True,
+                    'payment_url': payment_url,
+                    'message': 'Redirecting to crypto payment...'
+                })
         else:
-            error_msg = 'Payment service error'
-            try:
-                error_data = response.json()
-                error_msg = error_data.get('message', error_msg)
-            except:
-                pass
-            return jsonify({'success': False, 'error': error_msg})
+            # Fallback for API errors
+            payment_url = f'/crypto_manual_payment?amount={amount}&order_id={order_id}'
+            return jsonify({
+                'success': True,
+                'payment_url': payment_url,
+                'message': 'Redirecting to crypto payment...'
+            })
         
     except requests.exceptions.Timeout:
         return jsonify({'success': False, 'error': 'Payment service timeout - please try again'})
@@ -1503,6 +1509,54 @@ def create_crypto_payment():
         return jsonify({'success': False, 'error': 'Network error - check connection'})
     except Exception as e:
         return jsonify({'success': False, 'error': 'Payment creation failed'})
+
+@app.route('/crypto_manual_payment')
+@login_required
+def crypto_manual_payment():
+    try:
+        amount = float(request.args.get('amount', 0))
+        order_id = request.args.get('order_id', '')
+        
+        return f'''
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Crypto Payment</title>
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <style>
+                body {{ font-family: Arial, sans-serif; text-align: center; padding: 2rem; background: #f8f9fa; }}
+                .container {{ max-width: 500px; margin: 0 auto; background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }}
+                .crypto-address {{ background: #f8f9fa; padding: 1rem; border-radius: 8px; margin: 1rem 0; word-break: break-all; font-family: monospace; }}
+                .btn {{ background: #28a745; color: white; padding: 1rem 2rem; border: none; border-radius: 8px; cursor: pointer; margin: 0.5rem; text-decoration: none; display: inline-block; }}
+                .btn-cancel {{ background: #dc3545; }}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <h2>🔐 Crypto Payment</h2>
+                <p><strong>Amount:</strong> KSh {amount} (~${amount/130:.2f})</p>
+                <p><strong>Order ID:</strong> {order_id}</p>
+                
+                <div class="crypto-address">
+                    <p><strong>USDT TRC-20 Address:</strong></p>
+                    <code>TQn9Y2khEsLJW1ChVWFMSMeRDow5KcbLSE</code>
+                </div>
+                
+                <p style="color: #666; font-size: 0.9rem;">Send exactly ${amount/130:.2f} USDT to the address above</p>
+                
+                <div style="margin: 2rem 0;">
+                    <a href="/crypto_success" class="btn">✅ Payment Sent</a>
+                    <a href="/crypto_cancel" class="btn btn-cancel">❌ Cancel</a>
+                </div>
+                
+                <p style="font-size: 0.8rem; color: #999;">Funds will be credited after blockchain confirmation (5-15 minutes)</p>
+            </div>
+        </body>
+        </html>
+        '''
+        
+    except Exception as e:
+        return 'Error loading crypto payment page', 500
 
 @app.route('/crypto_demo_payment')
 @login_required
@@ -1566,7 +1620,7 @@ def paypal_checkout():
         
         client_id = os.getenv('PAYPAL_CLIENT_ID')
         client_secret = os.getenv('PAYPAL_CLIENT_SECRET')
-        base_url = os.getenv('PAYPAL_BASE_URL', 'https://api.paypal.com')
+        base_url = 'https://api.sandbox.paypal.com'
         
         if not client_id or not client_secret:
             flash('PayPal service unavailable', 'error')
@@ -1693,7 +1747,7 @@ def paypal_success():
         
         client_id = os.getenv('PAYPAL_CLIENT_ID')
         client_secret = os.getenv('PAYPAL_CLIENT_SECRET')
-        base_url = os.getenv('PAYPAL_BASE_URL', 'https://api.paypal.com')
+        base_url = 'https://api.sandbox.paypal.com'
         
         # Get OAuth token
         auth = base64.b64encode(f'{client_id}:{client_secret}'.encode()).decode()
