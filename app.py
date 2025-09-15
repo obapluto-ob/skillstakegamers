@@ -1996,7 +1996,7 @@ def paypal_success():
                     
                     c.execute('''INSERT INTO transactions (user_id, type, amount, description) 
                                VALUES (?, ?, ?, ?)''',
-                             (session['user_id'], 'paypal_deposit', ksh_amount, f'PayPal deposit completed - ${usd_amount:.2f} (KSh {ksh_amount:.0f})'))
+                             (session['user_id'], 'completed', ksh_amount, f'PayPal deposit COMPLETED - ${usd_amount:.2f} (KSh {ksh_amount:.0f}) - Credited to balance'))
                     
                     conn.commit()
                 
@@ -2026,7 +2026,7 @@ def paypal_cancel():
         with get_db_connection() as conn:
             c = conn.cursor()
             c.execute('''UPDATE transactions 
-                       SET type = "paypal_cancelled", description = description || " - CANCELLED"
+                       SET type = "cancelled", description = REPLACE(description, "PayPal payment initiated", "PayPal payment CANCELLED")
                        WHERE user_id = ? AND type = "paypal_initiated" 
                        ORDER BY created_at DESC LIMIT 1''', (session['user_id'],))
             conn.commit()
@@ -2064,7 +2064,7 @@ def crypto_cancel():
         with get_db_connection() as conn:
             c = conn.cursor()
             c.execute('''UPDATE transactions 
-                       SET type = "crypto_cancelled", description = description || " - CANCELLED"
+                       SET type = "cancelled", description = REPLACE(description, "Crypto payment initiated", "Crypto payment CANCELLED")
                        WHERE user_id = ? AND type = "crypto_initiated" 
                        ORDER BY created_at DESC LIMIT 1''', (session['user_id'],))
             conn.commit()
@@ -2873,10 +2873,10 @@ def verify_crypto_payment():
                     session['balance'] = new_balance
                     
                     # Record transaction
-                    description = f'Crypto deposit verified - KSh {amount} (${expected_amount:.2f}) - TXID: {txid}'
+                    description = f'Crypto deposit COMPLETED - KSh {amount} (${expected_amount:.2f}) - TXID: {txid} - Credited to balance'
                     c.execute('''INSERT INTO transactions (user_id, type, amount, description) 
                                VALUES (?, ?, ?, ?)''',
-                             (session['user_id'], 'crypto_deposit', amount, description))
+                             (session['user_id'], 'completed', amount, description))
                     
                     conn.commit()
                 

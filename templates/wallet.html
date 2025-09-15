@@ -137,19 +137,19 @@
     </div>
     {% if transactions %}
         {% for transaction in transactions %}
-        <div style="padding: 1rem; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; border-left: 4px solid {% if transaction[2] in ['deposit', 'paypal_deposit', 'crypto_deposit'] %}#28a745{% elif transaction[2] in ['pending_deposit', 'pending_withdrawal'] %}#ffc107{% elif transaction[2] in ['rejected_deposit', 'rejected_withdrawal'] %}#dc3545{% else %}#6c757d{% endif %};">
+        <div style="padding: 1rem; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; border-left: 4px solid {% if transaction[2] in ['deposit', 'paypal_deposit', 'crypto_deposit', 'completed'] %}#28a745{% elif transaction[2] in ['pending_deposit', 'pending_withdrawal'] %}#ffc107{% elif transaction[2] in ['rejected_deposit', 'rejected_withdrawal'] %}#dc3545{% else %}#6c757d{% endif %};">
             <div style="flex: 1;">
                 <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.3rem;">
                     <span style="font-size: 1.2rem;">
                         {% if transaction[2] == 'deposit' %}[MPESA]
                         {% elif transaction[2] == 'paypal_deposit' %}[PAYPAL]
                         {% elif transaction[2] == 'crypto_deposit' %}[CRYPTO]
+                        {% elif transaction[2] == 'completed' %}✅[COMPLETED]
                         {% elif transaction[2] == 'pending_deposit' %}[PENDING]
                         {% elif transaction[2] == 'rejected_deposit' %}[REJECTED]
                         {% elif transaction[2] in ['failed_crypto_deposit'] %}[FAILED]
                         {% elif transaction[2] in ['failed_paypal_deposit'] %}[FAILED]
-                        {% elif transaction[2] == 'crypto_cancelled' %}❌[CANCELLED]
-                        {% elif transaction[2] == 'paypal_cancelled' %}❌[CANCELLED]
+                        {% elif transaction[2] == 'cancelled' %}❌[CANCELLED]
                         {% elif transaction[2] in ['crypto_initiated', 'paypal_initiated'] %}[STARTED]
                         {% elif transaction[2] == 'withdrawal' %}[PAID]
                         {% elif transaction[2] == 'pending_withdrawal' %}[PENDING]
@@ -164,6 +164,7 @@
                         {% if transaction[2] == 'deposit' %}M-Pesa Deposit Approved
                         {% elif transaction[2] == 'paypal_deposit' %}PayPal Deposit Completed
                         {% elif transaction[2] == 'crypto_deposit' %}Crypto Deposit Confirmed
+                        {% elif transaction[2] == 'completed' %}Payment Completed & Credited
                         {% elif transaction[2] == 'pending_deposit' %}Deposit Pending Review
                         {% elif transaction[2] == 'rejected_deposit' %}Deposit Rejected
                         {% elif transaction[2] == 'withdrawal' %}Withdrawal Completed
@@ -175,8 +176,7 @@
                         {% elif transaction[2] == 'admin_adjustment' %}Admin Adjustment
                         {% elif transaction[2] == 'match_win' %}Match Victory
                         {% elif transaction[2] == 'refund' %}Refund
-                        {% elif transaction[2] == 'crypto_cancelled' %}Crypto Payment Cancelled
-                        {% elif transaction[2] == 'paypal_cancelled' %}PayPal Payment Cancelled
+                        {% elif transaction[2] == 'cancelled' %}Payment Cancelled
                         {% elif transaction[2] == 'crypto_initiated' %}Crypto Payment Started
                         {% elif transaction[2] == 'paypal_initiated' %}PayPal Payment Started
                         {% elif transaction[2] == 'failed_crypto_deposit' %}Crypto Deposit Failed
@@ -184,7 +184,7 @@
                         {% else %}{{ transaction[2].replace('_', ' ').title() }}
                         {% endif %}
                     </strong>
-                    {% if transaction[2] in ['paypal_deposit', 'crypto_deposit'] %}
+                    {% if transaction[2] in ['paypal_deposit', 'crypto_deposit', 'completed'] %}
                         <span style="background: #28a745; color: white; padding: 0.2rem 0.5rem; border-radius: 10px; font-size: 0.7rem;">AUTO-CONFIRMED</span>
                     {% elif transaction[2] == 'pending_deposit' %}
                         <span style="background: #ffc107; color: black; padding: 0.2rem 0.5rem; border-radius: 10px; font-size: 0.7rem;">NEEDS REVIEW</span>
@@ -192,6 +192,8 @@
                         <span style="background: #17a2b8; color: white; padding: 0.2rem 0.5rem; border-radius: 10px; font-size: 0.7rem;">INITIATED</span>
                     {% elif transaction[2] in ['failed_crypto_deposit', 'failed_paypal_deposit'] %}
                         <span style="background: #dc3545; color: white; padding: 0.2rem 0.5rem; border-radius: 10px; font-size: 0.7rem;">FAILED</span>
+                    {% elif transaction[2] == 'cancelled' %}
+                        <span style="background: #6c757d; color: white; padding: 0.2rem 0.5rem; border-radius: 10px; font-size: 0.7rem;">CANCELLED</span>
                     {% endif %}
                 </div>
                 <div style="font-size: 0.9rem; color: #666; margin-bottom: 0.3rem;">{{ transaction[4] }}</div>
@@ -199,13 +201,17 @@
                     <div style="font-size: 0.85rem; color: #dc3545; background: #f8d7da; padding: 0.3rem 0.5rem; border-radius: 4px; margin-top: 0.3rem;">
                         <strong>Reason:</strong> {{ transaction[4].split('Reason: ')[1] if 'Reason: ' in transaction[4] else 'No reason provided' }}
                     </div>
-                {% elif transaction[2] in ['paypal_deposit', 'crypto_deposit'] %}
+                {% elif transaction[2] in ['paypal_deposit', 'crypto_deposit', 'completed'] %}
                     <div style="font-size: 0.85rem; color: #155724; background: #d4edda; padding: 0.3rem 0.5rem; border-radius: 4px; margin-top: 0.3rem;">
                         <strong>💰 No Fees:</strong> Full amount credited - deposits are completely free!
                     </div>
                 {% elif transaction[2] in ['failed_crypto_deposit', 'failed_paypal_deposit'] %}
                     <div style="font-size: 0.85rem; color: #dc3545; background: #f8d7da; padding: 0.3rem 0.5rem; border-radius: 4px; margin-top: 0.3rem;">
                         <strong>FAILED:</strong> {{ 'Payment timed out or failed' if 'timed out' in transaction[4] else 'Payment could not be processed' }}
+                    </div>
+                {% elif transaction[2] == 'cancelled' %}
+                    <div style="font-size: 0.85rem; color: #6c757d; background: #f8f9fa; padding: 0.3rem 0.5rem; border-radius: 4px; margin-top: 0.3rem;">
+                        <strong>❌ CANCELLED:</strong> {{ 'You cancelled this payment' if 'CANCELLED' in transaction[4] else 'Payment was cancelled' }}
                     </div>
                 {% elif transaction[2] in ['crypto_initiated', 'paypal_initiated'] %}
                     <div style="font-size: 0.85rem; color: #17a2b8; background: #d1ecf1; padding: 0.3rem 0.5rem; border-radius: 4px; margin-top: 0.3rem;">
@@ -226,7 +232,7 @@
                 <button onclick="alertAdmin({{ transaction[0] }}, {{ transaction[3] }})" class="btn btn-warning" style="padding: 0.3rem 0.6rem; font-size: 0.8rem; border-radius: 15px;">
                     🔔 Alert Admin
                 </button>
-                {% elif transaction[2] in ['paypal_deposit', 'crypto_deposit'] %}
+                {% elif transaction[2] in ['paypal_deposit', 'crypto_deposit', 'completed'] %}
                 <span style="background: #28a745; color: white; padding: 0.3rem 0.6rem; border-radius: 15px; font-size: 0.8rem;">
                     ✓ INSTANT
                 </span>
