@@ -1521,45 +1521,165 @@ def crypto_manual_payment():
         <!DOCTYPE html>
         <html>
         <head>
-            <title>Crypto Payment Verification</title>
+            <title>SkillStake - Crypto Payment</title>
             <meta name="viewport" content="width=device-width, initial-scale=1">
             <style>
-                body {{ font-family: Arial, sans-serif; padding: 1rem; background: #f8f9fa; }}
-                .container {{ max-width: 500px; margin: 0 auto; background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }}
-                .crypto-address {{ background: #f8f9fa; padding: 1rem; border-radius: 8px; margin: 1rem 0; word-break: break-all; font-family: monospace; }}
-                .btn {{ background: #28a745; color: white; padding: 1rem 2rem; border: none; border-radius: 8px; cursor: pointer; margin: 0.5rem; text-decoration: none; display: inline-block; width: 100%; }}
-                .btn-cancel {{ background: #dc3545; }}
-                .form-control {{ width: 100%; padding: 0.8rem; border: 1px solid #ddd; border-radius: 6px; margin: 0.5rem 0; }}
-                .step {{ background: #e7f3ff; padding: 1rem; border-radius: 8px; margin: 1rem 0; }}
+                body {{
+                    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                    margin: 0;
+                    padding: 1rem;
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    min-height: 100vh;
+                    color: #333;
+                }}
+                .container {{
+                    max-width: 600px;
+                    margin: 0 auto;
+                    background: rgba(255, 255, 255, 0.95);
+                    padding: 2rem;
+                    border-radius: 20px;
+                    box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+                    backdrop-filter: blur(10px);
+                }}
+                .header {{
+                    text-align: center;
+                    margin-bottom: 2rem;
+                    background: linear-gradient(135deg, #667eea, #764ba2);
+                    color: white;
+                    padding: 1.5rem;
+                    border-radius: 15px;
+                    margin: -2rem -2rem 2rem -2rem;
+                }}
+                .crypto-address {{
+                    background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+                    padding: 1.5rem;
+                    border-radius: 15px;
+                    margin: 1.5rem 0;
+                    border: 2px solid #dee2e6;
+                    text-align: center;
+                }}
+                .address-code {{
+                    font-family: 'Courier New', monospace;
+                    background: #343a40;
+                    color: #28a745;
+                    padding: 1rem;
+                    border-radius: 8px;
+                    word-break: break-all;
+                    margin: 1rem 0;
+                    font-weight: bold;
+                }}
+                .btn {{
+                    background: linear-gradient(135deg, #28a745, #20c997);
+                    color: white;
+                    padding: 1rem 2rem;
+                    border: none;
+                    border-radius: 50px;
+                    cursor: pointer;
+                    margin: 0.5rem;
+                    text-decoration: none;
+                    display: inline-block;
+                    width: calc(100% - 1rem);
+                    font-weight: bold;
+                    font-size: 1rem;
+                    transition: all 0.3s ease;
+                    box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
+                }}
+                .btn:hover {{
+                    transform: translateY(-2px);
+                    box-shadow: 0 8px 25px rgba(40, 167, 69, 0.4);
+                }}
+                .btn-copy {{
+                    background: linear-gradient(135deg, #17a2b8, #138496);
+                    padding: 0.8rem 1.5rem;
+                    width: auto;
+                    margin-top: 1rem;
+                    box-shadow: 0 4px 15px rgba(23, 162, 184, 0.3);
+                }}
+                .btn-cancel {{
+                    background: linear-gradient(135deg, #dc3545, #c82333);
+                    box-shadow: 0 4px 15px rgba(220, 53, 69, 0.3);
+                }}
+                .form-control {{
+                    width: calc(100% - 2rem);
+                    padding: 1rem;
+                    border: 2px solid #dee2e6;
+                    border-radius: 15px;
+                    margin: 1rem 0;
+                    font-size: 1rem;
+                    transition: border-color 0.3s ease;
+                }}
+                .form-control:focus {{
+                    outline: none;
+                    border-color: #667eea;
+                    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+                }}
+                .step {{
+                    background: linear-gradient(135deg, #e3f2fd, #f3e5f5);
+                    padding: 1.5rem;
+                    border-radius: 15px;
+                    margin: 1.5rem 0;
+                    border-left: 5px solid #667eea;
+                    box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+                }}
+                .step h4 {{
+                    color: #667eea;
+                    margin-top: 0;
+                    font-size: 1.2rem;
+                }}
+                .amount-display {{
+                    background: linear-gradient(135deg, #fff3cd, #ffeaa7);
+                    padding: 1rem;
+                    border-radius: 15px;
+                    text-align: center;
+                    margin: 1rem 0;
+                    border: 2px solid #ffc107;
+                }}
+                .gaming-badge {{
+                    display: inline-block;
+                    background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+                    color: white;
+                    padding: 0.5rem 1rem;
+                    border-radius: 25px;
+                    font-size: 0.9rem;
+                    margin: 0.5rem;
+                }}
             </style>
         </head>
         <body>
             <div class="container">
-                <h2>🔐 Crypto Payment Verification</h2>
-                <p><strong>Amount:</strong> KSh {amount} (~${amount/130:.2f} USDT)</p>
+                <div class="header">
+                    <h1>🎮 SkillStake Gaming</h1>
+                    <h2>₿ Crypto Payment Verification</h2>
+                    <div class="gaming-badge">🚀 Instant Verification</div>
+                </div>
+                
+                <div class="amount-display">
+                    <h3>💰 Payment Amount</h3>
+                    <p><strong>KSh {amount:,.0f}</strong> = <strong>${amount/130:.2f} USDT</strong></p>
+                </div>
                 
                 <div class="crypto-address">
-                    <p><strong>USDT TRC-20 Address:</strong></p>
-                    <code>TQn9Y2khEsLJW1ChVWFMSMeRDow5KcbLSE</code>
-                    <button onclick="copyAddress()" style="background: #17a2b8; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; margin-top: 0.5rem;">Copy Address</button>
+                    <h4>📍 USDT TRC-20 Address</h4>
+                    <div class="address-code">TQn9Y2khEsLJW1ChVWFMSMeRDow5KcbLSE</div>
+                    <button onclick="copyAddress()" class="btn btn-copy">📋 Copy Address</button>
                 </div>
                 
                 <div class="step">
-                    <h4>Step 1: Send Payment</h4>
-                    <p>Send exactly <strong>${amount/130:.2f} USDT</strong> to the address above using TRC-20 network</p>
+                    <h4>🚀 Step 1: Send Payment</h4>
+                    <p>Send exactly <strong>${amount/130:.2f} USDT</strong> to the address above using <strong>TRC-20 network only</strong></p>
                 </div>
                 
                 <div class="step">
-                    <h4>Step 2: Get Transaction ID</h4>
-                    <p>After sending, copy the <strong>Transaction ID (TXID)</strong> from your wallet</p>
+                    <h4>🔍 Step 2: Get Transaction ID</h4>
+                    <p>After sending, copy the <strong>Transaction ID (TXID)</strong> from your wallet or exchange</p>
                 </div>
                 
                 <div class="step">
-                    <h4>Step 3: Verify Payment</h4>
+                    <h4>✅ Step 3: Instant Verification</h4>
                     <form onsubmit="verifyPayment(event)">
-                        <input type="text" id="txid" class="form-control" placeholder="Enter Transaction ID (TXID)" required>
+                        <input type="text" id="txid" class="form-control" placeholder="Paste Transaction ID (TXID) here..." required>
                         <input type="hidden" id="amount" value="{amount}">
-                        <button type="submit" class="btn" id="verifyBtn">✅ Verify Payment</button>
+                        <button type="submit" class="btn" id="verifyBtn">⚡ Verify & Credit Instantly</button>
                     </form>
                 </div>
                 
@@ -1569,7 +1689,14 @@ def crypto_manual_payment():
             <script>
                 function copyAddress() {{
                     navigator.clipboard.writeText('TQn9Y2khEsLJW1ChVWFMSMeRDow5KcbLSE');
-                    alert('Address copied to clipboard!');
+                    const btn = event.target;
+                    const originalText = btn.textContent;
+                    btn.textContent = '✅ Copied!';
+                    btn.style.background = 'linear-gradient(135deg, #28a745, #20c997)';
+                    setTimeout(() => {{
+                        btn.textContent = originalText;
+                        btn.style.background = 'linear-gradient(135deg, #17a2b8, #138496)';
+                    }}, 2000);
                 }}
                 
                 function verifyPayment(event) {{
