@@ -236,6 +236,7 @@
                         {% elif transaction[2] == 'crypto_deposit' %}[CRYPTO]
                         {% elif transaction[2] == 'completed' %}✅[COMPLETED]
                         {% elif transaction[2] == 'pending_deposit' %}[PENDING]
+                        {% elif transaction[2] == 'smart_pending_deposit' %}[REVIEWING]
                         {% elif transaction[2] == 'rejected_deposit' %}[REJECTED]
                         {% elif transaction[2] in ['failed_crypto_deposit'] %}[FAILED]
                         {% elif transaction[2] in ['failed_paypal_deposit'] %}[FAILED]
@@ -256,6 +257,7 @@
                         {% elif transaction[2] == 'crypto_deposit' %}Crypto Deposit Confirmed
                         {% elif transaction[2] == 'completed' %}Payment Completed & Credited
                         {% elif transaction[2] == 'pending_deposit' %}Deposit Pending Review
+                        {% elif transaction[2] == 'smart_pending_deposit' %}Deposit Under Review
                         {% elif transaction[2] == 'rejected_deposit' %}Deposit Rejected
                         {% elif transaction[2] == 'withdrawal' %}Withdrawal Completed
                         {% elif transaction[2] == 'pending_withdrawal' %}Withdrawal Processing
@@ -276,7 +278,7 @@
                     </strong>
                     {% if transaction[2] in ['paypal_deposit', 'crypto_deposit', 'completed'] %}
                         <span style="background: #28a745; color: white; padding: 0.2rem 0.5rem; border-radius: 10px; font-size: 0.7rem;">AUTO-CONFIRMED</span>
-                    {% elif transaction[2] == 'pending_deposit' %}
+                    {% elif transaction[2] in ['pending_deposit', 'smart_pending_deposit'] %}
                         <span style="background: #ffc107; color: black; padding: 0.2rem 0.5rem; border-radius: 10px; font-size: 0.7rem;">NEEDS REVIEW</span>
                     {% elif transaction[2] in ['crypto_initiated', 'paypal_initiated'] %}
                         <span style="background: #17a2b8; color: white; padding: 0.2rem 0.5rem; border-radius: 10px; font-size: 0.7rem;">INITIATED</span>
@@ -318,7 +320,7 @@
                         {% if transaction[3] > 0 %}+{% endif %} KSh {{ "%.0f"|format(transaction[3]) }}
                     {% endif %}
                 </div>
-                {% if transaction[2] == 'pending_deposit' %}
+                {% if transaction[2] in ['pending_deposit', 'smart_pending_deposit'] %}
                 <button onclick="alertAdmin({{ transaction[0] }}, {{ transaction[3] }})" class="btn btn-warning" style="padding: 0.3rem 0.6rem; font-size: 0.8rem; border-radius: 15px;">
                     🔔 Alert Admin
                 </button>
