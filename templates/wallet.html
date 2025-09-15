@@ -8,11 +8,94 @@
             <h2>Current Balance: KSh {{ "%.0f"|format(session.balance) }}</h2>
         </div>
         <div>
-            <button onclick="showAddFunds()" class="btn btn-success">M-Pesa Deposit</button>
+            <button onclick="showSmartMpesa()" class="btn" style="background: linear-gradient(135deg, #28a745, #20c997); color: white; border: none; box-shadow: 0 4px 12px rgba(40,167,69,0.3); font-weight: 600;">🚀 Smart M-Pesa</button>
+            <button onclick="showAddFunds()" class="btn btn-success">📱 M-Pesa Upload</button>
             <button onclick="showCryptoDeposit()" class="btn" style="background: #f7931a; color: white;">Crypto Deposit</button>
             <button onclick="showPayPalDeposit()" class="btn" style="background: linear-gradient(135deg, #0070ba 0%, #003087 100%); color: white; border: none; box-shadow: 0 4px 12px rgba(0,112,186,0.3); font-weight: 600;">💳 PayPal & Cards</button>
             <button onclick="showWithdraw()" class="btn btn-secondary">Withdraw</button>
         </div>
+    </div>
+</div>
+
+<!-- 🚀 SMART M-PESA DEPOSIT MODAL -->
+<div id="smartMpesaModal" class="modal">
+    <div class="modal-content" style="max-width: 600px; max-height: 90vh; overflow-y: auto; margin-top: 60px;">
+        <span class="close" onclick="closeSmartMpesa()">&times;</span>
+        <div style="text-align: center; margin-bottom: 2rem; background: linear-gradient(135deg, #28a745, #20c997); color: white; padding: 1.5rem; border-radius: 15px; margin: -2rem -2rem 2rem -2rem;">
+            <h1>🚀 SMART M-PESA DEPOSIT</h1>
+            <p style="margin: 0; font-size: 1.1rem;">⚡ Instant validation • 🧠 Smart analysis • 📧 Admin alerts</p>
+        </div>
+        
+        <div style="background: #d4edda; padding: 1rem; border-radius: 10px; margin-bottom: 1.5rem; border-left: 5px solid #28a745;">
+            <h4 style="color: #155724; margin-top: 0;">📱 SEND M-PESA TO:</h4>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 0.5rem 0;">
+                <div style="background: white; padding: 0.8rem; border-radius: 8px; text-align: center;">
+                    <strong style="color: #28a745;">Paybill: 400200</strong>
+                </div>
+                <div style="background: white; padding: 0.8rem; border-radius: 8px; text-align: center;">
+                    <strong style="color: #28a745;">Account: 1075794</strong>
+                </div>
+            </div>
+            <p style="margin: 0.5rem 0; color: #155724;"><strong>Reference:</strong> {{ session.username }}</p>
+        </div>
+        
+        <form onsubmit="submitSmartDeposit(event)">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                <div>
+                    <label><strong>💰 Amount (KSh)</strong></label>
+                    <select id="smartAmount" class="form-control" required>
+                        <option value="100">KSh 100</option>
+                        <option value="200">KSh 200</option>
+                        <option value="500">KSh 500</option>
+                        <option value="1000">KSh 1,000</option>
+                        <option value="2000">KSh 2,000</option>
+                        <option value="5000">KSh 5,000</option>
+                    </select>
+                </div>
+                <div>
+                    <label><strong>📱 Your M-Pesa Number</strong></label>
+                    <input type="tel" id="smartPhone" class="form-control" placeholder="0712345678" pattern="0[17][0-9]{8}" required>
+                </div>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                <div>
+                    <label><strong>👤 Your Full Name</strong></label>
+                    <input type="text" id="smartName" class="form-control" placeholder="John Doe" required>
+                </div>
+                <div>
+                    <label><strong>🔢 Transaction Code</strong></label>
+                    <input type="text" id="smartCode" class="form-control" placeholder="QH12345678" maxlength="10" style="text-transform: uppercase;" required>
+                </div>
+            </div>
+            
+            <div class="form-group" style="margin-bottom: 1.5rem;">
+                <label><strong>📄 Receipt Text (Optional - for higher confidence)</strong></label>
+                <textarea id="smartReceipt" class="form-control" rows="3" placeholder="Paste your M-Pesa SMS or receipt text here for instant validation..."></textarea>
+                <small style="color: #666;">💡 Tip: Include receipt text for 95%+ confidence scores!</small>
+            </div>
+            
+            <div id="validationResult" style="display: none; padding: 1rem; border-radius: 10px; margin-bottom: 1rem;">
+                <div id="confidenceScore" style="font-size: 1.2rem; font-weight: bold; margin-bottom: 0.5rem;"></div>
+                <div id="validationFlags"></div>
+            </div>
+            
+            <div style="background: #e3f2fd; padding: 1rem; border-radius: 10px; margin-bottom: 1.5rem;">
+                <h4 style="color: #1976d2; margin-top: 0;">🧠 How Smart Validation Works:</h4>
+                <ul style="margin: 0; padding-left: 1.5rem; color: #1976d2;">
+                    <li>🔍 <strong>Code Analysis:</strong> Validates M-Pesa transaction format</li>
+                    <li>📱 <strong>Phone Verification:</strong> Checks Kenyan number patterns</li>
+                    <li>💰 <strong>Amount Logic:</strong> Analyzes transaction amounts</li>
+                    <li>📧 <strong>Instant Alerts:</strong> Admin gets immediate notification</li>
+                    <li>⚡ <strong>Fast Review:</strong> High confidence = priority processing</li>
+                </ul>
+            </div>
+            
+            <div style="display: flex; gap: 1rem;">
+                <button type="submit" class="btn" style="flex: 1; background: linear-gradient(135deg, #28a745, #20c997); color: white; font-weight: bold; padding: 1rem;">🚀 Submit Smart Deposit</button>
+                <button type="button" class="btn btn-secondary" onclick="closeSmartMpesa()">Cancel</button>
+            </div>
+        </form>
     </div>
 </div>
 
@@ -377,6 +460,128 @@ function closeWithdraw() {
     document.getElementById('withdrawModal').style.display = 'none';
 }
 
+// 🚀 SMART M-PESA FUNCTIONS
+function showSmartMpesa() {
+    document.getElementById('smartMpesaModal').style.display = 'block';
+}
+
+function closeSmartMpesa() {
+    document.getElementById('smartMpesaModal').style.display = 'none';
+}
+
+function submitSmartDeposit(event) {
+    event.preventDefault();
+    
+    const amount = document.getElementById('smartAmount').value;
+    const phone = document.getElementById('smartPhone').value;
+    const name = document.getElementById('smartName').value;
+    const code = document.getElementById('smartCode').value.toUpperCase();
+    const receipt = document.getElementById('smartReceipt').value;
+    
+    if (!amount || !phone || !name || !code) {
+        alert('Please fill in all required fields');
+        return;
+    }
+    
+    const btn = event.target.querySelector('button[type="submit"]');
+    btn.disabled = true;
+    btn.innerHTML = '🔄 Processing Smart Validation...';
+    
+    fetch('/smart_mpesa_deposit', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            amount: parseFloat(amount),
+            phone: phone,
+            sender_name: name,
+            transaction_code: code,
+            receipt_text: receipt
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Show validation result
+            showValidationResult(data.confidence, data.message);
+            
+            // Show success message
+            alert(`✅ ${data.message}`);
+            
+            // Close modal and refresh page
+            closeSmartMpesa();
+            setTimeout(() => {
+                window.location.reload();
+            }, 1000);
+        } else {
+            alert('❌ Error: ' + data.error);
+        }
+        
+        btn.disabled = false;
+        btn.innerHTML = '🚀 Submit Smart Deposit';
+    })
+    .catch(error => {
+        alert('❌ Network error. Please try again.');
+        btn.disabled = false;
+        btn.innerHTML = '🚀 Submit Smart Deposit';
+    });
+}
+
+function showValidationResult(confidence, message) {
+    const resultDiv = document.getElementById('validationResult');
+    const scoreDiv = document.getElementById('confidenceScore');
+    
+    let color = '#dc3545'; // Red
+    let status = 'SUSPICIOUS';
+    
+    if (confidence >= 85) {
+        color = '#28a745'; // Green
+        status = 'HIGH CONFIDENCE';
+    } else if (confidence >= 65) {
+        color = '#ffc107'; // Yellow
+        status = 'MEDIUM CONFIDENCE';
+    } else if (confidence >= 45) {
+        color = '#fd7e14'; // Orange
+        status = 'LOW CONFIDENCE';
+    }
+    
+    resultDiv.style.display = 'block';
+    resultDiv.style.background = color + '20';
+    resultDiv.style.border = '2px solid ' + color;
+    
+    scoreDiv.innerHTML = `🎯 Confidence: ${confidence}% - ${status}`;
+    scoreDiv.style.color = color;
+    
+    document.getElementById('validationFlags').innerHTML = `<small style="color: ${color};">📊 ${message}</small>`;
+}
+
+// Real-time validation as user types
+document.addEventListener('DOMContentLoaded', function() {
+    const codeInput = document.getElementById('smartCode');
+    if (codeInput) {
+        codeInput.addEventListener('input', function(e) {
+            e.target.value = e.target.value.toUpperCase();
+            
+            // Real-time validation preview
+            const code = e.target.value;
+            if (code.length >= 8) {
+                let confidence = 0;
+                
+                if (code.length === 10 && /^[A-Z0-9]+$/.test(code)) {
+                    confidence += 40;
+                }
+                
+                if (/^[A-Z]{2}[0-9]{8}$/.test(code)) {
+                    confidence += 30;
+                }
+                
+                if (confidence > 0) {
+                    showValidationResult(confidence, 'Preliminary validation - submit for full analysis');
+                }
+            }
+        });
+    }
+});
+
 function showCryptoDeposit() {
     document.getElementById('cryptoDepositModal').style.display = 'block';
 }
@@ -630,6 +835,7 @@ window.onclick = function(event) {
     const addModal = document.getElementById('addFundsModal');
     const withdrawModal = document.getElementById('withdrawModal');
     const cryptoModal = document.getElementById('cryptoDepositModal');
+    const smartMpesaModal = document.getElementById('smartMpesaModal');
     if (event.target == addModal) {
         addModal.style.display = 'none';
     }
@@ -638,6 +844,9 @@ window.onclick = function(event) {
     }
     if (event.target == cryptoModal) {
         cryptoModal.style.display = 'none';
+    }
+    if (event.target == smartMpesaModal) {
+        smartMpesaModal.style.display = 'none';
     }
 }
 </script>

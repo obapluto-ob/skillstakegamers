@@ -2,42 +2,121 @@
 
 {% block content %}
 <div class="card">
-    <h1>💰 M-Pesa Deposit Management</h1>
-    <p>Review and approve/reject M-Pesa deposit requests from users</p>
+    <h1>🚀 SMART M-Pesa Deposit Management</h1>
+    <p>🧠 AI-powered validation • ⚡ Instant alerts • 🔍 Smart analysis • 📧 Email notifications</p>
+    
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin: 1rem 0;">
+        <div style="background: linear-gradient(135deg, #28a745, #20c997); color: white; padding: 1rem; border-radius: 10px; text-align: center;">
+            <h3 style="margin: 0; font-size: 1.5rem;">{{ pending_deposits|length }}</h3>
+            <p style="margin: 0.5rem 0 0 0;">Pending Reviews</p>
+        </div>
+        <div style="background: linear-gradient(135deg, #17a2b8, #138496); color: white; padding: 1rem; border-radius: 10px; text-align: center;">
+            <h3 style="margin: 0; font-size: 1.5rem;">{{ processed_deposits|length }}</h3>
+            <p style="margin: 0.5rem 0 0 0;">Processed Today</p>
+        </div>
+        <div style="background: linear-gradient(135deg, #ffc107, #e0a800); color: white; padding: 1rem; border-radius: 10px; text-align: center;">
+            <h3 style="margin: 0; font-size: 1.5rem;">🧠</h3>
+            <p style="margin: 0.5rem 0 0 0;">Smart Analysis</p>
+        </div>
+    </div>
 </div>
 
 <div class="card">
-    <h2>🔍 Pending Deposits ({{ pending_deposits|length }})</h2>
+    <h2>🔍 Smart Pending Deposits ({{ pending_deposits|length }})</h2>
     {% if pending_deposits %}
         {% for deposit in pending_deposits %}
-        <div style="border: 2px solid #ffc107; padding: 1rem; margin-bottom: 1rem; border-radius: 8px; background: #fff3cd;">
-            <div style="display: flex; justify-content: between; align-items: center; margin-bottom: 0.5rem;">
-                <div style="flex: 1;">
-                    <h4>{{ deposit[6] }} - KSh {{ "%.0f"|format(deposit[3]) }}</h4>
-                    <p><strong>Description:</strong> {{ deposit[4] }}</p>
-                    <p><strong>Submitted:</strong> {{ deposit[5] }}</p>
+        {% set is_smart = 'smart_pending_deposit' in deposit[2] %}
+        {% set confidence = deposit[4].split('Confidence: ')[1].split('%')[0] if 'Confidence:' in deposit[4] else '0' %}
+        {% set confidence_num = confidence|int %}
+        {% set status = deposit[4].split('Status: ')[1].split(' -')[0] if 'Status:' in deposit[4] else 'UNKNOWN' %}
+        
+        <div style="border: 2px solid {% if confidence_num >= 85 %}#28a745{% elif confidence_num >= 65 %}#ffc107{% elif confidence_num >= 45 %}#fd7e14{% else %}#dc3545{% endif %}; padding: 1.5rem; margin-bottom: 1.5rem; border-radius: 15px; background: {% if confidence_num >= 85 %}#d4edda{% elif confidence_num >= 65 %}#fff3cd{% elif confidence_num >= 45 %}#ffeaa7{% else %}#f8d7da{% endif %}; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+            
+            <!-- Header with confidence score -->
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <div>
+                    <h3 style="margin: 0; color: #333;">{{ deposit[6] }} - KSh {{ "%.0f"|format(deposit[3]) }}</h3>
+                    {% if is_smart %}
+                    <div style="margin: 0.5rem 0;">
+                        <span style="background: {% if confidence_num >= 85 %}#28a745{% elif confidence_num >= 65 %}#ffc107{% elif confidence_num >= 45 %}#fd7e14{% else %}#dc3545{% endif %}; color: white; padding: 0.3rem 0.8rem; border-radius: 20px; font-size: 0.9rem; font-weight: bold;">
+                            🧠 {{ confidence }}% - {{ status }}
+                        </span>
+                        {% if confidence_num >= 85 %}
+                        <span style="background: #17a2b8; color: white; padding: 0.3rem 0.8rem; border-radius: 20px; font-size: 0.8rem; margin-left: 0.5rem;">
+                            ⚡ HIGH PRIORITY
+                        </span>
+                        {% endif %}
+                    </div>
+                    {% endif %}
                 </div>
-                {% if deposit[7] %}
-                <div style="margin-left: 1rem;">
-                    <button onclick="viewReceipt('{{ deposit[7] }}')" class="btn" style="background: #17a2b8; color: white; padding: 0.5rem 1rem;">📱 View Receipt</button>
+                
+                <div style="text-align: right;">
+                    {% if is_smart %}
+                    <div style="font-size: 2rem; margin-bottom: 0.5rem;">
+                        {% if confidence_num >= 85 %}✅
+                        {% elif confidence_num >= 65 %}🟡
+                        {% elif confidence_num >= 45 %}🟠
+                        {% else %}❌
+                        {% endif %}
+                    </div>
+                    <small style="color: #666;">Smart Analysis</small>
+                    {% else %}
+                    <div style="font-size: 2rem; margin-bottom: 0.5rem;">📱</div>
+                    <small style="color: #666;">Manual Upload</small>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Transaction details -->
+            <div style="background: white; padding: 1rem; border-radius: 10px; margin-bottom: 1rem;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; font-size: 0.9rem;">
+                    <div><strong>Amount:</strong> KSh {{ "%.0f"|format(deposit[3]) }}</div>
+                    <div><strong>Submitted:</strong> {{ deposit[5] }}</div>
+                    {% if 'Code:' in deposit[4] %}
+                    <div><strong>Transaction Code:</strong> <code style="background: #f8f9fa; padding: 0.2rem 0.4rem; border-radius: 4px;">{{ deposit[4].split('Code: ')[1].split(' -')[0] }}</code></div>
+                    {% endif %}
+                    {% if '(' in deposit[4] and ')' in deposit[4] %}
+                    <div><strong>Phone:</strong> {{ deposit[4].split('(')[1].split(')')[0] }}</div>
+                    {% endif %}
+                </div>
+                
+                {% if is_smart and 'Confidence:' in deposit[4] %}
+                <div style="margin-top: 1rem; padding: 0.8rem; background: #f8f9fa; border-radius: 8px;">
+                    <h5 style="margin: 0 0 0.5rem 0; color: #495057;">🔍 Smart Analysis Results:</h5>
+                    <div style="font-size: 0.85rem; color: #666;">
+                        {{ deposit[4].replace('SMART M-Pesa deposit - ', '').split(' - Confidence:')[0] }}
+                    </div>
+                </div>
+                {% else %}
+                <div style="margin-top: 1rem; font-size: 0.9rem; color: #666;">
+                    {{ deposit[4] }}
                 </div>
                 {% endif %}
             </div>
             
-            <div style="display: flex; gap: 1rem; margin-top: 1rem;">
-                <button onclick="approveDeposit({{ deposit[0] }}, {{ deposit[3] }})" class="btn btn-success" style="flex: 1;">
+            <!-- Action buttons -->
+            <div style="display: flex; gap: 1rem; align-items: center;">
+                {% if deposit[7] %}
+                <button onclick="viewReceipt('{{ deposit[7] }}')" class="btn" style="background: #17a2b8; color: white; padding: 0.8rem 1.2rem; border-radius: 25px;">
+                    📱 View Receipt
+                </button>
+                {% endif %}
+                
+                <button onclick="{% if is_smart %}approveSmartDeposit{% else %}approveDeposit{% endif %}({{ deposit[0] }}, {{ deposit[3] }})" class="btn" style="flex: 1; background: linear-gradient(135deg, #28a745, #20c997); color: white; padding: 0.8rem 1.2rem; border-radius: 25px; font-weight: bold;">
                     ✅ Approve KSh {{ "%.0f"|format(deposit[3]) }}
                 </button>
-                <button onclick="rejectDeposit({{ deposit[0] }})" class="btn btn-danger" style="flex: 1;">
-                    ❌ Reject Deposit
+                
+                <button onclick="rejectDeposit({{ deposit[0] }})" class="btn" style="background: linear-gradient(135deg, #dc3545, #c82333); color: white; padding: 0.8rem 1.2rem; border-radius: 25px;">
+                    ❌ Reject
                 </button>
             </div>
         </div>
         {% endfor %}
     {% else %}
-        <div style="text-align: center; padding: 2rem; color: #666;">
-            <div style="font-size: 3rem; margin-bottom: 1rem;">✅</div>
-            <p>No pending deposits to review</p>
+        <div style="text-align: center; padding: 3rem; color: #666;">
+            <div style="font-size: 4rem; margin-bottom: 1rem;">🎉</div>
+            <h3>All caught up!</h3>
+            <p>No pending deposits to review. Smart system is working perfectly!</p>
         </div>
     {% endif %}
 </div>
@@ -46,23 +125,43 @@
     <h2>📋 Recent Processed Deposits</h2>
     {% if processed_deposits %}
         {% for deposit in processed_deposits %}
-        <div style="padding: 1rem; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; border-left: 4px solid {% if deposit[2] == 'deposit' %}#28a745{% else %}#dc3545{% endif %};">
-            <div>
-                <div><strong>{{ deposit[6] }}</strong> - KSh {{ "%.0f"|format(deposit[3]) }}</div>
-                <div style="font-size: 0.9rem; color: #666;">{{ deposit[4] }}</div>
-                <small style="color: #999;">{{ deposit[5] }}</small>
+        {% set is_smart_processed = 'APPROVED by admin' in deposit[4] %}
+        <div style="padding: 1.2rem; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; border-left: 4px solid {% if deposit[2] in ['deposit', 'completed'] %}#28a745{% else %}#dc3545{% endif %}; background: {% if is_smart_processed %}#f0f8ff{% else %}white{% endif %};">
+            <div style="flex: 1;">
+                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.3rem;">
+                    {% if is_smart_processed %}
+                    <span style="font-size: 1.2rem;">🧠</span>
+                    {% endif %}
+                    <strong>{{ deposit[6] }}</strong> - KSh {{ "%.0f"|format(deposit[3]) }}
+                </div>
+                <div style="font-size: 0.9rem; color: #666; margin-bottom: 0.3rem;">{{ deposit[4] }}</div>
+                <small style="color: #999;">🕒 {{ deposit[5] }}</small>
             </div>
-            <div>
-                {% if deposit[2] == 'deposit' %}
-                    <span style="background: #28a745; color: white; padding: 0.3rem 0.8rem; border-radius: 15px; font-size: 0.8rem;">✅ APPROVED</span>
+            <div style="text-align: right;">
+                {% if deposit[2] in ['deposit', 'completed'] %}
+                    <span style="background: linear-gradient(135deg, #28a745, #20c997); color: white; padding: 0.4rem 1rem; border-radius: 20px; font-size: 0.8rem; font-weight: bold;">
+                        ✅ APPROVED
+                    </span>
+                    {% if is_smart_processed %}
+                    <div style="margin-top: 0.3rem;">
+                        <span style="background: #17a2b8; color: white; padding: 0.2rem 0.6rem; border-radius: 15px; font-size: 0.7rem;">
+                            🧠 AI-VERIFIED
+                        </span>
+                    </div>
+                    {% endif %}
                 {% else %}
-                    <span style="background: #dc3545; color: white; padding: 0.3rem 0.8rem; border-radius: 15px; font-size: 0.8rem;">❌ REJECTED</span>
+                    <span style="background: linear-gradient(135deg, #dc3545, #c82333); color: white; padding: 0.4rem 1rem; border-radius: 20px; font-size: 0.8rem; font-weight: bold;">
+                        ❌ REJECTED
+                    </span>
                 {% endif %}
             </div>
         </div>
         {% endfor %}
     {% else %}
-        <p>No processed deposits yet.</p>
+        <div style="text-align: center; padding: 2rem; color: #666;">
+            <div style="font-size: 3rem; margin-bottom: 1rem;">📋</div>
+            <p>No processed deposits yet today.</p>
+        </div>
     {% endif %}
 </div>
 
@@ -122,6 +221,27 @@ function approveDeposit(depositId, amount) {
         })
         .catch(error => {
             alert('❌ Error approving deposit');
+        });
+    }
+}
+
+function approveSmartDeposit(depositId, amount) {
+    if (confirm(`🧠 Approve SMART deposit of KSh ${amount}? This will add the amount to user's balance and mark as AI-verified.`)) {
+        fetch(`/approve_smart_deposit/${depositId}`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'}
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('✅ ' + data.message);
+                location.reload();
+            } else {
+                alert('❌ Error: ' + data.message);
+            }
+        })
+        .catch(error => {
+            alert('❌ Error approving smart deposit');
         });
     }
 }

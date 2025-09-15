@@ -989,14 +989,21 @@ def admin_deposits():
             c.execute('''SELECT t.*, u.username 
                        FROM transactions t
                        JOIN users u ON t.user_id = u.id
-                       WHERE t.type IN ("pending_deposit", "pending_crypto_deposit")
-                       ORDER BY t.created_at DESC''')
+                       WHERE t.type IN ("pending_deposit", "pending_crypto_deposit", "smart_pending_deposit")
+                       ORDER BY 
+                           CASE 
+                               WHEN t.type = "smart_pending_deposit" AND t.description LIKE "%Confidence: 9%" THEN 1
+                               WHEN t.type = "smart_pending_deposit" AND t.description LIKE "%Confidence: 8%" THEN 2
+                               WHEN t.type = "smart_pending_deposit" THEN 3
+                               ELSE 4
+                           END,
+                           t.created_at DESC''')
             pending_deposits = c.fetchall()
             
             c.execute('''SELECT t.*, u.username 
                        FROM transactions t
                        JOIN users u ON t.user_id = u.id
-                       WHERE t.type IN ("deposit", "rejected_deposit")
+                       WHERE t.type IN ("deposit", "rejected_deposit", "completed")
                        ORDER BY t.created_at DESC LIMIT 20''')
             processed_deposits = c.fetchall()
             
@@ -2869,8 +2876,8 @@ def reject_deposit(transaction_id):
         with get_db_connection() as conn:
             c = conn.cursor()
             
-            # Update transaction status
-            c.execute('UPDATE transactions SET type = "rejected_deposit", description = description || " - Rejected: " || ? WHERE id = ? AND type = "pending_deposit"', 
+            # Update transaction status for both regular and smart deposits
+            c.execute('UPDATE transactions SET type = "rejected_deposit", description = description || " - Rejected: " || ? WHERE id = ? AND type IN ("pending_deposit", "smart_pending_deposit")', 
                      (reason, transaction_id))
             
             if c.rowcount == 0:
@@ -3222,3 +3229,340 @@ def referral_deposit():
         
     except Exception as e:
         return jsonify({'success': False, 'error': 'Referral bonus claim failed'})
+
+@app.route('/smart_mpesa_deposit', methods=['POST'])
+@login_required
+def smart_mpesa_deposit():
+    """🚀 POWERFUL M-Pesa deposit with smart validation and instant admin alerts"""
+    try:
+        data = request.get_json()
+        amount = float(data.get('amount', 0))
+        phone = data.get('phone', '').strip()
+        transaction_code = data.get('transaction_code', '').strip().upper()
+        sender_name = data.get('sender_name', '').strip()
+        receipt_text = data.get('receipt_text', '').strip()
+        
+        if amount < 100:
+            return jsonify({'success': False, 'error': 'Minimum deposit: KSh 100'})
+        
+        if not all([phone, transaction_code, sender_name]):
+            return jsonify({'success': False, 'error': 'All fields required'})
+        
+        # 🧠 SMART VALIDATION ENGINE
+        validation_result = validate_mpesa_transaction(transaction_code, amount, phone, sender_name, receipt_text)
+        
+        with get_db_connection() as conn:
+            c = conn.cursor()
+            
+            # Check for duplicate transaction codes
+            c.execute('SELECT id FROM transactions WHERE description LIKE ?', (f'%{transaction_code}%',))
+            if c.fetchone():
+                return jsonify({'success': False, 'error': 'Transaction code already used'})
+            
+            # Create smart deposit record
+            description = f'SMART M-Pesa deposit - {sender_name} ({phone}) - Code: {transaction_code} - KSh {amount} - Confidence: {validation_result["confidence"]}% - Status: {validation_result["status"]}'
+            
+            c.execute('''INSERT INTO transactions (user_id, type, amount, description, payment_proof) 
+                       VALUES (?, ?, ?, ?, ?)''',
+                     (session['user_id'], 'smart_pending_deposit', amount, description, receipt_text))
+            
+            transaction_id = c.lastrowid
+            
+            # 📧 INSTANT ADMIN ALERT
+            send_admin_deposit_alert({
+                'transaction_id': transaction_id,
+                'user_id': session['user_id'],
+                'username': session.get('username', 'Unknown'),
+                'amount': amount,
+                'phone': phone,
+                'transaction_code': transaction_code,
+                'sender_name': sender_name,
+                'confidence': validation_result['confidence'],
+                'status': validation_result['status'],
+                'flags': validation_result['flags']
+            })
+            
+            conn.commit()
+        
+        return jsonify({
+            'success': True, 
+            'message': f'Deposit submitted! Confidence: {validation_result["confidence"]}% | Status: {validation_result["status"]} | Admin alerted instantly!',
+            'transaction_id': transaction_id,
+            'confidence': validation_result['confidence']
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': 'Smart deposit failed'})
+
+def validate_mpesa_transaction(code, amount, phone, sender_name, receipt_text):
+    """🔍 POWERFUL M-Pesa validation engine"""
+    confidence = 0
+    flags = []
+    
+    # Transaction code validation (40 points max)
+    if len(code) == 10 and code.isalnum():
+        confidence += 25
+        flags.append('✅ Valid code format')
+    else:
+        flags.append('⚠️ Invalid code format')
+    
+    import re
+    if re.match(r'^[A-Z]{2}[0-9]{8}$', code) or re.match(r'^[0-9]{10}$', code):
+        confidence += 15
+        flags.append('✅ M-Pesa pattern match')
+    else:
+        flags.append('⚠️ Unusual code pattern')
+    
+    # Phone validation (20 points max)
+    if phone.startswith('07') and len(phone) == 10 and phone[2:].isdigit():
+        confidence += 15
+        flags.append('✅ Valid Kenyan number')
+    elif phone.startswith('254') and len(phone) == 12:
+        confidence += 10
+        flags.append('✅ International format')
+    else:
+        flags.append('⚠️ Invalid phone format')
+    
+    # Amount validation (15 points max)
+    if amount in [100, 200, 500, 1000, 1500, 2000, 2500, 3000, 5000, 10000]:
+        confidence += 10
+        flags.append('✅ Common amount')
+    elif amount % 50 == 0:
+        confidence += 5
+        flags.append('✅ Round amount')
+    
+    # Name validation (10 points max)
+    if len(sender_name) >= 3 and sender_name.replace(' ', '').isalpha():
+        confidence += 8
+        flags.append('✅ Valid name format')
+    else:
+        flags.append('⚠️ Suspicious name')
+    
+    # Receipt text analysis (15 points max)
+    if receipt_text:
+        mpesa_keywords = ['confirmed', 'received', 'ksh', 'mpesa', 'paybill', 'till', 'balance']
+        keyword_count = sum(1 for keyword in mpesa_keywords if keyword.lower() in receipt_text.lower())
+        confidence += min(keyword_count * 2, 10)
+        
+        if str(amount) in receipt_text or str(int(amount)) in receipt_text:
+            confidence += 5
+            flags.append('✅ Amount matches receipt')
+        
+        if code in receipt_text:
+            confidence += 5
+            flags.append('✅ Code found in receipt')
+    
+    # Time-based validation (bonus points)
+    import time
+    current_hour = int(time.strftime('%H'))
+    if 6 <= current_hour <= 22:  # Normal hours
+        confidence += 5
+        flags.append('✅ Normal transaction time')
+    
+    # Determine status
+    if confidence >= 85:
+        status = 'HIGH CONFIDENCE'
+    elif confidence >= 65:
+        status = 'MEDIUM CONFIDENCE'
+    elif confidence >= 45:
+        status = 'LOW CONFIDENCE'
+    else:
+        status = 'SUSPICIOUS'
+    
+    return {
+        'confidence': min(confidence, 100),
+        'status': status,
+        'flags': flags
+    }
+
+def send_admin_deposit_alert(deposit_data):
+    """📧 INSTANT admin email alert for deposits"""
+    try:
+        gmail_user = os.getenv('GMAIL_USER')
+        gmail_pass = os.getenv('GMAIL_PASS')
+        
+        if not gmail_user or not gmail_pass:
+            return False
+        
+        msg = MIMEMultipart()
+        msg['From'] = gmail_user
+        msg['To'] = gmail_user  # Send to admin email
+        msg['Subject'] = f'🚨 URGENT: New M-Pesa Deposit - KSh {deposit_data["amount"]} ({deposit_data["status"]})'
+        
+        # Create rich HTML email
+        confidence_color = '#28a745' if deposit_data['confidence'] >= 85 else '#ffc107' if deposit_data['confidence'] >= 65 else '#dc3545'
+        
+        body = f'''
+        <html>
+        <body style="font-family: Arial, sans-serif; background: #f8f9fa; padding: 20px;">
+            <div style="max-width: 600px; margin: 0 auto; background: white; border-radius: 15px; padding: 30px; box-shadow: 0 10px 30px rgba(0,0,0,0.1);">
+                <div style="text-align: center; margin-bottom: 30px;">
+                    <h1 style="color: #667eea; margin: 0;">🎮 SkillStake Gaming</h1>
+                    <h2 style="color: #dc3545; margin: 10px 0;">🚨 NEW M-PESA DEPOSIT ALERT</h2>
+                </div>
+                
+                <div style="background: linear-gradient(135deg, {confidence_color}, {confidence_color}aa); color: white; padding: 20px; border-radius: 10px; margin: 20px 0; text-align: center;">
+                    <h3 style="margin: 0;">💰 KSh {deposit_data['amount']:,.0f}</h3>
+                    <p style="margin: 5px 0; font-size: 18px;">Confidence: {deposit_data['confidence']}%</p>
+                    <p style="margin: 5px 0; font-weight: bold;">{deposit_data['status']}</p>
+                </div>
+                
+                <div style="background: #f8f9fa; padding: 20px; border-radius: 10px; margin: 20px 0;">
+                    <h4 style="color: #495057; margin-top: 0;">📋 Transaction Details</h4>
+                    <p><strong>User:</strong> {deposit_data['username']} (ID: {deposit_data['user_id']})</p>
+                    <p><strong>Phone:</strong> {deposit_data['phone']}</p>
+                    <p><strong>Transaction Code:</strong> <code style="background: #e9ecef; padding: 5px; border-radius: 5px;">{deposit_data['transaction_code']}</code></p>
+                    <p><strong>Sender Name:</strong> {deposit_data['sender_name']}</p>
+                    <p><strong>Transaction ID:</strong> #{deposit_data['transaction_id']}</p>
+                </div>
+                
+                <div style="background: #e3f2fd; padding: 20px; border-radius: 10px; margin: 20px 0;">
+                    <h4 style="color: #1976d2; margin-top: 0;">🔍 Smart Analysis</h4>
+                    {''.join([f'<p style="margin: 5px 0;">• {flag}</p>' for flag in deposit_data['flags']])}
+                </div>
+                
+                <div style="text-align: center; margin: 30px 0;">
+                    <a href="https://skillstakegamers-wxc6.onrender.com/admin_deposits" 
+                       style="background: linear-gradient(135deg, #28a745, #20c997); color: white; padding: 15px 30px; text-decoration: none; border-radius: 50px; font-weight: bold; display: inline-block; margin: 10px;">
+                        ✅ APPROVE DEPOSIT
+                    </a>
+                    <a href="https://skillstakegamers-wxc6.onrender.com/admin_deposits" 
+                       style="background: linear-gradient(135deg, #dc3545, #c82333); color: white; padding: 15px 30px; text-decoration: none; border-radius: 50px; font-weight: bold; display: inline-block; margin: 10px;">
+                        ❌ REJECT DEPOSIT
+                    </a>
+                </div>
+                
+                <div style="text-align: center; color: #6c757d; font-size: 14px; margin-top: 30px;">
+                    <p>⚡ Instant alert powered by SkillStake Smart Validation Engine</p>
+                    <p>🕒 {time.strftime('%Y-%m-%d %H:%M:%S')}</p>
+                </div>
+            </div>
+        </body>
+        </html>
+        '''
+        
+        msg.attach(MIMEText(body, 'html'))
+        
+        # Send email
+        server = smtplib.SMTP('smtp.gmail.com', 587)
+        server.starttls()
+        server.login(gmail_user, gmail_pass)
+        text = msg.as_string()
+        server.sendmail(gmail_user, gmail_user, text)
+        server.quit()
+        
+        return True
+        
+    except Exception as e:
+        print(f'Admin alert failed: {e}')
+        return False
+
+@app.route('/alert_admin_smart_deposit', methods=['POST'])
+@login_required
+def alert_admin_smart_deposit():
+    """🚨 User can manually alert admin about their deposit"""
+    try:
+        data = request.get_json()
+        transaction_id = data.get('transaction_id')
+        message = data.get('message', '').strip()
+        
+        if not transaction_id:
+            return jsonify({'success': False, 'error': 'Transaction ID required'})
+        
+        with get_db_connection() as conn:
+            c = conn.cursor()
+            c.execute('SELECT * FROM transactions WHERE id = ? AND user_id = ?', (transaction_id, session['user_id']))
+            transaction = c.fetchone()
+            
+            if not transaction:
+                return jsonify({'success': False, 'error': 'Transaction not found'})
+        
+        # Send urgent alert to admin
+        gmail_user = os.getenv('GMAIL_USER')
+        gmail_pass = os.getenv('GMAIL_PASS')
+        
+        if gmail_user and gmail_pass:
+            msg = MIMEMultipart()
+            msg['From'] = gmail_user
+            msg['To'] = gmail_user
+            msg['Subject'] = f'🔥 URGENT USER ALERT: Transaction #{transaction_id} - {session.get("username", "User")}'
+            
+            body = f'''
+            <html>
+            <body style="font-family: Arial, sans-serif; padding: 20px;">
+                <div style="max-width: 600px; margin: 0 auto; background: #fff3cd; border: 2px solid #ffc107; border-radius: 15px; padding: 30px;">
+                    <h1 style="color: #856404; text-align: center;">🔥 URGENT USER ALERT</h1>
+                    
+                    <div style="background: white; padding: 20px; border-radius: 10px; margin: 20px 0;">
+                        <h3>User: {session.get('username', 'Unknown')} (ID: {session['user_id']})</h3>
+                        <h3>Transaction: #{transaction_id}</h3>
+                        <h3>Amount: KSh {transaction[3]:,.0f}</h3>
+                        <p><strong>User Message:</strong></p>
+                        <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; font-style: italic;">
+                            "{message or 'Please review my deposit urgently!'}"
+                        </div>
+                    </div>
+                    
+                    <div style="text-align: center; margin: 30px 0;">
+                        <a href="https://skillstakegamers-wxc6.onrender.com/admin_deposits" 
+                           style="background: #dc3545; color: white; padding: 15px 30px; text-decoration: none; border-radius: 50px; font-weight: bold;">
+                            🚨 REVIEW IMMEDIATELY
+                        </a>
+                    </div>
+                </div>
+            </body>
+            </html>
+            '''
+            
+            msg.attach(MIMEText(body, 'html'))
+            
+            server = smtplib.SMTP('smtp.gmail.com', 587)
+            server.starttls()
+            server.login(gmail_user, gmail_pass)
+            text = msg.as_string()
+            server.sendmail(gmail_user, gmail_user, text)
+            server.quit()
+        
+        return jsonify({
+            'success': True, 
+            'message': f'🚨 URGENT alert sent to admin! Transaction #{transaction_id} flagged for immediate review.'
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': 'Alert failed'})
+
+@app.route('/approve_smart_deposit/<int:transaction_id>', methods=['POST'])
+@login_required
+def approve_smart_deposit(transaction_id):
+    """Admin approves smart M-Pesa deposit"""
+    if session.get('username') != 'admin':
+        return jsonify({'success': False, 'message': 'Unauthorized'})
+    
+    try:
+        with get_db_connection() as conn:
+            c = conn.cursor()
+            
+            c.execute('SELECT * FROM transactions WHERE id = ? AND type = "smart_pending_deposit"', (transaction_id,))
+            transaction = c.fetchone()
+            
+            if not transaction:
+                return jsonify({'success': False, 'message': 'Transaction not found'})
+            
+            user_id = transaction[1]
+            amount = transaction[3]
+            
+            # Update user balance
+            c.execute('SELECT balance FROM users WHERE id = ?', (user_id,))
+            current_balance = c.fetchone()[0] or 0
+            new_balance = current_balance + amount
+            c.execute('UPDATE users SET balance = ? WHERE id = ?', (new_balance, user_id))
+            
+            # Update transaction status
+            c.execute('UPDATE transactions SET type = "completed", description = REPLACE(description, "smart_pending_deposit", "APPROVED by admin") WHERE id = ?', (transaction_id,))
+            
+            conn.commit()
+            
+        return jsonify({'success': True, 'message': f'✅ Smart deposit approved! KSh {amount} credited to user.'})
+        
+    except Exception as e:
+        return jsonify({'success': False, 'message': 'Approval failed'})
