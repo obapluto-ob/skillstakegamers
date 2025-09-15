@@ -1473,7 +1473,7 @@ def add_funds():
     return redirect(url_for('wallet'))
 
 def analyze_mpesa_receipt(image_data, expected_amount, expected_number, expected_name):
-    """Smart M-Pesa receipt analysis without external APIs"""
+    """System M-Pesa receipt analysis without external APIs"""
     try:
         from PIL import Image
         import io
@@ -3248,7 +3248,7 @@ def smart_mpesa_deposit():
         if not all([phone, transaction_code, sender_name]):
             return jsonify({'success': False, 'error': 'All fields required'})
         
-        # 🧠 SMART VALIDATION ENGINE
+        # 🧠 SYSTEM VALIDATION ENGINE
         validation_result = validate_mpesa_transaction(transaction_code, amount, phone, sender_name, receipt_text)
         
         with get_db_connection() as conn:
@@ -3259,8 +3259,8 @@ def smart_mpesa_deposit():
             if c.fetchone():
                 return jsonify({'success': False, 'error': 'Transaction code already used'})
             
-            # Create smart deposit record
-            description = f'SMART M-Pesa deposit - {sender_name} ({phone}) - Code: {transaction_code} - KSh {amount} - Confidence: {validation_result["confidence"]}% - Status: {validation_result["status"]}'
+            # Create system deposit record
+            description = f'SYSTEM M-Pesa deposit - {sender_name} ({phone}) - Code: {transaction_code} - KSh {amount} - Confidence: {validation_result["confidence"]}% - Status: {validation_result["status"]}'
             
             c.execute('''INSERT INTO transactions (user_id, type, amount, description, payment_proof) 
                        VALUES (?, ?, ?, ?, ?)''',
@@ -3433,7 +3433,7 @@ def send_admin_deposit_alert(deposit_data):
                 </div>
                 
                 <div style="text-align: center; color: #6c757d; font-size: 14px; margin-top: 30px;">
-                    <p>⚡ Instant alert powered by SkillStake Smart Validation Engine</p>
+                    <p>⚡ Instant alert powered by SkillStake System Validation Engine</p>
                     <p>🕒 {time.strftime('%Y-%m-%d %H:%M:%S')}</p>
                 </div>
             </div>
