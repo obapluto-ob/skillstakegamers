@@ -8,7 +8,7 @@
             <h2>Current Balance: KSh {{ "%.0f"|format(session.balance) }}</h2>
         </div>
         <div>
-            <button onclick="showAIMpesa()" class="btn" style="background: linear-gradient(135deg, #28a745, #20c997); color: white; border: none; box-shadow: 0 4px 12px rgba(40,167,69,0.3); font-weight: 600;">🤖 AI M-Pesa Deposit</button>
+            <button onclick="showMpesaDeposit()" class="btn" style="background: linear-gradient(135deg, #28a745, #20c997); color: white; border: none; box-shadow: 0 4px 12px rgba(40,167,69,0.3); font-weight: 600;">📱 M-Pesa Deposit</button>
             <button onclick="showCryptoDeposit()" class="btn" style="background: #f7931a; color: white;">Crypto Deposit</button>
             <button onclick="showPayPalDeposit()" class="btn" style="background: linear-gradient(135deg, #0070ba 0%, #003087 100%); color: white; border: none; box-shadow: 0 4px 12px rgba(0,112,186,0.3); font-weight: 600;">💳 PayPal & Cards</button>
             <button onclick="showWithdraw()" class="btn btn-secondary">Withdraw</button>
@@ -16,13 +16,13 @@
     </div>
 </div>
 
-<!-- 🤖 AI M-PESA DEPOSIT MODAL -->
-<div id="aiMpesaModal" class="modal">
+<!-- M-PESA DEPOSIT MODAL -->
+<div id="mpesaModal" class="modal">
     <div class="modal-content" style="max-width: 600px; max-height: 90vh; overflow-y: auto; margin-top: 60px;">
-        <span class="close" onclick="closeAIMpesa()">&times;</span>
-        <div style="text-align: center; margin-bottom: 2rem; background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 1.5rem; border-radius: 15px; margin: -2rem -2rem 2rem -2rem;">
-            <h1>🤖 AI M-PESA DEPOSIT</h1>
-            <p style="margin: 0; font-size: 1.1rem;">🧠 AI Analysis • 📸 Receipt Scan • ⚡ Instant Alerts</p>
+        <span class="close" onclick="closeMpesaDeposit()">&times;</span>
+        <div style="text-align: center; margin-bottom: 2rem; background: linear-gradient(135deg, #28a745, #20c997); color: white; padding: 1.5rem; border-radius: 15px; margin: -2rem -2rem 2rem -2rem;">
+            <h1>📱 M-PESA DEPOSIT</h1>
+            <p style="margin: 0; font-size: 1.1rem;">⚡ Instant processing • 📸 Receipt upload • 🚀 Fast approval</p>
         </div>
         
         <div style="background: #d4edda; padding: 1rem; border-radius: 10px; margin-bottom: 1.5rem; border-left: 5px solid #28a745;">
@@ -468,15 +468,15 @@ function closeWithdraw() {
 }
 
 // 🚀 SMART M-PESA FUNCTIONS
-function showAIMpesa() {
-    document.getElementById('aiMpesaModal').style.display = 'block';
+function showMpesaDeposit() {
+    document.getElementById('mpesaModal').style.display = 'block';
 }
 
-function closeAIMpesa() {
-    document.getElementById('aiMpesaModal').style.display = 'none';
+function closeMpesaDeposit() {
+    document.getElementById('mpesaModal').style.display = 'none';
 }
 
-function submitAIDeposit(event) {
+function submitMpesaDeposit(event) {
     event.preventDefault();
     
     const amount = document.getElementById('aiAmount').value;
@@ -851,15 +851,15 @@ window.onclick = function(event) {
     const addModal = document.getElementById('addFundsModal');
     const withdrawModal = document.getElementById('withdrawModal');
     const cryptoModal = document.getElementById('cryptoDepositModal');
-    const aiMpesaModal = document.getElementById('aiMpesaModal');
+    const mpesaModal = document.getElementById('mpesaModal');
     if (event.target == withdrawModal) {
         withdrawModal.style.display = 'none';
     }
     if (event.target == cryptoModal) {
         cryptoModal.style.display = 'none';
     }
-    if (event.target == aiMpesaModal) {
-        aiMpesaModal.style.display = 'none';
+    if (event.target == mpesaModal) {
+        mpesaModal.style.display = 'none';
     }
 }
 </script>
