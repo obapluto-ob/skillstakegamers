@@ -8,8 +8,7 @@
             <h2>Current Balance: KSh {{ "%.0f"|format(session.balance) }}</h2>
         </div>
         <div>
-            <button onclick="showSmartMpesa()" class="btn" style="background: linear-gradient(135deg, #28a745, #20c997); color: white; border: none; box-shadow: 0 4px 12px rgba(40,167,69,0.3); font-weight: 600;">🚀 Smart M-Pesa</button>
-            <button onclick="showAddFunds()" class="btn btn-success">📱 M-Pesa Upload</button>
+            <button onclick="showAIMpesa()" class="btn" style="background: linear-gradient(135deg, #28a745, #20c997); color: white; border: none; box-shadow: 0 4px 12px rgba(40,167,69,0.3); font-weight: 600;">🤖 AI M-Pesa Deposit</button>
             <button onclick="showCryptoDeposit()" class="btn" style="background: #f7931a; color: white;">Crypto Deposit</button>
             <button onclick="showPayPalDeposit()" class="btn" style="background: linear-gradient(135deg, #0070ba 0%, #003087 100%); color: white; border: none; box-shadow: 0 4px 12px rgba(0,112,186,0.3); font-weight: 600;">💳 PayPal & Cards</button>
             <button onclick="showWithdraw()" class="btn btn-secondary">Withdraw</button>
@@ -17,13 +16,13 @@
     </div>
 </div>
 
-<!-- 🚀 SMART M-PESA DEPOSIT MODAL -->
-<div id="smartMpesaModal" class="modal">
+<!-- 🤖 AI M-PESA DEPOSIT MODAL -->
+<div id="aiMpesaModal" class="modal">
     <div class="modal-content" style="max-width: 600px; max-height: 90vh; overflow-y: auto; margin-top: 60px;">
-        <span class="close" onclick="closeSmartMpesa()">&times;</span>
-        <div style="text-align: center; margin-bottom: 2rem; background: linear-gradient(135deg, #28a745, #20c997); color: white; padding: 1.5rem; border-radius: 15px; margin: -2rem -2rem 2rem -2rem;">
-            <h1>🚀 SMART M-PESA DEPOSIT</h1>
-            <p style="margin: 0; font-size: 1.1rem;">⚡ Instant validation • 🧠 Smart analysis • 📧 Admin alerts</p>
+        <span class="close" onclick="closeAIMpesa()">&times;</span>
+        <div style="text-align: center; margin-bottom: 2rem; background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 1.5rem; border-radius: 15px; margin: -2rem -2rem 2rem -2rem;">
+            <h1>🤖 AI M-PESA DEPOSIT</h1>
+            <p style="margin: 0; font-size: 1.1rem;">🧠 AI Analysis • 📸 Receipt Scan • ⚡ Instant Alerts</p>
         </div>
         
         <div style="background: #d4edda; padding: 1rem; border-radius: 10px; margin-bottom: 1.5rem; border-left: 5px solid #28a745;">
@@ -39,11 +38,11 @@
             <p style="margin: 0.5rem 0; color: #155724;"><strong>Reference:</strong> {{ session.username }}</p>
         </div>
         
-        <form onsubmit="submitSmartDeposit(event)">
+        <form onsubmit="submitAIDeposit(event)">
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
                 <div>
                     <label><strong>💰 Amount (KSh)</strong></label>
-                    <select id="smartAmount" class="form-control" required>
+                    <select id="aiAmount" class="form-control" required>
                         <option value="100">KSh 100</option>
                         <option value="200">KSh 200</option>
                         <option value="500">KSh 500</option>
@@ -54,25 +53,33 @@
                 </div>
                 <div>
                     <label><strong>📱 Your M-Pesa Number</strong></label>
-                    <input type="tel" id="smartPhone" class="form-control" placeholder="0712345678" pattern="0[17][0-9]{8}" required>
+                    <input type="tel" id="aiPhone" class="form-control" placeholder="0712345678" pattern="0[17][0-9]{8}" required>
                 </div>
             </div>
             
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
                 <div>
                     <label><strong>👤 Your Full Name</strong></label>
-                    <input type="text" id="smartName" class="form-control" placeholder="John Doe" required>
+                    <input type="text" id="aiName" class="form-control" placeholder="John Doe" required>
                 </div>
                 <div>
                     <label><strong>🔢 Transaction Code</strong></label>
-                    <input type="text" id="smartCode" class="form-control" placeholder="QH12345678" maxlength="10" style="text-transform: uppercase;" required>
+                    <input type="text" id="aiCode" class="form-control" placeholder="QH12345678" maxlength="10" style="text-transform: uppercase;" required>
+                </div>
+            </div>
+            
+            <div class="form-group" style="margin-bottom: 1rem;">
+                <label><strong>📸 M-Pesa Receipt (Optional - AI will scan it)</strong></label>
+                <input type="file" id="aiReceiptFile" accept="image/*" class="form-control">
+                <div id="aiReceiptPreview" style="margin-top: 0.5rem; display: none; text-align: center;">
+                    <img id="aiReceiptImage" style="max-width: 200px; max-height: 150px; border-radius: 6px; border: 1px solid #ddd;">
                 </div>
             </div>
             
             <div class="form-group" style="margin-bottom: 1.5rem;">
-                <label><strong>📄 Receipt Text (Optional - for higher confidence)</strong></label>
-                <textarea id="smartReceipt" class="form-control" rows="3" placeholder="Paste your M-Pesa SMS or receipt text here for instant validation..."></textarea>
-                <small style="color: #666;">💡 Tip: Include receipt text for 95%+ confidence scores!</small>
+                <label><strong>📄 Receipt Text (Optional - paste SMS here)</strong></label>
+                <textarea id="aiReceipt" class="form-control" rows="2" placeholder="Paste M-Pesa SMS here for AI analysis..."></textarea>
+                <small style="color: #666;">🤖 AI Tip: Upload image OR paste text for maximum accuracy!</small>
             </div>
             
             <div id="validationResult" style="display: none; padding: 1rem; border-radius: 10px; margin-bottom: 1rem;">
@@ -80,26 +87,26 @@
                 <div id="validationFlags"></div>
             </div>
             
-            <div style="background: #e3f2fd; padding: 1rem; border-radius: 10px; margin-bottom: 1.5rem;">
-                <h4 style="color: #1976d2; margin-top: 0;">🧠 How Smart Validation Works:</h4>
-                <ul style="margin: 0; padding-left: 1.5rem; color: #1976d2;">
-                    <li>🔍 <strong>Code Analysis:</strong> Validates M-Pesa transaction format</li>
-                    <li>📱 <strong>Phone Verification:</strong> Checks Kenyan number patterns</li>
-                    <li>💰 <strong>Amount Logic:</strong> Analyzes transaction amounts</li>
-                    <li>📧 <strong>Instant Alerts:</strong> Admin gets immediate notification</li>
-                    <li>⚡ <strong>Fast Review:</strong> High confidence = priority processing</li>
+            <div style="background: #e8f5e8; padding: 1rem; border-radius: 10px; margin-bottom: 1.5rem;">
+                <h4 style="color: #2e7d32; margin-top: 0;">🤖 How AI Validation Works:</h4>
+                <ul style="margin: 0; padding-left: 1.5rem; color: #2e7d32;">
+                    <li>🔍 <strong>Smart Analysis:</strong> AI validates transaction patterns</li>
+                    <li>📸 <strong>Image Scan:</strong> AI reads receipt screenshots</li>
+                    <li>📱 <strong>SMS Analysis:</strong> AI processes M-Pesa messages</li>
+                    <li>📧 <strong>Instant Alerts:</strong> Admin gets rich email notifications</li>
+                    <li>⚡ <strong>Priority Queue:</strong> High confidence = faster approval</li>
                 </ul>
             </div>
             
             <div style="display: flex; gap: 1rem;">
-                <button type="submit" class="btn" style="flex: 1; background: linear-gradient(135deg, #28a745, #20c997); color: white; font-weight: bold; padding: 1rem;">🚀 Submit Smart Deposit</button>
-                <button type="button" class="btn btn-secondary" onclick="closeSmartMpesa()">Cancel</button>
+                <button type="submit" class="btn" style="flex: 1; background: linear-gradient(135deg, #667eea, #764ba2); color: white; font-weight: bold; padding: 1rem;">🤖 Submit AI Deposit</button>
+                <button type="button" class="btn btn-secondary" onclick="closeAIMpesa()">Cancel</button>
             </div>
         </form>
     </div>
 </div>
 
-<!-- Add Funds Modal -->
+
 <div id="addFundsModal" class="modal">
     <div class="modal-content" style="max-width: 500px; max-height: 90vh; overflow-y: auto; margin-top: 80px;">
         <span class="close" onclick="closeAddFunds()">&times;</span>
@@ -461,22 +468,22 @@ function closeWithdraw() {
 }
 
 // 🚀 SMART M-PESA FUNCTIONS
-function showSmartMpesa() {
-    document.getElementById('smartMpesaModal').style.display = 'block';
+function showAIMpesa() {
+    document.getElementById('aiMpesaModal').style.display = 'block';
 }
 
-function closeSmartMpesa() {
-    document.getElementById('smartMpesaModal').style.display = 'none';
+function closeAIMpesa() {
+    document.getElementById('aiMpesaModal').style.display = 'none';
 }
 
-function submitSmartDeposit(event) {
+function submitAIDeposit(event) {
     event.preventDefault();
     
-    const amount = document.getElementById('smartAmount').value;
-    const phone = document.getElementById('smartPhone').value;
-    const name = document.getElementById('smartName').value;
-    const code = document.getElementById('smartCode').value.toUpperCase();
-    const receipt = document.getElementById('smartReceipt').value;
+    const amount = document.getElementById('aiAmount').value;
+    const phone = document.getElementById('aiPhone').value;
+    const name = document.getElementById('aiName').value;
+    const code = document.getElementById('aiCode').value.toUpperCase();
+    const receipt = document.getElementById('aiReceipt').value;
     
     if (!amount || !phone || !name || !code) {
         alert('Please fill in all required fields');
@@ -485,7 +492,7 @@ function submitSmartDeposit(event) {
     
     const btn = event.target.querySelector('button[type="submit"]');
     btn.disabled = true;
-    btn.innerHTML = '🔄 Processing Smart Validation...';
+    btn.innerHTML = '🤖 AI Processing...';
     
     fetch('/smart_mpesa_deposit', {
         method: 'POST',
@@ -501,14 +508,9 @@ function submitSmartDeposit(event) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            // Show validation result
             showValidationResult(data.confidence, data.message);
-            
-            // Show success message
-            alert(`✅ ${data.message}`);
-            
-            // Close modal and refresh page
-            closeSmartMpesa();
+            alert(`🤖 ${data.message}`);
+            closeAIMpesa();
             setTimeout(() => {
                 window.location.reload();
             }, 1000);
@@ -517,12 +519,12 @@ function submitSmartDeposit(event) {
         }
         
         btn.disabled = false;
-        btn.innerHTML = '🚀 Submit Smart Deposit';
+        btn.innerHTML = '🤖 Submit AI Deposit';
     })
     .catch(error => {
         alert('❌ Network error. Please try again.');
         btn.disabled = false;
-        btn.innerHTML = '🚀 Submit Smart Deposit';
+        btn.innerHTML = '🤖 Submit AI Deposit';
     });
 }
 
@@ -554,14 +556,28 @@ function showValidationResult(confidence, message) {
     document.getElementById('validationFlags').innerHTML = `<small style="color: ${color};">📊 ${message}</small>`;
 }
 
-// Real-time validation as user types
+// AI receipt preview and real-time validation
 document.addEventListener('DOMContentLoaded', function() {
-    const codeInput = document.getElementById('smartCode');
+    const receiptInput = document.getElementById('aiReceiptFile');
+    if (receiptInput) {
+        receiptInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('aiReceiptImage').src = e.target.result;
+                    document.getElementById('aiReceiptPreview').style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+    }
+    
+    const codeInput = document.getElementById('aiCode');
     if (codeInput) {
         codeInput.addEventListener('input', function(e) {
             e.target.value = e.target.value.toUpperCase();
             
-            // Real-time validation preview
             const code = e.target.value;
             if (code.length >= 8) {
                 let confidence = 0;
@@ -575,7 +591,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
                 
                 if (confidence > 0) {
-                    showValidationResult(confidence, 'Preliminary validation - submit for full analysis');
+                    showValidationResult(confidence, '🤖 AI preliminary scan - submit for full analysis');
                 }
             }
         });
@@ -835,18 +851,15 @@ window.onclick = function(event) {
     const addModal = document.getElementById('addFundsModal');
     const withdrawModal = document.getElementById('withdrawModal');
     const cryptoModal = document.getElementById('cryptoDepositModal');
-    const smartMpesaModal = document.getElementById('smartMpesaModal');
-    if (event.target == addModal) {
-        addModal.style.display = 'none';
-    }
+    const aiMpesaModal = document.getElementById('aiMpesaModal');
     if (event.target == withdrawModal) {
         withdrawModal.style.display = 'none';
     }
     if (event.target == cryptoModal) {
         cryptoModal.style.display = 'none';
     }
-    if (event.target == smartMpesaModal) {
-        smartMpesaModal.style.display = 'none';
+    if (event.target == aiMpesaModal) {
+        aiMpesaModal.style.display = 'none';
     }
 }
 </script>
