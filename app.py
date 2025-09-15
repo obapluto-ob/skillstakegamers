@@ -1658,37 +1658,16 @@ def paypal_checkout():
         payment_data = {
             'intent': 'sale',
             'payer': {
-                'payment_method': 'paypal',
-                'payer_info': {
-                    'payment_method': 'paypal'
-                }
+                'payment_method': 'paypal'
             },
             'transactions': [{
                 'amount': {
                     'total': str(usd_amount),
                     'currency': 'USD'
                 },
-                'description': f'SkillStake Gaming Deposit - KSh {amount}',
-                'item_list': {
-                    'items': [{
-                        'name': 'SkillStake Gaming Credit',
-                        'sku': f'DEPOSIT_{amount}',
-                        'price': str(usd_amount),
-                        'currency': 'USD',
-                        'quantity': 1
-                    }]
-                },
-                'note_to_payer': 'Gaming platform deposit - supports guest checkout'
+                'description': f'SkillStake Gaming Deposit - KSh {amount}'
             }],
-            'note_to_payer': 'You can pay with credit/debit card without PayPal account',
             'redirect_urls': {
-                'return_url': 'https://skillstakegamers-wxc6.onrender.com/paypal_success',
-                'cancel_url': 'https://skillstakegamers-wxc6.onrender.com/paypal_cancel'
-            },
-            'application_context': {
-                'brand_name': 'SkillStake Gaming',
-                'landing_page': 'billing',
-                'user_action': 'commit',
                 'return_url': 'https://skillstakegamers-wxc6.onrender.com/paypal_success',
                 'cancel_url': 'https://skillstakegamers-wxc6.onrender.com/paypal_cancel'
             }
