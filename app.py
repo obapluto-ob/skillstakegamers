@@ -1620,7 +1620,11 @@ def paypal_checkout():
         
         client_id = os.getenv('PAYPAL_CLIENT_ID')
         client_secret = os.getenv('PAYPAL_CLIENT_SECRET')
-        base_url = 'https://api.paypal.com'
+        # Auto-detect sandbox vs production based on client ID
+        if client_id and client_id.startswith('SB'):
+            base_url = 'https://api.sandbox.paypal.com'
+        else:
+            base_url = 'https://api.paypal.com'
         
         if not client_id or not client_secret:
             flash('PayPal service unavailable', 'error')
@@ -1639,7 +1643,12 @@ def paypal_checkout():
                                      timeout=15)
         
         if token_response.status_code != 200:
-            flash('PayPal authentication failed', 'error')
+            try:
+                error_data = token_response.json()
+                error_msg = error_data.get('error_description', 'Authentication failed')
+                flash(f'PayPal error: {error_msg}', 'error')
+            except:
+                flash(f'PayPal authentication failed (Status: {token_response.status_code})', 'error')
             return redirect(url_for('wallet'))
         
         access_token = token_response.json()['access_token']
@@ -1695,13 +1704,15 @@ def paypal_checkout():
                 flash('PayPal approval URL not found', 'error')
                 return redirect(url_for('wallet'))
         else:
-            error_msg = 'PayPal payment creation failed'
             try:
                 error_data = payment_response.json()
-                error_msg = error_data.get('message', error_msg)
+                error_msg = error_data.get('message', f'Payment creation failed (Status: {payment_response.status_code})')
+                if 'details' in error_data:
+                    details = error_data['details'][0] if error_data['details'] else {}
+                    error_msg += f" - {details.get('issue', '')}"
+                flash(f'PayPal error: {error_msg}', 'error')
             except:
-                pass
-            flash(error_msg, 'error')
+                flash(f'PayPal payment creation failed (Status: {payment_response.status_code})', 'error')
             return redirect(url_for('wallet'))
         
     except requests.exceptions.Timeout:
@@ -1747,7 +1758,11 @@ def paypal_success():
         
         client_id = os.getenv('PAYPAL_CLIENT_ID')
         client_secret = os.getenv('PAYPAL_CLIENT_SECRET')
-        base_url = 'https://api.paypal.com'
+        # Auto-detect sandbox vs production based on client ID
+        if client_id and client_id.startswith('SB'):
+            base_url = 'https://api.sandbox.paypal.com'
+        else:
+            base_url = 'https://api.paypal.com'
         
         # Get OAuth token
         auth = base64.b64encode(f'{client_id}:{client_secret}'.encode()).decode()
