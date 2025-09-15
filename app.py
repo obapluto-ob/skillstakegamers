@@ -1521,36 +1521,97 @@ def crypto_manual_payment():
         <!DOCTYPE html>
         <html>
         <head>
-            <title>Crypto Payment</title>
+            <title>Crypto Payment Verification</title>
             <meta name="viewport" content="width=device-width, initial-scale=1">
             <style>
-                body {{ font-family: Arial, sans-serif; text-align: center; padding: 2rem; background: #f8f9fa; }}
+                body {{ font-family: Arial, sans-serif; padding: 1rem; background: #f8f9fa; }}
                 .container {{ max-width: 500px; margin: 0 auto; background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }}
                 .crypto-address {{ background: #f8f9fa; padding: 1rem; border-radius: 8px; margin: 1rem 0; word-break: break-all; font-family: monospace; }}
-                .btn {{ background: #28a745; color: white; padding: 1rem 2rem; border: none; border-radius: 8px; cursor: pointer; margin: 0.5rem; text-decoration: none; display: inline-block; }}
+                .btn {{ background: #28a745; color: white; padding: 1rem 2rem; border: none; border-radius: 8px; cursor: pointer; margin: 0.5rem; text-decoration: none; display: inline-block; width: 100%; }}
                 .btn-cancel {{ background: #dc3545; }}
+                .form-control {{ width: 100%; padding: 0.8rem; border: 1px solid #ddd; border-radius: 6px; margin: 0.5rem 0; }}
+                .step {{ background: #e7f3ff; padding: 1rem; border-radius: 8px; margin: 1rem 0; }}
             </style>
         </head>
         <body>
             <div class="container">
-                <h2>🔐 Crypto Payment</h2>
-                <p><strong>Amount:</strong> KSh {amount} (~${amount/130:.2f})</p>
-                <p><strong>Order ID:</strong> {order_id}</p>
+                <h2>🔐 Crypto Payment Verification</h2>
+                <p><strong>Amount:</strong> KSh {amount} (~${amount/130:.2f} USDT)</p>
                 
                 <div class="crypto-address">
                     <p><strong>USDT TRC-20 Address:</strong></p>
                     <code>TQn9Y2khEsLJW1ChVWFMSMeRDow5KcbLSE</code>
+                    <button onclick="copyAddress()" style="background: #17a2b8; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; margin-top: 0.5rem;">Copy Address</button>
                 </div>
                 
-                <p style="color: #666; font-size: 0.9rem;">Send exactly ${amount/130:.2f} USDT to the address above</p>
-                
-                <div style="margin: 2rem 0;">
-                    <a href="/crypto_success?amount={amount}" class="btn">✅ Payment Sent</a>
-                    <a href="/crypto_cancel" class="btn btn-cancel">❌ Cancel</a>
+                <div class="step">
+                    <h4>Step 1: Send Payment</h4>
+                    <p>Send exactly <strong>${amount/130:.2f} USDT</strong> to the address above using TRC-20 network</p>
                 </div>
                 
-                <p style="font-size: 0.8rem; color: #999;">Funds will be credited after blockchain confirmation (5-15 minutes)</p>
+                <div class="step">
+                    <h4>Step 2: Get Transaction ID</h4>
+                    <p>After sending, copy the <strong>Transaction ID (TXID)</strong> from your wallet</p>
+                </div>
+                
+                <div class="step">
+                    <h4>Step 3: Verify Payment</h4>
+                    <form onsubmit="verifyPayment(event)">
+                        <input type="text" id="txid" class="form-control" placeholder="Enter Transaction ID (TXID)" required>
+                        <input type="hidden" id="amount" value="{amount}">
+                        <button type="submit" class="btn" id="verifyBtn">✅ Verify Payment</button>
+                    </form>
+                </div>
+                
+                <a href="/crypto_cancel" class="btn btn-cancel">❌ Cancel Payment</a>
             </div>
+            
+            <script>
+                function copyAddress() {{
+                    navigator.clipboard.writeText('TQn9Y2khEsLJW1ChVWFMSMeRDow5KcbLSE');
+                    alert('Address copied to clipboard!');
+                }}
+                
+                function verifyPayment(event) {{
+                    event.preventDefault();
+                    const txid = document.getElementById('txid').value.trim();
+                    const amount = document.getElementById('amount').value;
+                    const btn = document.getElementById('verifyBtn');
+                    
+                    if (!txid) {{
+                        alert('Please enter transaction ID');
+                        return;
+                    }}
+                    
+                    btn.disabled = true;
+                    btn.textContent = 'Verifying...';
+                    
+                    fetch('/verify_crypto_payment', {{
+                        method: 'POST',
+                        headers: {{'Content-Type': 'application/json'}},
+                        body: JSON.stringify({{
+                            txid: txid,
+                            amount: parseFloat(amount)
+                        }})
+                    }})
+                    .then(response => response.json())
+                    .then(data => {{
+                        if (data.success) {{
+                            alert('✅ ' + data.message);
+                            window.location.href = '/wallet';
+                        }} else {{
+                            alert('❌ ' + data.error);
+                        }}
+                        btn.disabled = false;
+                        btn.textContent = '✅ Verify Payment';
+                    }})
+                    .catch(error => {{
+                        alert('Verification failed. Please try again.');
+                        btn.disabled = false;
+                        btn.textContent = '✅ Verify Payment';
+                    }});
+                }}
+            </script>
         </body>
         </html>
         '''
@@ -2607,6 +2668,106 @@ def reject_deposit(transaction_id):
         
     except Exception as e:
         return jsonify({'success': False, 'message': 'Error rejecting deposit'})
+
+@app.route('/verify_crypto_payment', methods=['POST'])
+@login_required
+def verify_crypto_payment():
+    try:
+        data = request.get_json()
+        txid = data.get('txid', '').strip()
+        amount = float(data.get('amount', 0))
+        
+        if not txid or amount < 1950:
+            return jsonify({'success': False, 'error': 'Invalid transaction ID or amount'})
+        
+        # Check if TXID already used
+        with get_db_connection() as conn:
+            c = conn.cursor()
+            c.execute('SELECT id FROM transactions WHERE description LIKE ?', (f'%{txid}%',))
+            if c.fetchone():
+                return jsonify({'success': False, 'error': 'Transaction ID already used'})
+        
+        # Verify transaction on TRON blockchain
+        expected_amount = amount / 130  # Convert KSh to USD
+        
+        try:
+            # Use TronGrid API to verify transaction
+            tron_api_url = f'https://api.trongrid.io/v1/transactions/{txid}'
+            response = requests.get(tron_api_url, timeout=10)
+            
+            if response.status_code == 200:
+                tx_data = response.json()
+                
+                # Check if transaction exists and is successful
+                if not tx_data or 'ret' not in tx_data:
+                    return jsonify({'success': False, 'error': 'Transaction not found on blockchain'})
+                
+                if tx_data['ret'][0]['contractRet'] != 'SUCCESS':
+                    return jsonify({'success': False, 'error': 'Transaction failed on blockchain'})
+                
+                # Verify transaction details
+                contract = tx_data['raw_data']['contract'][0]
+                if contract['type'] != 'TransferContract':
+                    return jsonify({'success': False, 'error': 'Invalid transaction type'})
+                
+                # Check recipient address (your USDT address)
+                to_address = contract['parameter']['value']['to_address']
+                expected_address = 'TQn9Y2khEsLJW1ChVWFMSMeRDow5KcbLSE'
+                
+                # Convert hex address to base58
+                import base58
+                to_address_base58 = base58.b58encode_check(bytes.fromhex('41' + to_address[2:])).decode()
+                
+                if to_address_base58 != expected_address:
+                    return jsonify({'success': False, 'error': 'Payment sent to wrong address'})
+                
+                # Check amount (USDT has 6 decimals)
+                tx_amount = int(contract['parameter']['value']['amount']) / 1000000
+                
+                if abs(tx_amount - expected_amount) > 0.1:  # Allow 0.1 USDT tolerance
+                    return jsonify({'success': False, 'error': f'Amount mismatch. Expected ${expected_amount:.2f}, got ${tx_amount:.2f}'})
+                
+                # Check transaction age (must be recent, within 24 hours)
+                import time
+                tx_timestamp = tx_data['block_timestamp'] / 1000
+                current_time = time.time()
+                
+                if current_time - tx_timestamp > 86400:  # 24 hours
+                    return jsonify({'success': False, 'error': 'Transaction too old (must be within 24 hours)'})
+                
+                # All checks passed - credit user account
+                with get_db_connection() as conn:
+                    c = conn.cursor()
+                    
+                    # Update user balance
+                    current_balance = session.get('balance', 0)
+                    new_balance = current_balance + amount
+                    c.execute('UPDATE users SET balance = ? WHERE id = ?', (new_balance, session['user_id']))
+                    session['balance'] = new_balance
+                    
+                    # Record transaction
+                    description = f'Crypto deposit verified - KSh {amount} (${expected_amount:.2f}) - TXID: {txid}'
+                    c.execute('''INSERT INTO transactions (user_id, type, amount, description) 
+                               VALUES (?, ?, ?, ?)''',
+                             (session['user_id'], 'crypto_deposit', amount, description))
+                    
+                    conn.commit()
+                
+                return jsonify({
+                    'success': True, 
+                    'message': f'Payment verified! KSh {amount} added to your balance.'
+                })
+            
+            else:
+                return jsonify({'success': False, 'error': 'Unable to verify transaction on blockchain'})
+                
+        except requests.exceptions.RequestException:
+            return jsonify({'success': False, 'error': 'Blockchain verification service unavailable'})
+        except Exception as e:
+            return jsonify({'success': False, 'error': 'Transaction verification failed'})
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': 'Invalid request'})
 
 @app.route('/nowpayments_webhook', methods=['POST'])
 def nowpayments_webhook():
