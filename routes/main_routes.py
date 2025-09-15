@@ -1,5 +1,6 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session, jsonify
 from database_manager import db_manager
+from database import get_db_connection
 
 main_bp = Blueprint('main', __name__)
 

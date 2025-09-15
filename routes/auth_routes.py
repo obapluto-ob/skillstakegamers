@@ -9,6 +9,7 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from datetime import datetime, timedelta
 from database_manager import db_manager
+from database import get_db_connection
 
 auth_bp = Blueprint('auth', __name__)
 
