@@ -3422,11 +3422,11 @@ def send_admin_deposit_alert(deposit_data):
                 </div>
                 
                 <div style="text-align: center; margin: 30px 0;">
-                    <a href="https://skillstakegamers-wxc6.onrender.com/admin_deposits" 
+                    <a href="https://skillstakegamers-wxc6.onrender.com/admin_login?action=approve&id={deposit_data['transaction_id']}" 
                        style="background: linear-gradient(135deg, #28a745, #20c997); color: white; padding: 15px 30px; text-decoration: none; border-radius: 50px; font-weight: bold; display: inline-block; margin: 10px;">
                         ✅ APPROVE DEPOSIT
                     </a>
-                    <a href="https://skillstakegamers-wxc6.onrender.com/admin_deposits" 
+                    <a href="https://skillstakegamers-wxc6.onrender.com/admin_login?action=reject&id={deposit_data['transaction_id']}" 
                        style="background: linear-gradient(135deg, #dc3545, #c82333); color: white; padding: 15px 30px; text-decoration: none; border-radius: 50px; font-weight: bold; display: inline-block; margin: 10px;">
                         ❌ REJECT DEPOSIT
                     </a>
@@ -3542,7 +3542,10 @@ def approve_smart_deposit(transaction_id):
         with get_db_connection() as conn:
             c = conn.cursor()
             
-            c.execute('SELECT * FROM transactions WHERE id = ? AND type = "smart_pending_deposit"', (transaction_id,))
+            c.execute('''SELECT t.*, u.username, u.email 
+                       FROM transactions t
+                       JOIN users u ON t.user_id = u.id
+                       WHERE t.id = ? AND t.type = "smart_pending_deposit"''', (transaction_id,))
             transaction = c.fetchone()
             
             if not transaction:
@@ -3550,6 +3553,8 @@ def approve_smart_deposit(transaction_id):
             
             user_id = transaction[1]
             amount = transaction[3]
+            username = transaction[6]
+            user_email = transaction[7]
             
             # Update user balance
             c.execute('SELECT balance FROM users WHERE id = ?', (user_id,))
@@ -3562,7 +3567,232 @@ def approve_smart_deposit(transaction_id):
             
             conn.commit()
             
-        return jsonify({'success': True, 'message': f'✅ Smart deposit approved! KSh {amount} credited to user.'})
+            # Send user notification
+            send_user_notification(user_email, username, amount, 'approved')
+            
+        return jsonify({'success': True, 'message': f'✅ Deposit approved! KSh {amount} credited. User notified by email.'})
         
     except Exception as e:
         return jsonify({'success': False, 'message': 'Approval failed'})
+
+def send_user_notification(user_email, username, amount, status, reason=None):
+    """📧 Send email to user when deposit is approved/rejected"""
+    try:
+        gmail_user = os.getenv('GMAIL_USER')
+        gmail_pass = os.getenv('GMAIL_PASS')
+        
+        if not gmail_user or not gmail_pass:
+            return False
+        
+        msg = MIMEMultipart()
+        msg['From'] = gmail_user
+        msg['To'] = user_email
+        
+        if status == 'approved':
+            msg['Subject'] = f'✅ Deposit Approved - KSh {amount} Added to Your Balance'
+            status_color = '#28a745'
+            status_icon = '✅'
+            status_text = 'APPROVED'
+            message = f'Your M-Pesa deposit of KSh {amount} has been approved and added to your balance!'
+        else:
+            msg['Subject'] = f'❌ Deposit Rejected - KSh {amount}'
+            status_color = '#dc3545'
+            status_icon = '❌'
+            status_text = 'REJECTED'
+            message = f'Your M-Pesa deposit of KSh {amount} was rejected. Reason: {reason or "Invalid receipt or transaction details"}'
+        
+        body = f'''
+        <html>
+        <body style="font-family: Arial, sans-serif; background: #f8f9fa; padding: 20px;">
+            <div style="max-width: 600px; margin: 0 auto; background: white; border-radius: 15px; padding: 30px; box-shadow: 0 10px 30px rgba(0,0,0,0.1);">
+                <div style="text-align: center; margin-bottom: 30px;">
+                    <h1 style="color: #667eea; margin: 0;">🎮 SkillStake Gaming</h1>
+                    <h2 style="color: {status_color}; margin: 10px 0;">{status_icon} DEPOSIT {status_text}</h2>
+                </div>
+                
+                <div style="background: linear-gradient(135deg, {status_color}, {status_color}aa); color: white; padding: 20px; border-radius: 10px; margin: 20px 0; text-align: center;">
+                    <h3 style="margin: 0;">💰 KSh {amount:,.0f}</h3>
+                    <p style="margin: 5px 0; font-size: 18px;">{status_text}</p>
+                </div>
+                
+                <div style="background: #f8f9fa; padding: 20px; border-radius: 10px; margin: 20px 0;">
+                    <h4 style="color: #495057; margin-top: 0;">Hello {username}!</h4>
+                    <p>{message}</p>
+                    {'<p><strong>Next Steps:</strong> You can now use your balance to play games and join tournaments!</p>' if status == 'approved' else '<p><strong>Next Steps:</strong> Please submit a new deposit with correct details.</p>'}
+                </div>
+                
+                <div style="text-align: center; margin: 30px 0;">
+                    <a href="https://skillstakegamers-wxc6.onrender.com/wallet" 
+                       style="background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 15px 30px; text-decoration: none; border-radius: 50px; font-weight: bold; display: inline-block;">
+                        💰 View Wallet
+                    </a>
+                </div>
+                
+                <div style="text-align: center; color: #6c757d; font-size: 14px; margin-top: 30px;">
+                    <p>Thank you for using SkillStake Gaming Platform!</p>
+                    <p>🕒 {time.strftime('%Y-%m-%d %H:%M:%S')}</p>
+                </div>
+            </div>
+        </body>
+        </html>
+        '''
+        
+        msg.attach(MIMEText(body, 'html'))
+        
+        server = smtplib.SMTP('smtp.gmail.com', 587)
+        server.starttls()
+        server.login(gmail_user, gmail_pass)
+        text = msg.as_string()
+        server.sendmail(gmail_user, user_email, text)
+        server.quit()
+        
+        return True
+        
+    except Exception as e:
+        print(f'User notification failed: {e}')
+        return False
+
+@app.route('/admin_login')
+def admin_login():
+    """Admin login page with action handling"""
+    action = request.args.get('action')
+    transaction_id = request.args.get('id')
+    
+    if action and transaction_id:
+        session['pending_action'] = {'action': action, 'id': transaction_id}
+    
+    return f'''
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Admin Login - SkillStake</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <style>
+            body {{ font-family: Arial, sans-serif; background: linear-gradient(135deg, #667eea, #764ba2); margin: 0; padding: 20px; min-height: 100vh; display: flex; align-items: center; justify-content: center; }}
+            .login-box {{ background: white; padding: 2rem; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); max-width: 400px; width: 100%; }}
+            .form-control {{ width: 100%; padding: 1rem; border: 2px solid #ddd; border-radius: 8px; margin: 1rem 0; font-size: 1rem; }}
+            .btn {{ background: linear-gradient(135deg, #28a745, #20c997); color: white; padding: 1rem 2rem; border: none; border-radius: 8px; cursor: pointer; width: 100%; font-size: 1rem; font-weight: bold; }}
+            .btn:hover {{ transform: translateY(-2px); }}
+            h1 {{ text-align: center; color: #333; margin-bottom: 2rem; }}
+        </style>
+    </head>
+    <body>
+        <div class="login-box">
+            <h1>🔐 Admin Login</h1>
+            <form method="POST" action="/admin_login_process">
+                <input type="password" name="password" class="form-control" placeholder="Enter admin password" required>
+                <button type="submit" class="btn">🚀 Login & Process Action</button>
+            </form>
+        </div>
+    </body>
+    </html>
+    '''
+
+@app.route('/admin_login_process', methods=['POST'])
+def admin_login_process():
+    """Process admin login and handle pending actions"""
+    password = request.form.get('password')
+    
+    if password != os.getenv('ADMIN_PASSWORD'):
+        return redirect(url_for('admin_login') + '?error=invalid')
+    
+    # Set admin session
+    session['user_id'] = 1
+    session['username'] = 'admin'
+    session['is_admin'] = True
+    
+    # Handle pending action
+    if 'pending_action' in session:
+        action_data = session.pop('pending_action')
+        action = action_data['action']
+        transaction_id = int(action_data['id'])
+        
+        if action == 'approve':
+            return redirect(f'/admin_approve_email/{transaction_id}')
+        elif action == 'reject':
+            return redirect(f'/admin_reject_email/{transaction_id}')
+    
+    return redirect(url_for('admin_deposits'))
+
+@app.route('/admin_approve_email/<int:transaction_id>')
+@login_required
+def admin_approve_email(transaction_id):
+    """Admin approves deposit from email link"""
+    if session.get('username') != 'admin':
+        return redirect(url_for('admin_login'))
+    
+    try:
+        with get_db_connection() as conn:
+            c = conn.cursor()
+            
+            c.execute('''SELECT t.*, u.username, u.email 
+                       FROM transactions t
+                       JOIN users u ON t.user_id = u.id
+                       WHERE t.id = ? AND t.type = "smart_pending_deposit"''', (transaction_id,))
+            transaction = c.fetchone()
+            
+            if not transaction:
+                return 'Transaction not found or already processed'
+            
+            user_id = transaction[1]
+            amount = transaction[3]
+            username = transaction[6]
+            user_email = transaction[7]
+            
+            # Update user balance
+            c.execute('SELECT balance FROM users WHERE id = ?', (user_id,))
+            current_balance = c.fetchone()[0] or 0
+            new_balance = current_balance + amount
+            c.execute('UPDATE users SET balance = ? WHERE id = ?', (new_balance, user_id))
+            
+            # Update transaction status
+            c.execute('UPDATE transactions SET type = "completed", description = REPLACE(description, "smart_pending_deposit", "APPROVED by admin") WHERE id = ?', (transaction_id,))
+            
+            conn.commit()
+            
+            # Send user notification
+            send_user_notification(user_email, username, amount, 'approved')
+            
+        return f'<h1>✅ Deposit Approved!</h1><p>KSh {amount} credited to {username}. User notified by email.</p><a href="/admin_deposits">View Admin Panel</a>'
+        
+    except Exception as e:
+        return f'<h1>❌ Error</h1><p>Could not approve deposit: {str(e)}</p>'
+
+@app.route('/admin_reject_email/<int:transaction_id>')
+@login_required
+def admin_reject_email(transaction_id):
+    """Admin rejects deposit from email link"""
+    if session.get('username') != 'admin':
+        return redirect(url_for('admin_login'))
+    
+    try:
+        with get_db_connection() as conn:
+            c = conn.cursor()
+            
+            c.execute('''SELECT t.*, u.username, u.email 
+                       FROM transactions t
+                       JOIN users u ON t.user_id = u.id
+                       WHERE t.id = ? AND t.type = "smart_pending_deposit"''', (transaction_id,))
+            transaction = c.fetchone()
+            
+            if not transaction:
+                return 'Transaction not found or already processed'
+            
+            amount = transaction[3]
+            username = transaction[6]
+            user_email = transaction[7]
+            
+            # Update transaction status
+            reason = 'Invalid receipt or transaction details'
+            c.execute('UPDATE transactions SET type = "rejected_deposit", description = description || " - Rejected: " || ? WHERE id = ?', 
+                     (reason, transaction_id))
+            
+            conn.commit()
+            
+            # Send user notification
+            send_user_notification(user_email, username, amount, 'rejected', reason)
+            
+        return f'<h1>❌ Deposit Rejected</h1><p>{username} notified by email about rejection.</p><a href="/admin_deposits">View Admin Panel</a>'
+        
+    except Exception as e:
+        return f'<h1>❌ Error</h1><p>Could not reject deposit: {str(e)}</p>'
