@@ -1,0 +1,21 @@
+USER BACKUP SUMMARY
+==================
+ID: 1, Username: plutomania, Email: obedemoni@gmail.com, Balance: 6390.5599999999995
+ID: 2, Username: admin, Email: admin@gamebet.com, Balance: 0.0
+ID: 3, Username: pluto, Email: obedemoni153@gmail.com, Balance: 150.0
+ID: 4, Username: plutot, Email: 0729237055@gamebet.local, Balance: 0.0
+ID: 5, Username: obapluto, Email: 0729237059@gamebet.local, Balance: 79.5
+ID: 6, Username: kasongo, Email: 0729237050@gamebet.local, Balance: 335.0
+ID: 7, Username: kaleb, Email: 0797656882@gamebet.local, Balance: 1342.5
+ID: 8, Username: skubii, Email: 0729237051@gamebet.local, Balance: 0.0
+ID: 9, Username: test_deposit_user, Email: test_deposit_user@test.com, Balance: 970.0
+ID: 10, Username: test_withdrawal_user, Email: test_withdrawal_user@test.com, Balance: 0.0
+ID: 11, Username: test_refund_user, Email: test_refund_user@test.com, Balance: 0.0
+ID: 12, Username: kasongomustgo, Email: 0729237053@gamebet.local, Balance: 523.5
+ID: 13, Username: kolul, Email: 0789187292@gamebet.local, Balance: 0.0
+ID: 14, Username: kolu, Email: 0789187291@gamebet.local, Balance: 3099.2400000000002
+ID: 15, Username: testuser, Email: 0712345678@gamebet.local, Balance: 0.0
+ID: 197, Username: micheal, Email: michealbyers750@gmail.com, Balance: 0.0
+ID: 207, Username: uradii, Email: owenemoniates@gmail.com, Balance: 8450.0
+ID: 364, Username: magumba, Email: emonigatsaucee@gmail.com, Balance: 730.0
+ID: 999, Username: testuser999, Email: test999@test.com, Balance: 1000.0

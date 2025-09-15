@@ -1,9 +1,10 @@
 import os
 import sqlite3
 from urllib.parse import urlparse
+from database_manager import db_manager
 
 def get_db_connection():
-    """Get database connection - PostgreSQL for production, SQLite for local"""
+    """LEGACY: Use db_manager for new code. Kept for compatibility."""
     database_url = os.getenv('DATABASE_URL')
     
     if database_url:
@@ -22,13 +23,30 @@ def get_db_connection():
             return conn
         except ImportError:
             print("psycopg2 not installed, falling back to SQLite")
-            return sqlite3.connect('gamebet.db')
+            # Use safe connection from db_manager
+            return sqlite3.connect('gamebet.db', timeout=30.0)
     else:
-        # Local development - SQLite
-        return sqlite3.connect('gamebet.db')
+        # Local development - SQLite with safety features
+        conn = sqlite3.connect('gamebet.db', timeout=30.0)
+        conn.execute('PRAGMA foreign_keys = ON')
+        conn.execute('PRAGMA journal_mode = WAL')
+        return conn
 
 def init_database():
-    """Initialize database tables"""
+    """Initialize database tables - ENHANCED VERSION"""
+    print("Initializing database with enhanced safety...")
+    
+    # Use the new database manager for safety
+    try:
+        db_manager.strengthen_database()
+        print("Database initialized successfully with all safety features!")
+    except Exception as e:
+        print(f"Using fallback initialization: {e}")
+        # Fallback to original method if needed
+        _legacy_init_database()
+
+def _legacy_init_database():
+    """Legacy database initialization - kept for compatibility"""
     conn = get_db_connection()
     c = conn.cursor()
     
@@ -49,10 +67,13 @@ def init_database():
             losses INTEGER DEFAULT 0,
             total_earnings REAL DEFAULT 0.0,
             referred_by INTEGER,
-            banned INTEGER DEFAULT 0
+            banned INTEGER DEFAULT 0,
+            skill_tokens INTEGER DEFAULT 0,
+            email_verified INTEGER DEFAULT 0,
+            last_login TIMESTAMP
         )''')
     else:
-        # SQLite syntax
+        # SQLite syntax - ENHANCED
         c.execute('''CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT UNIQUE NOT NULL,
@@ -66,14 +87,17 @@ def init_database():
             losses INTEGER DEFAULT 0,
             total_earnings REAL DEFAULT 0.0,
             referred_by INTEGER,
-            banned INTEGER DEFAULT 0
+            banned INTEGER DEFAULT 0,
+            skill_tokens INTEGER DEFAULT 0,
+            email_verified INTEGER DEFAULT 0,
+            last_login TIMESTAMP
         )''')
     
     if database_url:
         # PostgreSQL syntax
         c.execute('''CREATE TABLE IF NOT EXISTS transactions (
             id SERIAL PRIMARY KEY,
-            user_id INTEGER,
+            user_id INTEGER REFERENCES users(id),
             type TEXT NOT NULL,
             amount REAL NOT NULL,
             description TEXT,
@@ -81,22 +105,27 @@ def init_database():
             payment_proof TEXT
         )''')
         
-        c.execute('''CREATE TABLE IF NOT EXISTS matches (
+        c.execute('''CREATE TABLE IF NOT EXISTS game_matches (
             id SERIAL PRIMARY KEY,
-            game TEXT NOT NULL,
-            player1_id INTEGER,
-            player2_id INTEGER,
-            bet_amount REAL NOT NULL,
+            game_type TEXT NOT NULL,
+            game_mode TEXT NOT NULL,
+            creator_id INTEGER REFERENCES users(id),
+            creator_game_username TEXT NOT NULL,
+            opponent_id INTEGER REFERENCES users(id),
+            opponent_game_username TEXT,
+            stake_amount REAL NOT NULL,
             total_pot REAL NOT NULL,
-            winner_id INTEGER,
-            status TEXT DEFAULT 'pending',
-            game_mode TEXT DEFAULT 'Standard',
+            winner_id INTEGER REFERENCES users(id),
+            status TEXT DEFAULT 'open',
+            creator_score INTEGER DEFAULT 0,
+            opponent_score INTEGER DEFAULT 0,
+            commission REAL DEFAULT 0,
+            match_start_time TIMESTAMP,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            verification_type TEXT DEFAULT 'ocr',
-            match_type TEXT DEFAULT 'public'
+            completed_at TIMESTAMP
         )''')
     else:
-        # SQLite syntax
+        # SQLite syntax - ENHANCED
         c.execute('''CREATE TABLE IF NOT EXISTS transactions (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER,
@@ -104,24 +133,46 @@ def init_database():
             amount REAL NOT NULL,
             description TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            payment_proof TEXT
+            payment_proof TEXT,
+            FOREIGN KEY (user_id) REFERENCES users (id)
         )''')
         
-        c.execute('''CREATE TABLE IF NOT EXISTS matches (
+        c.execute('''CREATE TABLE IF NOT EXISTS game_matches (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            game TEXT NOT NULL,
-            player1_id INTEGER,
-            player2_id INTEGER,
-            bet_amount REAL NOT NULL,
+            game_type TEXT NOT NULL,
+            game_mode TEXT NOT NULL,
+            creator_id INTEGER NOT NULL,
+            creator_game_username TEXT NOT NULL,
+            opponent_id INTEGER,
+            opponent_game_username TEXT,
+            stake_amount REAL NOT NULL,
             total_pot REAL NOT NULL,
             winner_id INTEGER,
-            status TEXT DEFAULT 'pending',
-            game_mode TEXT DEFAULT 'Standard',
+            status TEXT DEFAULT 'open',
+            creator_score INTEGER DEFAULT 0,
+            opponent_score INTEGER DEFAULT 0,
+            commission REAL DEFAULT 0,
+            match_start_time TIMESTAMP,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            verification_type TEXT DEFAULT 'ocr',
-            match_type TEXT DEFAULT 'public'
+            completed_at TIMESTAMP,
+            FOREIGN KEY (creator_id) REFERENCES users (id),
+            FOREIGN KEY (opponent_id) REFERENCES users (id),
+            FOREIGN KEY (winner_id) REFERENCES users (id)
         )''')
     
     if not database_url:
         conn.commit()
     conn.close()
+
+# Safe database operations
+def safe_execute(query, params=None):
+    """Execute database query safely"""
+    return db_manager.safe_execute(query, params)
+
+def export_user_data(user_id):
+    """Export user data for recovery"""
+    return db_manager.export_user_data(user_id)
+
+def get_database_stats():
+    """Get database statistics"""
+    return db_manager.get_database_stats()
