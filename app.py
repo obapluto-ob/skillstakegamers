@@ -1854,6 +1854,18 @@ def paypal_success():
 @app.route('/paypal_cancel')
 @login_required
 def paypal_cancel():
+    try:
+        # Update the most recent initiated PayPal transaction to cancelled
+        with get_db_connection() as conn:
+            c = conn.cursor()
+            c.execute('''UPDATE transactions 
+                       SET type = "paypal_cancelled", description = description || " - CANCELLED"
+                       WHERE user_id = ? AND type = "paypal_initiated" 
+                       ORDER BY created_at DESC LIMIT 1''', (session['user_id'],))
+            conn.commit()
+    except:
+        pass
+    
     flash('PayPal payment cancelled', 'info')
     return redirect(url_for('wallet'))
 
@@ -1880,6 +1892,18 @@ def crypto_success():
 @app.route('/crypto_cancel')
 @login_required
 def crypto_cancel():
+    try:
+        # Update the most recent initiated crypto transaction to cancelled
+        with get_db_connection() as conn:
+            c = conn.cursor()
+            c.execute('''UPDATE transactions 
+                       SET type = "crypto_cancelled", description = description || " - CANCELLED"
+                       WHERE user_id = ? AND type = "crypto_initiated" 
+                       ORDER BY created_at DESC LIMIT 1''', (session['user_id'],))
+            conn.commit()
+    except:
+        pass
+    
     flash('Crypto payment cancelled', 'info')
     return redirect(url_for('wallet'))
 
