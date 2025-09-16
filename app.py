@@ -323,12 +323,12 @@ def admin_tournaments():
 @app.route('/wallet')
 @login_required
 def wallet():
-    return redirect(url_for('dashboard'))
+    return render_template('wallet.html')
 
 @app.route('/quick_matches')
 @login_required
 def quick_matches():
-    return redirect(url_for('dashboard'))
+    return render_template('quick_matches.html')
 
 @app.route('/games', endpoint='games')
 def games_page():
@@ -371,7 +371,7 @@ def match_history():
 @app.route('/profile')
 @login_required
 def profile():
-    return redirect(url_for('dashboard'))
+    return render_template('profile.html')
 
 @app.route('/support_chat')
 @login_required
