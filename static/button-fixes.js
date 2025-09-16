@@ -127,14 +127,14 @@ window.refreshUserStats = function() {
         .then(data => {
             if (data.success) {
                 console.log('Stats refreshed:', data.stats);
-                location.reload();
             } else {
                 console.log('Refresh failed:', data.error);
-                location.reload();
             }
         })
         .catch(err => {
             console.log('Refresh error:', err);
+        })
+        .finally(() => {
             location.reload();
         });
 };

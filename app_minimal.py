@@ -14,8 +14,8 @@ def get_db_connection():
     return sqlite3.connect('gamebet.db', timeout=30.0)
 
 def init_database():
-    conn = get_db_connection()
-    c = conn.cursor()
+    with get_db_connection() as conn:
+        c = conn.cursor()
     c.execute('''CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         username TEXT UNIQUE NOT NULL,
@@ -73,8 +73,7 @@ def init_database():
                      VALUES (?, ?, ?, ?, ?, ?)''',
                  ('admin', 'admin@skillstake.com', admin_password, 0.0, '0700000000', 'ADMIN001'))
     
-    conn.commit()
-    conn.close()
+        conn.commit()
 
 def login_required(f):
     def wrapper(*args, **kwargs):

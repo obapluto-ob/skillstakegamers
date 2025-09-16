@@ -5,7 +5,7 @@ with open('app.py', 'r', encoding='utf-8') as f:
     content = f.read()
 
 # Find all route definitions and their function names
-route_pattern = r'@app\.route\([^)]+\)\s*(?:@[^@]*\s*)*def\s+(\w+)'
+route_pattern = r'@app\.route\([^)]+\)\s*(?:@[^\n]*\n\s*)*def\s+(\w+)'
 matches = list(re.finditer(route_pattern, content, re.MULTILINE | re.DOTALL))
 
 # Track seen functions and their positions

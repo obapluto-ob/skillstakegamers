@@ -6,8 +6,8 @@ import json
 def test_database():
     """Test if unique features database is working"""
     try:
-        conn = sqlite3.connect('gamebet.db')
-        c = conn.cursor()
+        with sqlite3.connect('gamebet.db') as conn:
+            c = conn.cursor()
         
         print("TESTING UNIQUE FEATURES DATABASE:")
         print("=" * 50)
@@ -35,8 +35,7 @@ def test_database():
         for tx in transactions:
             print(f"  {tx[0]}: KSh {tx[1]} - {tx[2]}")
         
-        conn.close()
-        return True
+            return True
         
     except Exception as e:
         print(f"DATABASE ERROR: {e}")
@@ -77,8 +76,8 @@ def test_routes():
 def create_test_data():
     """Create some test data for unique features"""
     try:
-        conn = sqlite3.connect('gamebet.db')
-        c = conn.cursor()
+        with sqlite3.connect('gamebet.db') as conn:
+            c = conn.cursor()
         
         print("\nCREATING TEST DATA:")
         print("=" * 50)
@@ -100,11 +99,10 @@ def create_test_data():
         c.execute("INSERT INTO skill_tokens (user_id, token_type, amount, source) VALUES (?, 'daily', 50, 'test_data')", (user_id,))
         c.execute("INSERT INTO skill_tokens (user_id, token_type, amount, source) VALUES (?, 'win', 25, 'test_data')", (user_id,))
         
-        conn.commit()
-        conn.close()
-        
-        print("OK: Test data created successfully")
-        return True
+            conn.commit()
+            
+            print("OK: Test data created successfully")
+            return True
         
     except Exception as e:
         print(f"TEST DATA ERROR: {e}")

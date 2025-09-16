@@ -20,6 +20,14 @@ class EventManager {
     }
     
     cleanup() {
+        // Remove all tracked event listeners before clearing
+        this.listeners.forEach((handler, element) => {
+            if (element && element.removeEventListener && handler) {
+                element.removeEventListener('click', handler);
+                element.removeEventListener('input', handler);
+                element.removeEventListener('change', handler);
+            }
+        });
         this.listeners.clear();
     }
 }

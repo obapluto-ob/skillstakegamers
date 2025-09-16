@@ -90,16 +90,28 @@ class WithdrawalNotifications {
     }
 
     showNotification(title, message, type) {
-        // Create notification element
+        // Create notification element safely
         const notification = document.createElement('div');
         notification.className = `notification notification-${type}`;
-        notification.innerHTML = `
-            <div class="notification-content">
-                <h4>${title}</h4>
-                <p>${message}</p>
-            </div>
-            <button class="notification-close" onclick="this.parentElement.remove()">×</button>
-        `;
+        
+        const content = document.createElement('div');
+        content.className = 'notification-content';
+        
+        const titleEl = document.createElement('h4');
+        titleEl.textContent = title;
+        
+        const messageEl = document.createElement('p');
+        messageEl.textContent = message;
+        
+        const closeBtn = document.createElement('button');
+        closeBtn.className = 'notification-close';
+        closeBtn.textContent = '×';
+        closeBtn.onclick = () => notification.remove();
+        
+        content.appendChild(titleEl);
+        content.appendChild(messageEl);
+        notification.appendChild(content);
+        notification.appendChild(closeBtn);
         
         // Add styles
         notification.style.cssText = `
@@ -135,23 +147,47 @@ class WithdrawalNotifications {
     }
 
     updatePageForCompletion(paymentProof) {
-        // Update withdrawal status display
+        // Update withdrawal status display safely
         const statusElement = document.getElementById('withdrawalStatus');
         if (statusElement) {
-            statusElement.innerHTML = `
-                <div style="background: linear-gradient(135deg, #d4edda, #c3e6cb); padding: 1.5rem; border-radius: 12px; text-align: center;">
-                    <h3 style="color: #155724; margin: 0 0 1rem 0;">🎉 Payment Completed!</h3>
-                    <p style="color: #155724; margin: 0;">Your withdrawal has been processed successfully. Check your M-Pesa for confirmation.</p>
-                    ${paymentProof ? `
-                        <div style="margin-top: 1rem;">
-                            <p style="font-size: 0.9rem; color: #155724;">Admin's Payment Screenshot:</p>
-                            <img src="data:image/jpeg;base64,${paymentProof}" 
-                                 style="max-width: 200px; max-height: 150px; border-radius: 8px; cursor: pointer;" 
-                                 onclick="this.style.maxWidth='100%'; this.style.maxHeight='none';">
-                        </div>
-                    ` : ''}
-                </div>
-            `;
+            statusElement.innerHTML = '';
+            
+            const container = document.createElement('div');
+            container.style.cssText = 'background: linear-gradient(135deg, #d4edda, #c3e6cb); padding: 1.5rem; border-radius: 12px; text-align: center;';
+            
+            const title = document.createElement('h3');
+            title.style.cssText = 'color: #155724; margin: 0 0 1rem 0;';
+            title.textContent = '🎉 Payment Completed!';
+            
+            const message = document.createElement('p');
+            message.style.cssText = 'color: #155724; margin: 0;';
+            message.textContent = 'Your withdrawal has been processed successfully. Check your M-Pesa for confirmation.';
+            
+            container.appendChild(title);
+            container.appendChild(message);
+            
+            if (paymentProof) {
+                const proofDiv = document.createElement('div');
+                proofDiv.style.marginTop = '1rem';
+                
+                const proofLabel = document.createElement('p');
+                proofLabel.style.cssText = 'font-size: 0.9rem; color: #155724;';
+                proofLabel.textContent = "Admin's Payment Screenshot:";
+                
+                const proofImg = document.createElement('img');
+                proofImg.src = `data:image/jpeg;base64,${paymentProof}`;
+                proofImg.style.cssText = 'max-width: 200px; max-height: 150px; border-radius: 8px; cursor: pointer;';
+                proofImg.onclick = () => {
+                    proofImg.style.maxWidth = '100%';
+                    proofImg.style.maxHeight = 'none';
+                };
+                
+                proofDiv.appendChild(proofLabel);
+                proofDiv.appendChild(proofImg);
+                container.appendChild(proofDiv);
+            }
+            
+            statusElement.appendChild(container);
         }
 
         // Hide action buttons
@@ -162,18 +198,35 @@ class WithdrawalNotifications {
     }
 
     updatePageForRejection() {
-        // Update withdrawal status display
+        // Update withdrawal status display safely
         const statusElement = document.getElementById('withdrawalStatus');
         if (statusElement) {
-            statusElement.innerHTML = `
-                <div style="background: linear-gradient(135deg, #f8d7da, #f5c6cb); padding: 1.5rem; border-radius: 12px; text-align: center;">
-                    <h3 style="color: #721c24; margin: 0 0 1rem 0;">❌ Withdrawal Rejected</h3>
-                    <p style="color: #721c24; margin: 0;">Your withdrawal was rejected by admin. The money has been refunded to your account.</p>
-                    <div style="margin-top: 1rem;">
-                        <a href="/wallet" class="btn btn-primary">Return to Wallet</a>
-                    </div>
-                </div>
-            `;
+            statusElement.innerHTML = '';
+            
+            const container = document.createElement('div');
+            container.style.cssText = 'background: linear-gradient(135deg, #f8d7da, #f5c6cb); padding: 1.5rem; border-radius: 12px; text-align: center;';
+            
+            const title = document.createElement('h3');
+            title.style.cssText = 'color: #721c24; margin: 0 0 1rem 0;';
+            title.textContent = '❌ Withdrawal Rejected';
+            
+            const message = document.createElement('p');
+            message.style.cssText = 'color: #721c24; margin: 0;';
+            message.textContent = 'Your withdrawal was rejected by admin. The money has been refunded to your account.';
+            
+            const buttonDiv = document.createElement('div');
+            buttonDiv.style.marginTop = '1rem';
+            
+            const returnBtn = document.createElement('a');
+            returnBtn.href = '/wallet';
+            returnBtn.className = 'btn btn-primary';
+            returnBtn.textContent = 'Return to Wallet';
+            
+            buttonDiv.appendChild(returnBtn);
+            container.appendChild(title);
+            container.appendChild(message);
+            container.appendChild(buttonDiv);
+            statusElement.appendChild(container);
         }
 
         // Hide action buttons

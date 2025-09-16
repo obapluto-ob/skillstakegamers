@@ -319,10 +319,10 @@ def test_ai_system():
     # Test Tesseract OCR
     try:
         import pytesseract
-        # Create a simple test image
-        test_image = Image.new('RGB', (200, 50), color='white')
-        # This would normally test OCR but we'll just check if pytesseract is callable
-        log_test("Tesseract OCR", "PASS", "OCR engine available")
+        # Create a simple test image and properly dispose of it
+        with Image.new('RGB', (200, 50), color='white') as test_image:
+            # This would normally test OCR but we'll just check if pytesseract is callable
+            log_test("Tesseract OCR", "PASS", "OCR engine available")
     except Exception as e:
         log_test("Tesseract OCR", "FAIL", f"OCR error: {str(e)}")
     

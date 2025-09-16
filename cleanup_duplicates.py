@@ -204,16 +204,16 @@ def cleanup_duplicates():
             try:
                 if not os.listdir(dir_path):  # Directory is empty
                     empty_dirs.append(dir_path)
-            except:
-                pass
+            except OSError as e:
+                print(f"Error checking directory {dir_path}: {e}")
     
     for empty_dir in empty_dirs:
         try:
             os.rmdir(empty_dir)
             print(f"✅ Removed empty directory: {empty_dir}")
             removed_count += 1
-        except:
-            pass
+        except OSError as e:
+            print(f"Error removing directory {empty_dir}: {e}")
     
     print(f"\n🎉 Cleanup complete!")
     print(f"📊 Files removed: {removed_count}")

@@ -47,8 +47,8 @@ def init_database():
 
 def _legacy_init_database():
     """Legacy database initialization - kept for compatibility"""
-    conn = get_db_connection()
-    c = conn.cursor()
+    with get_db_connection() as conn:
+        c = conn.cursor()
     
     database_url = os.getenv('DATABASE_URL')
     
@@ -160,9 +160,8 @@ def _legacy_init_database():
             FOREIGN KEY (winner_id) REFERENCES users (id)
         )''')
     
-    if not database_url:
-        conn.commit()
-    conn.close()
+        if not database_url:
+            conn.commit()
 
 # Safe database operations
 def safe_execute(query, params=None):

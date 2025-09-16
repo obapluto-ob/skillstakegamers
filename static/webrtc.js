@@ -9,6 +9,10 @@ class RealStreamManager {
         this.remoteVideo = document.getElementById('remoteVideo');
         this.localVideo = document.getElementById('localVideo');
         
+        if (!this.remoteVideo || !this.localVideo) {
+            console.warn('Video elements not found in DOM');
+        }
+        
         this.initializeWebRTC();
     }
     
@@ -180,11 +184,19 @@ class RealStreamManager {
     }
     
     async handleAnswer(answer) {
-        await this.peerConnection.setRemoteDescription(answer);
+        try {
+            await this.peerConnection.setRemoteDescription(answer);
+        } catch (error) {
+            console.error('Error handling answer:', error);
+        }
     }
     
     async handleIceCandidate(candidate) {
-        await this.peerConnection.addIceCandidate(candidate);
+        try {
+            await this.peerConnection.addIceCandidate(candidate);
+        } catch (error) {
+            console.error('Error handling ICE candidate:', error);
+        }
     }
     
     stopStreaming() {
