@@ -550,7 +550,24 @@ def match_history():
 @app.route('/profile')
 @login_required
 def profile():
-    return render_template('profile.html')
+    try:
+        with SecureDBConnection() as conn:
+            c = conn.cursor()
+            c.execute('SELECT id, username, email, phone, balance FROM users WHERE id = ?', (session['user_id'],))
+            user = c.fetchone()
+        return render_template('profile.html', user=user)
+    except:
+        return redirect(url_for('dashboard'))
+
+@app.route('/add_funds', methods=['POST'])
+@login_required
+def add_funds():
+    return redirect(url_for('wallet'))
+
+@app.route('/my_game_matches')
+@login_required
+def my_game_matches():
+    return redirect(url_for('dashboard'))
 
 @app.route('/support_chat')
 @login_required
