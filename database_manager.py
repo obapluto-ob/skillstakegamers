@@ -62,7 +62,13 @@ class DatabaseManager:
         """Check if column exists in table"""
         with self.get_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute(f"PRAGMA table_info({table_name})")
+            # Use parameterized query for table info
+            cursor.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name=?", (table_name,))
+            table_info = cursor.fetchone()
+            if table_info:
+                cursor.execute(f"PRAGMA table_info({table_name})")
+            else:
+                return False
             columns = [row[1] for row in cursor.fetchall()]
             return column_name in columns
     
@@ -249,8 +255,12 @@ class DatabaseManager:
             
             for table in tables:
                 if self.table_exists(table):
-                    cursor.execute(f"SELECT COUNT(*) FROM {table}")
-                    stats[table] = cursor.fetchone()[0]
+                    # Safe table name validation
+                    if table.replace('_', '').isalnum():
+                        cursor.execute(f"SELECT COUNT(*) FROM {table}")
+                        stats[table] = cursor.fetchone()[0]
+                    else:
+                        stats[table] = 0
                 else:
                     stats[table] = 0
             

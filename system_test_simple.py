@@ -12,30 +12,28 @@ from datetime import datetime
 def test_database():
     print("Testing Database...")
     try:
-        conn = sqlite3.connect('gamebet.db')
-        c = conn.cursor()
-        
-        # Check tables
-        c.execute("SELECT name FROM sqlite_master WHERE type='table'")
-        tables = [row[0] for row in c.fetchall()]
-        print(f"  Tables found: {len(tables)}")
-        
-        # Check users
-        c.execute("SELECT COUNT(*) FROM users WHERE username != 'admin'")
-        users = c.fetchone()[0]
-        print(f"  Regular users: {users}")
-        
-        # Check transactions
-        c.execute("SELECT COUNT(*) FROM transactions")
-        transactions = c.fetchone()[0]
-        print(f"  Total transactions: {transactions}")
-        
-        # Check balances
-        c.execute("SELECT SUM(balance) FROM users WHERE username != 'admin'")
-        total_balance = c.fetchone()[0] or 0
-        print(f"  Total user balance: {total_balance} KSh")
-        
-        conn.close()
+        with sqlite3.connect('gamebet.db') as conn:
+            c = conn.cursor()
+            
+            # Check tables
+            c.execute("SELECT name FROM sqlite_master WHERE type='table'")
+            tables = [row[0] for row in c.fetchall()]
+            print(f"  Tables found: {len(tables)}")
+            
+            # Check users
+            c.execute("SELECT COUNT(*) FROM users WHERE username != 'admin'")
+            users = c.fetchone()[0]
+            print(f"  Regular users: {users}")
+            
+            # Check transactions
+            c.execute("SELECT COUNT(*) FROM transactions")
+            transactions = c.fetchone()[0]
+            print(f"  Total transactions: {transactions}")
+            
+            # Check balances
+            c.execute("SELECT SUM(balance) FROM users WHERE username != 'admin'")
+            total_balance = c.fetchone()[0] or 0
+            print(f"  Total user balance: {total_balance} KSh")
         print("  Database: WORKING")
         return True
     except Exception as e:
@@ -107,25 +105,23 @@ def test_ai_libraries():
 def test_security_logs():
     print("Testing Security System...")
     try:
-        conn = sqlite3.connect('gamebet.db')
-        c = conn.cursor()
-        
-        # Admin logs
-        c.execute("SELECT COUNT(*) FROM admin_audit_log")
-        admin_logs = c.fetchone()[0]
-        print(f"  Admin audit logs: {admin_logs}")
-        
-        # System alerts
-        c.execute("SELECT COUNT(*) FROM system_alerts")
-        alerts = c.fetchone()[0]
-        print(f"  System alerts: {alerts}")
-        
-        # Screenshots
-        c.execute("SELECT COUNT(*) FROM match_screenshots")
-        screenshots = c.fetchone()[0]
-        print(f"  Match screenshots: {screenshots}")
-        
-        conn.close()
+        with sqlite3.connect('gamebet.db') as conn:
+            c = conn.cursor()
+            
+            # Admin logs
+            c.execute("SELECT COUNT(*) FROM admin_audit_log")
+            admin_logs = c.fetchone()[0]
+            print(f"  Admin audit logs: {admin_logs}")
+            
+            # System alerts
+            c.execute("SELECT COUNT(*) FROM system_alerts")
+            alerts = c.fetchone()[0]
+            print(f"  System alerts: {alerts}")
+            
+            # Screenshots
+            c.execute("SELECT COUNT(*) FROM match_screenshots")
+            screenshots = c.fetchone()[0]
+            print(f"  Match screenshots: {screenshots}")
         print("  Security System: WORKING")
         return True
     except Exception as e:
@@ -135,26 +131,24 @@ def test_security_logs():
 def test_game_system():
     print("Testing Game System...")
     try:
-        conn = sqlite3.connect('gamebet.db')
-        c = conn.cursor()
-        
-        # Game matches
-        c.execute("SELECT COUNT(*) FROM game_matches")
-        game_matches = c.fetchone()[0]
-        print(f"  Game matches: {game_matches}")
-        
-        # FPL battles
-        c.execute("SELECT COUNT(*) FROM fpl_battles")
-        fpl_battles = c.fetchone()[0]
-        print(f"  FPL battles: {fpl_battles}")
-        
-        # Match statuses
-        c.execute("SELECT status, COUNT(*) FROM game_matches GROUP BY status")
-        statuses = c.fetchall()
-        for status, count in statuses:
-            print(f"    {status}: {count}")
-        
-        conn.close()
+        with sqlite3.connect('gamebet.db') as conn:
+            c = conn.cursor()
+            
+            # Game matches
+            c.execute("SELECT COUNT(*) FROM game_matches")
+            game_matches = c.fetchone()[0]
+            print(f"  Game matches: {game_matches}")
+            
+            # FPL battles
+            c.execute("SELECT COUNT(*) FROM fpl_battles")
+            fpl_battles = c.fetchone()[0]
+            print(f"  FPL battles: {fpl_battles}")
+            
+            # Match statuses
+            c.execute("SELECT status, COUNT(*) FROM game_matches GROUP BY status")
+            statuses = c.fetchall()
+            for status, count in statuses:
+                print(f"    {status}: {count}")
         print("  Game System: WORKING")
         return True
     except Exception as e:
@@ -164,30 +158,28 @@ def test_game_system():
 def test_revenue_system():
     print("Testing Revenue System...")
     try:
-        conn = sqlite3.connect('gamebet.db')
-        c = conn.cursor()
-        
-        # Commissions
-        c.execute("SELECT SUM(commission) FROM game_matches WHERE commission IS NOT NULL")
-        game_comm = c.fetchone()[0] or 0
-        
-        c.execute("SELECT SUM(commission) FROM fpl_battles WHERE commission IS NOT NULL")
-        fpl_comm = c.fetchone()[0] or 0
-        
-        total_comm = game_comm + fpl_comm
-        print(f"  Total commissions: {total_comm} KSh")
-        
-        # Platform fees
-        c.execute("SELECT SUM(amount) FROM transactions WHERE type = 'platform_fee'")
-        fees = c.fetchone()[0] or 0
-        print(f"  Platform fees: {fees} KSh")
-        
-        # Deposits
-        c.execute("SELECT SUM(amount) FROM transactions WHERE type LIKE '%deposit%' AND amount > 0")
-        deposits = c.fetchone()[0] or 0
-        print(f"  Total deposits: {deposits} KSh")
-        
-        conn.close()
+        with sqlite3.connect('gamebet.db') as conn:
+            c = conn.cursor()
+            
+            # Commissions
+            c.execute("SELECT SUM(commission) FROM game_matches WHERE commission IS NOT NULL")
+            game_comm = c.fetchone()[0] or 0
+            
+            c.execute("SELECT SUM(commission) FROM fpl_battles WHERE commission IS NOT NULL")
+            fpl_comm = c.fetchone()[0] or 0
+            
+            total_comm = game_comm + fpl_comm
+            print(f"  Total commissions: {total_comm} KSh")
+            
+            # Platform fees
+            c.execute("SELECT SUM(amount) FROM transactions WHERE type = 'platform_fee'")
+            fees = c.fetchone()[0] or 0
+            print(f"  Platform fees: {fees} KSh")
+            
+            # Deposits
+            c.execute("SELECT SUM(amount) FROM transactions WHERE type LIKE '%deposit%' AND amount > 0")
+            deposits = c.fetchone()[0] or 0
+            print(f"  Total deposits: {deposits} KSh")
         print("  Revenue System: WORKING")
         return True
     except Exception as e:
@@ -197,25 +189,23 @@ def test_revenue_system():
 def test_user_engagement():
     print("Testing User Engagement...")
     try:
-        conn = sqlite3.connect('gamebet.db')
-        c = conn.cursor()
-        
-        # Daily bonuses
-        c.execute("SELECT COUNT(*) FROM transactions WHERE type = 'daily_bonus'")
-        bonuses = c.fetchone()[0]
-        print(f"  Daily bonuses claimed: {bonuses}")
-        
-        # Recent activity
-        c.execute("SELECT COUNT(DISTINCT user_id) FROM transactions WHERE created_at >= date('now', '-7 days')")
-        active_users = c.fetchone()[0]
-        print(f"  Active users (7 days): {active_users}")
-        
-        # Referrals
-        c.execute("SELECT COUNT(*) FROM users WHERE referred_by IS NOT NULL")
-        referrals = c.fetchone()[0]
-        print(f"  Referred users: {referrals}")
-        
-        conn.close()
+        with sqlite3.connect('gamebet.db') as conn:
+            c = conn.cursor()
+            
+            # Daily bonuses
+            c.execute("SELECT COUNT(*) FROM transactions WHERE type = 'daily_bonus'")
+            bonuses = c.fetchone()[0]
+            print(f"  Daily bonuses claimed: {bonuses}")
+            
+            # Recent activity
+            c.execute("SELECT COUNT(DISTINCT user_id) FROM transactions WHERE created_at >= date('now', '-7 days')")
+            active_users = c.fetchone()[0]
+            print(f"  Active users (7 days): {active_users}")
+            
+            # Referrals
+            c.execute("SELECT COUNT(*) FROM users WHERE referred_by IS NOT NULL")
+            referrals = c.fetchone()[0]
+            print(f"  Referred users: {referrals}")
         print("  User Engagement: WORKING")
         return True
     except Exception as e:
