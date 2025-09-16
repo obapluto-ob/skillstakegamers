@@ -117,26 +117,24 @@
     </div>
 </div>
 
-<!-- Trending Matches -->
+<!-- Open Matches -->
 <div class="card" style="background: linear-gradient(135deg, rgba(102,126,234,0.1), rgba(118,75,162,0.1)); border-left: 4px solid #667eea;">
-    <h3 style="color: #667eea; margin-bottom: 1rem;">🔥 Trending Matches</h3>
+    <h3 style="color: #667eea; margin-bottom: 1rem;">🔥 Open Matches</h3>
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem;">
+        {% for match in open_matches[:2] %}
         <div style="background: rgba(255,255,255,0.05); padding: 1rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1);">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-                <span style="color: #00ff88; font-weight: bold;">FIFA Mobile H2H</span>
-                <span style="background: #28a745; color: white; padding: 0.2rem 0.5rem; border-radius: 12px; font-size: 0.8rem;">LIVE</span>
+                <span style="color: #00ff88; font-weight: bold;">{{ match[1]|title }} {{ match[2] }}</span>
+                <span style="background: #28a745; color: white; padding: 0.2rem 0.5rem; border-radius: 12px; font-size: 0.8rem;">OPEN</span>
             </div>
-            <p style="font-size: 0.9rem; margin-bottom: 0.5rem;">KSh 200 • Waiting for opponent</p>
-            <button onclick="joinMatch(1)" class="btn" style="background: #00ff88; color: #000; font-size: 0.9rem; padding: 0.5rem 1rem;">Join Match</button>
+            <p style="font-size: 0.9rem; margin-bottom: 0.5rem;">KSh {{ "%.0f"|format(match[7]) }} • {{ match[4] }}</p>
+            <button onclick="window.location.href='/quick_matches'" class="btn" style="background: #00ff88; color: #000; font-size: 0.9rem; padding: 0.5rem 1rem;">Join Match</button>
         </div>
-        <div style="background: rgba(255,255,255,0.05); padding: 1rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1);">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-                <span style="color: #ffc107; font-weight: bold;">eFootball Online</span>
-                <span style="background: #dc3545; color: white; padding: 0.2rem 0.5rem; border-radius: 12px; font-size: 0.8rem;">HOT</span>
-            </div>
-            <p style="font-size: 0.9rem; margin-bottom: 0.5rem;">KSh 500 • High stakes match</p>
-            <button onclick="joinMatch(2)" class="btn" style="background: #ffc107; color: #000; font-size: 0.9rem; padding: 0.5rem 1rem;">Join Match</button>
+        {% else %}
+        <div style="background: rgba(255,255,255,0.05); padding: 2rem; border-radius: 8px; text-align: center; grid-column: 1 / -1;">
+            <p style="color: #ccc;">No open matches right now. <a href="{{ url_for('quick_matches') }}" style="color: #00ff88;">Create one!</a></p>
         </div>
+        {% endfor %}
     </div>
 </div>
 

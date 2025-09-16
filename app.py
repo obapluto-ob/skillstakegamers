@@ -195,7 +195,11 @@ def dashboard():
             c.execute('SELECT * FROM game_matches WHERE creator_id = ? OR opponent_id = ? ORDER BY created_at DESC LIMIT 5', (user_id, user_id))
             matches = c.fetchall()
             
-        return render_template('dashboard.html', stats=stats, matches=matches)
+            # Get open matches for trending section
+            c.execute('SELECT * FROM game_matches WHERE status = "open" ORDER BY created_at DESC LIMIT 4')
+            open_matches = c.fetchall()
+            
+        return render_template('dashboard.html', stats=stats, matches=matches, open_matches=open_matches)
         
     except Exception as e:
         flash(f'Dashboard error: {str(e)}', 'error')
