@@ -302,7 +302,7 @@ def api_test():
         return redirect(url_for('dashboard'))
     return redirect(url_for('admin_dashboard'))
 
-@app.route('/games')
+@app.route('/games', endpoint='games')
 def games_page():
     return redirect(url_for('home'))
 
