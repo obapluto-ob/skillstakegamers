@@ -23,30 +23,28 @@ def generate_final_report():
     print("\n1. DATABASE SYSTEM")
     print("-" * 30)
     try:
-        conn = sqlite3.connect('gamebet.db')
-        c = conn.cursor()
-        
-        # Tables
-        c.execute("SELECT name FROM sqlite_master WHERE type='table'")
-        tables = [row[0] for row in c.fetchall()]
-        print(f"   Tables: {len(tables)} (WORKING)")
-        
-        # Users
-        c.execute("SELECT COUNT(*) FROM users WHERE username != 'admin'")
-        users = c.fetchone()[0]
-        print(f"   Users: {users} (WORKING)")
-        
-        # Transactions
-        c.execute("SELECT COUNT(*) FROM transactions")
-        transactions = c.fetchone()[0]
-        print(f"   Transactions: {transactions} (WORKING)")
-        
-        # Balance
-        c.execute("SELECT SUM(balance) FROM users WHERE username != 'admin'")
-        balance = c.fetchone()[0] or 0
-        print(f"   Total Balance: {balance} KSh (WORKING)")
-        
-        conn.close()
+        with sqlite3.connect('gamebet.db') as conn:
+            c = conn.cursor()
+            
+            # Tables
+            c.execute("SELECT name FROM sqlite_master WHERE type='table'")
+            tables = [row[0] for row in c.fetchall()]
+            print(f"   Tables: {len(tables)} (WORKING)")
+            
+            # Users
+            c.execute("SELECT COUNT(*) FROM users WHERE username != 'admin'")
+            users = c.fetchone()[0]
+            print(f"   Users: {users} (WORKING)")
+            
+            # Transactions
+            c.execute("SELECT COUNT(*) FROM transactions")
+            transactions = c.fetchone()[0]
+            print(f"   Transactions: {transactions} (WORKING)")
+            
+            # Balance
+            c.execute("SELECT SUM(balance) FROM users WHERE username != 'admin'")
+            balance = c.fetchone()[0] or 0
+            print(f"   Total Balance: {balance} KSh (WORKING)")
         print("   STATUS: FULLY OPERATIONAL")
         
     except Exception as e:
@@ -56,22 +54,20 @@ def generate_final_report():
     print("\n2. GAME INTEGRATION SYSTEM")
     print("-" * 30)
     try:
-        conn = sqlite3.connect('gamebet.db')
-        c = conn.cursor()
-        
-        c.execute("SELECT COUNT(*) FROM game_matches")
-        game_matches = c.fetchone()[0]
-        print(f"   Game Matches: {game_matches} (WORKING)")
-        
-        c.execute("SELECT COUNT(*) FROM fpl_battles")
-        fpl_battles = c.fetchone()[0]
-        print(f"   FPL Battles: {fpl_battles} (WORKING)")
-        
-        # Test game validation
-        print("   Game Validation: WORKING (Format-based)")
-        print("   Match Detection: WORKING (Multi-method)")
-        
-        conn.close()
+        with sqlite3.connect('gamebet.db') as conn:
+            c = conn.cursor()
+            
+            c.execute("SELECT COUNT(*) FROM game_matches")
+            game_matches = c.fetchone()[0]
+            print(f"   Game Matches: {game_matches} (WORKING)")
+            
+            c.execute("SELECT COUNT(*) FROM fpl_battles")
+            fpl_battles = c.fetchone()[0]
+            print(f"   FPL Battles: {fpl_battles} (WORKING)")
+            
+            # Test game validation
+            print("   Game Validation: WORKING (Format-based)")
+            print("   Match Detection: WORKING (Multi-method)")
         print("   STATUS: FULLY OPERATIONAL")
         
     except Exception as e:
@@ -174,26 +170,24 @@ def generate_final_report():
     print("\n6. SECURITY & ANTI-FRAUD SYSTEM")
     print("-" * 30)
     try:
-        conn = sqlite3.connect('gamebet.db')
-        c = conn.cursor()
-        
-        c.execute("SELECT COUNT(*) FROM admin_audit_log")
-        audit_logs = c.fetchone()[0]
-        print(f"   Admin Audit Logs: {audit_logs} (WORKING)")
-        
-        c.execute("SELECT COUNT(*) FROM system_alerts")
-        alerts = c.fetchone()[0]
-        print(f"   System Alerts: {alerts} (WORKING)")
-        
-        c.execute("SELECT COUNT(*) FROM match_screenshots")
-        screenshots = c.fetchone()[0]
-        print(f"   Screenshot Verification: {screenshots} (WORKING)")
-        
-        print("   IP-based Abuse Detection: WORKING")
-        print("   Balance Integrity Monitoring: WORKING")
-        print("   Fake Screenshot Detection: WORKING")
-        
-        conn.close()
+        with sqlite3.connect('gamebet.db') as conn:
+            c = conn.cursor()
+            
+            c.execute("SELECT COUNT(*) FROM admin_audit_log")
+            audit_logs = c.fetchone()[0]
+            print(f"   Admin Audit Logs: {audit_logs} (WORKING)")
+            
+            c.execute("SELECT COUNT(*) FROM system_alerts")
+            alerts = c.fetchone()[0]
+            print(f"   System Alerts: {alerts} (WORKING)")
+            
+            c.execute("SELECT COUNT(*) FROM match_screenshots")
+            screenshots = c.fetchone()[0]
+            print(f"   Screenshot Verification: {screenshots} (WORKING)")
+            
+            print("   IP-based Abuse Detection: WORKING")
+            print("   Balance Integrity Monitoring: WORKING")
+            print("   Fake Screenshot Detection: WORKING")
         print("   STATUS: FULLY OPERATIONAL")
         
     except Exception as e:
@@ -203,25 +197,23 @@ def generate_final_report():
     print("\n7. USER ENGAGEMENT SYSTEMS")
     print("-" * 30)
     try:
-        conn = sqlite3.connect('gamebet.db')
-        c = conn.cursor()
-        
-        c.execute("SELECT COUNT(*) FROM transactions WHERE type = 'daily_bonus'")
-        bonuses = c.fetchone()[0]
-        print(f"   Daily Bonus System: {bonuses} claimed (WORKING)")
-        
-        c.execute("SELECT COUNT(DISTINCT user_id) FROM transactions WHERE created_at >= date('now', '-7 days')")
-        active = c.fetchone()[0]
-        print(f"   Active Users (7d): {active} (WORKING)")
-        
-        c.execute("SELECT COUNT(*) FROM users WHERE referred_by IS NOT NULL")
-        referrals = c.fetchone()[0]
-        print(f"   Referral System: {referrals} referred (WORKING)")
-        
-        print("   Viral Growth Tracking: WORKING")
-        print("   Tiered Bonus System: WORKING")
-        
-        conn.close()
+        with sqlite3.connect('gamebet.db') as conn:
+            c = conn.cursor()
+            
+            c.execute("SELECT COUNT(*) FROM transactions WHERE type = 'daily_bonus'")
+            bonuses = c.fetchone()[0]
+            print(f"   Daily Bonus System: {bonuses} claimed (WORKING)")
+            
+            c.execute("SELECT COUNT(DISTINCT user_id) FROM transactions WHERE created_at >= date('now', '-7 days')")
+            active = c.fetchone()[0]
+            print(f"   Active Users (7d): {active} (WORKING)")
+            
+            c.execute("SELECT COUNT(*) FROM users WHERE referred_by IS NOT NULL")
+            referrals = c.fetchone()[0]
+            print(f"   Referral System: {referrals} referred (WORKING)")
+            
+            print("   Viral Growth Tracking: WORKING")
+            print("   Tiered Bonus System: WORKING")
         print("   STATUS: FULLY OPERATIONAL")
         
     except Exception as e:
@@ -231,26 +223,24 @@ def generate_final_report():
     print("\n8. ADMIN DASHBOARD & CONTROLS")
     print("-" * 30)
     try:
-        conn = sqlite3.connect('gamebet.db')
-        c = conn.cursor()
-        
-        c.execute("SELECT username, balance FROM users WHERE username = 'admin'")
-        admin = c.fetchone()
-        if admin:
-            print(f"   Admin Account: WORKING (Balance: {admin[1]} KSh)")
-        else:
-            print("   Admin Account: NOT FOUND")
-        
-        c.execute("SELECT COUNT(DISTINCT action_type) FROM admin_audit_log")
-        action_types = c.fetchone()[0]
-        print(f"   Admin Functions: {action_types} types available (WORKING)")
-        
-        print("   User Management: WORKING")
-        print("   Transaction Approval: WORKING")
-        print("   Match Dispute Resolution: WORKING")
-        print("   Financial Reporting: WORKING")
-        
-        conn.close()
+        with sqlite3.connect('gamebet.db') as conn:
+            c = conn.cursor()
+            
+            c.execute("SELECT username, balance FROM users WHERE username = 'admin'")
+            admin = c.fetchone()
+            if admin:
+                print(f"   Admin Account: WORKING (Balance: {admin[1]} KSh)")
+            else:
+                print("   Admin Account: NOT FOUND")
+            
+            c.execute("SELECT COUNT(DISTINCT action_type) FROM admin_audit_log")
+            action_types = c.fetchone()[0]
+            print(f"   Admin Functions: {action_types} types available (WORKING)")
+            
+            print("   User Management: WORKING")
+            print("   Transaction Approval: WORKING")
+            print("   Match Dispute Resolution: WORKING")
+            print("   Financial Reporting: WORKING")
         print("   STATUS: FULLY OPERATIONAL")
         
     except Exception as e:
@@ -274,30 +264,28 @@ def generate_final_report():
     print("\n10. REVENUE & COMMISSION SYSTEMS")
     print("-" * 30)
     try:
-        conn = sqlite3.connect('gamebet.db')
-        c = conn.cursor()
-        
-        c.execute("SELECT SUM(commission) FROM game_matches WHERE commission IS NOT NULL")
-        game_comm = c.fetchone()[0] or 0
-        
-        c.execute("SELECT SUM(commission) FROM fpl_battles WHERE commission IS NOT NULL")
-        fpl_comm = c.fetchone()[0] or 0
-        
-        c.execute("SELECT SUM(amount) FROM transactions WHERE type = 'platform_fee'")
-        fees = c.fetchone()[0] or 0
-        
-        c.execute("SELECT SUM(amount) FROM transactions WHERE type LIKE '%deposit%' AND amount > 0")
-        deposits = c.fetchone()[0] or 0
-        
-        total_revenue = game_comm + fpl_comm + fees
-        
-        print(f"   Match Commissions (8%): {game_comm + fpl_comm} KSh (WORKING)")
-        print(f"   Platform Fees: {fees} KSh (WORKING)")
-        print(f"   Total Deposits: {deposits} KSh (WORKING)")
-        print(f"   Total Revenue: {total_revenue} KSh")
-        print("   Fee Calculation: WORKING")
-        
-        conn.close()
+        with sqlite3.connect('gamebet.db') as conn:
+            c = conn.cursor()
+            
+            c.execute("SELECT SUM(commission) FROM game_matches WHERE commission IS NOT NULL")
+            game_comm = c.fetchone()[0] or 0
+            
+            c.execute("SELECT SUM(commission) FROM fpl_battles WHERE commission IS NOT NULL")
+            fpl_comm = c.fetchone()[0] or 0
+            
+            c.execute("SELECT SUM(amount) FROM transactions WHERE type = 'platform_fee'")
+            fees = c.fetchone()[0] or 0
+            
+            c.execute("SELECT SUM(amount) FROM transactions WHERE type LIKE '%deposit%' AND amount > 0")
+            deposits = c.fetchone()[0] or 0
+            
+            total_revenue = game_comm + fpl_comm + fees
+            
+            print(f"   Match Commissions (8%): {game_comm + fpl_comm} KSh (WORKING)")
+            print(f"   Platform Fees: {fees} KSh (WORKING)")
+            print(f"   Total Deposits: {deposits} KSh (WORKING)")
+            print(f"   Total Revenue: {total_revenue} KSh")
+            print("   Fee Calculation: WORKING")
         print("   STATUS: FULLY OPERATIONAL")
         
     except Exception as e:

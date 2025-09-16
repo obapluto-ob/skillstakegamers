@@ -71,12 +71,11 @@ SkillStake Team
         
         msg.attach(MIMEText(body, 'plain'))
         
-        server = smtplib.SMTP('smtp.gmail.com', 587)
-        server.starttls()
-        server.login(gmail_user, gmail_pass)
-        text = msg.as_string()
-        server.sendmail(gmail_user, email, text)
-        server.quit()
+        with smtplib.SMTP('smtp.gmail.com', 587) as server:
+            server.starttls()
+            server.login(gmail_user, gmail_pass)
+            text = msg.as_string()
+            server.sendmail(gmail_user, email, text)
         
         return jsonify({'success': True, 'message': 'Verification code sent'})
         
@@ -211,12 +210,11 @@ SkillStake Team
                     
                     msg.attach(MIMEText(body, 'plain'))
                     
-                    server = smtplib.SMTP('smtp.gmail.com', 587)
-                    server.starttls()
-                    server.login(gmail_user, gmail_pass)
-                    text = msg.as_string()
-                    server.sendmail(gmail_user, user[2], text)
-                    server.quit()
+                    with smtplib.SMTP('smtp.gmail.com', 587) as server:
+                        server.starttls()
+                        server.login(gmail_user, gmail_pass)
+                        text = msg.as_string()
+                        server.sendmail(gmail_user, user[2], text)
                     
                     return redirect(url_for('auth.verify_login'))
                 else:
