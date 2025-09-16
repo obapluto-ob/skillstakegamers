@@ -190,7 +190,12 @@ def dashboard():
                 'losses': user[4] or 0,
                 'earnings': user[5] or 0
             }
-        return render_template('dashboard.html', stats=stats, recent_matches=[])
+            
+            # Get recent matches
+            c.execute('SELECT * FROM game_matches WHERE creator_id = ? OR opponent_id = ? ORDER BY created_at DESC LIMIT 5', (user_id, user_id))
+            matches = c.fetchall()
+            
+        return render_template('dashboard.html', stats=stats, matches=matches)
         
     except Exception as e:
         flash(f'Dashboard error: {str(e)}', 'error')
@@ -1274,6 +1279,73 @@ def api_user_balance():
                 return jsonify({'error': 'User not found'}), 404
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+@app.route('/api/live_activity')
+@login_required
+def api_live_activity():
+    """API endpoint for live platform activity"""
+    try:
+        # Simulate live activity data
+        activities = [
+            {
+                'icon': '🎮',
+                'player': 'Player123',
+                'action': 'won KSh 500 in FIFA Mobile',
+                'time': '2 min ago',
+                'color': '#28a745'
+            },
+            {
+                'icon': '💰',
+                'player': 'GamerPro',
+                'action': 'deposited KSh 1000',
+                'time': '5 min ago',
+                'color': '#17a2b8'
+            },
+            {
+                'icon': '🏆',
+                'player': 'SkillMaster',
+                'action': 'completed FPL battle',
+                'time': '8 min ago',
+                'color': '#ffc107'
+            },
+            {
+                'icon': '⚡',
+                'player': 'FastGamer',
+                'action': 'joined quick match',
+                'time': '12 min ago',
+                'color': '#667eea'
+            }
+        ]
+        return jsonify({'activities': activities})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/claim_daily_bonus', methods=['POST'])
+@login_required
+def claim_daily_bonus():
+    """Claim daily login bonus"""
+    try:
+        with SecureDBConnection() as conn:
+            c = conn.cursor()
+            user_id = session['user_id']
+            
+            # Check if already claimed today
+            c.execute('SELECT created_at FROM transactions WHERE user_id = ? AND type = "daily_bonus" AND DATE(created_at) = DATE("now")', (user_id,))
+            if c.fetchone():
+                return jsonify({'success': False, 'message': 'Daily bonus already claimed today!'})
+            
+            # Give daily bonus
+            bonus_amount = 50
+            c.execute('UPDATE users SET balance = balance + ? WHERE id = ?', (bonus_amount, user_id))
+            c.execute('INSERT INTO transactions (user_id, type, amount, description) VALUES (?, ?, ?, ?)',
+                     (user_id, 'daily_bonus', bonus_amount, 'Daily login bonus'))
+            
+            # Update session balance
+            session['balance'] = session.get('balance', 0) + bonus_amount
+            
+            return jsonify({'success': True, 'message': f'Daily bonus of KSh {bonus_amount} claimed!'})
+    except Exception as e:
+        return jsonify({'success': False, 'message': 'Error claiming bonus'})
 
 @app.route('/favicon.ico')
 def favicon():

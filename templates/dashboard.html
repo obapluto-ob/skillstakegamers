@@ -5,6 +5,68 @@
     <h1 style="color: #00ff88; font-size: 2.5rem; margin-bottom: 0.5rem;">SkillStake</h1>
     <h2 style="color: white; margin-bottom: 1rem;">Welcome back, {{ session.username }}!</h2>
     <p style="font-size: 1.2rem; color: #ffc107;">Transform your gaming skills into real money. Every match is an opportunity.</p>
+    
+    <!-- Live Stats Bar -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 1rem; margin-top: 1.5rem; padding: 1rem; background: rgba(0,0,0,0.3); border-radius: 12px;">
+        <div style="text-align: center;">
+            <div style="color: #00ff88; font-size: 1.8rem; font-weight: bold;">KSh {{ "%.0f"|format(stats.balance) }}</div>
+            <div style="color: #ccc; font-size: 0.9rem;">Balance</div>
+        </div>
+        <div style="text-align: center;">
+            <div style="color: #28a745; font-size: 1.8rem; font-weight: bold;">{{ stats.wins }}</div>
+            <div style="color: #ccc; font-size: 0.9rem;">Wins</div>
+        </div>
+        <div style="text-align: center;">
+            <div style="color: #dc3545; font-size: 1.8rem; font-weight: bold;">{{ stats.losses }}</div>
+            <div style="color: #ccc; font-size: 0.9rem;">Losses</div>
+        </div>
+        <div style="text-align: center;">
+            <div style="color: #ffc107; font-size: 1.8rem; font-weight: bold;">KSh {{ "%.0f"|format(stats.earnings) }}</div>
+            <div style="color: #ccc; font-size: 0.9rem;">Total Earned</div>
+        </div>
+    </div>
+</div>
+
+<!-- Live Activity Feed -->
+<div class="card" style="background: linear-gradient(135deg, rgba(255,193,7,0.1), rgba(255,140,0,0.1)); border-left: 4px solid #ffc107;">
+    <h3 style="color: #ffc107; margin-bottom: 1rem;">🔥 Live Platform Activity</h3>
+    <div id="liveActivity" style="max-height: 200px; overflow-y: auto;">
+        <div class="activity-item" style="padding: 0.8rem; margin: 0.5rem 0; background: rgba(255,255,255,0.05); border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
+            <span>🎮 <strong>Player123</strong> won KSh 500 in FIFA Mobile</span>
+            <span style="color: #28a745; font-size: 0.9rem;">2 min ago</span>
+        </div>
+        <div class="activity-item" style="padding: 0.8rem; margin: 0.5rem 0; background: rgba(255,255,255,0.05); border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
+            <span>💰 <strong>GamerPro</strong> deposited KSh 1000</span>
+            <span style="color: #17a2b8; font-size: 0.9rem;">5 min ago</span>
+        </div>
+        <div class="activity-item" style="padding: 0.8rem; margin: 0.5rem 0; background: rgba(255,255,255,0.05); border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
+            <span>🏆 <strong>SkillMaster</strong> completed FPL battle</span>
+            <span style="color: #ffc107; font-size: 0.9rem;">8 min ago</span>
+        </div>
+    </div>
+</div>
+
+<!-- Daily Challenges -->
+<div class="card" style="background: linear-gradient(135deg, rgba(220,53,69,0.1), rgba(253,126,20,0.1)); border-left: 4px solid #dc3545;">
+    <h3 style="color: #dc3545; margin-bottom: 1rem;">⚡ Daily Challenges</h3>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem;">
+        <div style="background: rgba(40,167,69,0.1); padding: 1rem; border-radius: 8px; border-left: 3px solid #28a745;">
+            <h4 style="color: #28a745; margin-bottom: 0.5rem;">Win 3 Matches</h4>
+            <p style="font-size: 0.9rem; margin-bottom: 0.5rem;">Progress: 1/3</p>
+            <div style="background: rgba(255,255,255,0.1); height: 8px; border-radius: 4px; overflow: hidden;">
+                <div style="background: #28a745; height: 100%; width: 33%; border-radius: 4px;"></div>
+            </div>
+            <p style="color: #28a745; font-size: 0.8rem; margin-top: 0.5rem;">Reward: KSh 100 bonus</p>
+        </div>
+        <div style="background: rgba(23,162,184,0.1); padding: 1rem; border-radius: 8px; border-left: 3px solid #17a2b8;">
+            <h4 style="color: #17a2b8; margin-bottom: 0.5rem;">Deposit KSh 500+</h4>
+            <p style="font-size: 0.9rem; margin-bottom: 0.5rem;">Status: Pending</p>
+            <div style="background: rgba(255,255,255,0.1); height: 8px; border-radius: 4px; overflow: hidden;">
+                <div style="background: #17a2b8; height: 100%; width: 0%; border-radius: 4px;"></div>
+            </div>
+            <p style="color: #17a2b8; font-size: 0.8rem; margin-top: 0.5rem;">Reward: 10% bonus funds</p>
+        </div>
+    </div>
 </div>
 
 <!-- Motivational Guide -->
@@ -51,6 +113,29 @@
                 <span style="color: white; font-weight: bold;">Real FPL Data • Live Matches</span>
             </div>
             <button class="btn" style="background: white; color: #dc3545; font-weight: bold; width: 100%;">VIEW BATTLES</button>
+        </div>
+    </div>
+</div>
+
+<!-- Trending Matches -->
+<div class="card" style="background: linear-gradient(135deg, rgba(102,126,234,0.1), rgba(118,75,162,0.1)); border-left: 4px solid #667eea;">
+    <h3 style="color: #667eea; margin-bottom: 1rem;">🔥 Trending Matches</h3>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem;">
+        <div style="background: rgba(255,255,255,0.05); padding: 1rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                <span style="color: #00ff88; font-weight: bold;">FIFA Mobile H2H</span>
+                <span style="background: #28a745; color: white; padding: 0.2rem 0.5rem; border-radius: 12px; font-size: 0.8rem;">LIVE</span>
+            </div>
+            <p style="font-size: 0.9rem; margin-bottom: 0.5rem;">KSh 200 • Waiting for opponent</p>
+            <button onclick="joinMatch(1)" class="btn" style="background: #00ff88; color: #000; font-size: 0.9rem; padding: 0.5rem 1rem;">Join Match</button>
+        </div>
+        <div style="background: rgba(255,255,255,0.05); padding: 1rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                <span style="color: #ffc107; font-weight: bold;">eFootball Online</span>
+                <span style="background: #dc3545; color: white; padding: 0.2rem 0.5rem; border-radius: 12px; font-size: 0.8rem;">HOT</span>
+            </div>
+            <p style="font-size: 0.9rem; margin-bottom: 0.5rem;">KSh 500 • High stakes match</p>
+            <button onclick="joinMatch(2)" class="btn" style="background: #ffc107; color: #000; font-size: 0.9rem; padding: 0.5rem 1rem;">Join Match</button>
         </div>
     </div>
 </div>
@@ -152,6 +237,46 @@ function claimDailyBonus() {
     })
     .catch(e => alert('Error claiming bonus'));
 }
+
+function joinMatch(matchId) {
+    window.location.href = '/quick_matches';
+}
+
+// Live activity updates
+function updateLiveActivity() {
+    fetch('/api/live_activity')
+    .then(r => r.json())
+    .then(data => {
+        if (data.activities) {
+            const container = document.getElementById('liveActivity');
+            container.innerHTML = data.activities.map(activity => 
+                `<div class="activity-item" style="padding: 0.8rem; margin: 0.5rem 0; background: rgba(255,255,255,0.05); border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
+                    <span>${activity.icon} <strong>${activity.player}</strong> ${activity.action}</span>
+                    <span style="color: ${activity.color}; font-size: 0.9rem;">${activity.time}</span>
+                </div>`
+            ).join('');
+        }
+    })
+    .catch(e => console.log('Live activity update failed'));
+}
+
+// Update every 30 seconds
+setInterval(updateLiveActivity, 30000);
+
+// Real-time balance updates
+function updateBalance() {
+    fetch('/api/user_balance')
+    .then(r => r.json())
+    .then(data => {
+        if (data.balance !== undefined) {
+            document.querySelector('.balance').textContent = `KSh ${Math.floor(data.balance)}`;
+        }
+    })
+    .catch(e => console.log('Balance update failed'));
+}
+
+// Update balance every 10 seconds
+setInterval(updateBalance, 10000);
 </script>
 
 {% endblock %}
