@@ -36,7 +36,7 @@
             -webkit-text-size-adjust: 100%;
             -webkit-tap-highlight-color: transparent;
             touch-action: manipulation;
-            overscroll-behavior: none;
+            overscroll-behavior: auto;
         }
         /* iPhone 16 Pro Max and large phones */
         @media (max-width: 430px) and (min-height: 900px) {
@@ -647,10 +647,7 @@
             lastTouchEnd = now;
         }, false);
         
-        // Smooth scrolling for iOS
-        document.addEventListener('touchmove', function(e) {
-            e.preventDefault();
-        }, { passive: false });
+        // Remove scroll blocking - allow normal scrolling
         
         // Fix viewport height on mobile browsers
         function setVH() {
