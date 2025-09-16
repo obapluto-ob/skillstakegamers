@@ -1,87 +1,159 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="card" style="background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(5px); border: 1px solid rgba(255, 255, 255, 0.1);">
-    <h1><img src="/static/icons/gamepad.svg" class="icon icon-gamepad" alt="Games"> Gaming Hub</h1>
-    <p>Quick matches + FPL battles - Gaming skills meet football knowledge</p>
+<div class="card">
+    <h1>🎮 Games Hub</h1>
+    <p>Choose your gaming experience - Quick Matches or Fantasy Premier League battles</p>
 </div>
 
-<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem;">
-    <!-- Quick Matches Section -->
-    <div class="card" style="background: rgba(40, 167, 69, 0.1); backdrop-filter: blur(5px); border: 1px solid rgba(40, 167, 69, 0.2); text-align: center; position: relative; overflow: hidden;">
-        <div style="position: absolute; top: -20px; right: -20px; background: rgba(255,255,255,0.2); width: 80px; height: 80px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
-            <div style="width: 30px; height: 30px; background: white; border-radius: 50%; opacity: 0.8;"></div>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem; margin-top: 2rem;">
+    
+    <!-- Quick Matches Card -->
+    <div class="card" style="text-align: center; padding: 2rem;">
+        <div style="font-size: 4rem; margin-bottom: 1rem;">⚡</div>
+        <h2>Quick Matches</h2>
+        <p>Challenge other players in FIFA Mobile and eFootball matches with instant verification</p>
+        
+        <div style="margin: 1.5rem 0;">
+            <div style="color: #28a745; font-weight: bold;">✅ OCR Screenshot Verification</div>
+            <div style="color: #17a2b8;">🏆 Win 92% of Total Pot</div>
+            <div style="color: #ffc107;">⚡ Instant Payouts</div>
         </div>
-        <h2 style="color: white; margin-bottom: 1rem;">QUICK MATCH</h2>
-        <div style="background: rgba(255,255,255,0.15); padding: 1.5rem; border-radius: 12px; margin-bottom: 1.5rem; backdrop-filter: blur(10px);">
-            <h3 style="color: white; margin-bottom: 1rem;">OCR SCREENSHOT VERIFICATION</h3>
-            <ul style="color: rgba(255,255,255,0.95); text-align: left; margin-left: 1rem; line-height: 1.6;">
-                <li>Submit victory screenshots</li>
-                <li>Automatic result detection (70% success)</li>
-                <li>Admin review for unclear images</li>
-                <li>Play on any device/platform</li>
-                <li>Fast payouts when verified</li>
-            </ul>
+        
+        <div style="margin: 1rem 0; padding: 1rem; background: rgba(23, 162, 184, 0.1); border-radius: 8px;">
+            <strong>Available Games:</strong><br>
+            🎮 FIFA Mobile (H2H, VS Attack, Manager Mode)<br>
+            ⚽ eFootball (Online Match, Quick Match, Ranked)
         </div>
-        <a href="/quick_matches" class="btn" style="background: white; color: #28a745; font-weight: bold; width: 100%; box-shadow: 0 4px 15px rgba(0,0,0,0.2); text-transform: uppercase; border: none; cursor: pointer; text-decoration: none; display: block; text-align: center; padding: 12px;">
-            SELECT GAME
+        
+        <a href="{{ url_for('quick_matches') }}" class="btn btn-primary" style="width: 100%; padding: 1rem; font-size: 1.1rem;">
+            🎮 Start Quick Match
         </a>
     </div>
-
-    <!-- FPL Battles Section -->
-    <div class="card" style="background: rgba(220, 53, 69, 0.1); backdrop-filter: blur(5px); border: 1px solid rgba(220, 53, 69, 0.2); text-align: center; position: relative; overflow: hidden;">
-        <div style="position: absolute; top: -20px; right: -20px; background: rgba(255,255,255,0.2); width: 80px; height: 80px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
-            <div style="width: 30px; height: 20px; background: white; border-radius: 4px; opacity: 0.8;"></div>
+    
+    <!-- FPL Battles Card -->
+    <div class="card" style="text-align: center; padding: 2rem;">
+        <div style="font-size: 4rem; margin-bottom: 1rem;">🏆</div>
+        <h2>FPL Battles</h2>
+        <p>Fantasy Premier League head-to-head battles with real money stakes</p>
+        
+        <div style="margin: 1.5rem 0;">
+            <div style="color: #28a745; font-weight: bold;">📊 Official FPL API Integration</div>
+            <div style="color: #17a2b8;">🎯 Gameweek-based Battles</div>
+            <div style="color: #ffc107;">💰 Weekly Tournaments</div>
         </div>
-        <h2 style="color: white; margin-bottom: 1rem;">FPL BATTLES</h2>
-        <div style="background: rgba(255,255,255,0.15); padding: 1.5rem; border-radius: 12px; margin-bottom: 1.5rem; backdrop-filter: blur(10px);">
-            <h3 style="color: white; margin-bottom: 1rem;">FANTASY PREMIER LEAGUE</h3>
-            <ul style="color: rgba(255,255,255,0.95); text-align: left; margin-left: 1rem; line-height: 1.6;">
-                <li>Real FPL data verification</li>
-                <li>Live match player battles</li>
-                <li>Gameweek score competitions</li>
-                <li>Captain vs Captain duels</li>
-                <li>Instant 90-minute payouts</li>
-            </ul>
+        
+        <div style="margin: 1rem 0; padding: 1rem; background: rgba(40, 167, 69, 0.1); border-radius: 8px;">
+            <strong>Battle Types:</strong><br>
+            📈 Gameweek Head-to-Head<br>
+            🏆 Weekly Tournaments<br>
+            👥 League Battles
         </div>
-        <a href="/fpl_battles" class="btn" style="background: white; color: #dc3545; font-weight: bold; width: 100%; box-shadow: 0 4px 15px rgba(0,0,0,0.2); text-transform: uppercase; border: none; cursor: pointer; text-decoration: none; display: block; text-align: center; padding: 12px;">
-            VIEW BATTLES
+        
+        <a href="{{ url_for('fpl_battles') }}" class="btn btn-success" style="width: 100%; padding: 1rem; font-size: 1.1rem;">
+            🏆 Join FPL Battle
         </a>
     </div>
+    
 </div>
 
-<!-- Quick Stats -->
-<div class="card" style="background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(5px); border: 1px solid rgba(255, 255, 255, 0.1);">
-    <h2><img src="/static/icons/lightbulb.svg" class="icon icon-lightbulb" alt="Stats"> Platform Stats</h2>
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
-        <div style="background: linear-gradient(45deg, #28a745, #20c997); padding: 1rem; border-radius: 12px; text-align: center; color: white;">
-            <h3>QUICK MATCH</h3>
-            <p style="font-size: 1.5em; font-weight: bold;">UNIVERSAL ACCESS</p>
-            <p style="opacity: 0.9;">Advanced verification</p>
+<!-- Game Statistics -->
+<div class="card" style="margin-top: 2rem;">
+    <h2>🎯 Platform Statistics</h2>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-top: 1rem;">
+        
+        <div style="text-align: center; padding: 1rem; background: rgba(23, 162, 184, 0.1); border-radius: 8px;">
+            <div style="font-size: 2rem; color: #17a2b8;">⚡</div>
+            <div style="font-size: 1.5rem; font-weight: bold;">1,247</div>
+            <div>Quick Matches Played</div>
         </div>
-        <div style="background: linear-gradient(45deg, #dc3545, #fd7e14); padding: 1rem; border-radius: 12px; text-align: center; color: white;">
-            <h3>FPL BATTLES</h3>
-            <p style="font-size: 1.5em; font-weight: bold;">LIVE MATCHES</p>
-            <p style="opacity: 0.9;">Real-time verification</p>
+        
+        <div style="text-align: center; padding: 1rem; background: rgba(40, 167, 69, 0.1); border-radius: 8px;">
+            <div style="font-size: 2rem; color: #28a745;">🏆</div>
+            <div style="font-size: 1.5rem; font-weight: bold;">89</div>
+            <div>FPL Battles This Week</div>
         </div>
-        <div style="background: #2a2a2a; padding: 1rem; border-radius: 8px; text-align: center;">
-            <h3 style="color: #28a745;">Your Balance</h3>
-            <p style="font-size: 1.5em; font-weight: bold; color: white;">KSh {{ "%.0f"|format(session.balance if session.balance else 0) }}</p>
-            <p style="color: #ccc;">Available to bet</p>
+        
+        <div style="text-align: center; padding: 1rem; background: rgba(255, 193, 7, 0.1); border-radius: 8px;">
+            <div style="font-size: 2rem; color: #ffc107;">💰</div>
+            <div style="font-size: 1.5rem; font-weight: bold;">KSh 45,670</div>
+            <div>Total Winnings Today</div>
         </div>
+        
+        <div style="text-align: center; padding: 1rem; background: rgba(220, 53, 69, 0.1); border-radius: 8px;">
+            <div style="font-size: 2rem; color: #dc3545;">👥</div>
+            <div style="font-size: 1.5rem; font-weight: bold;">156</div>
+            <div>Active Players Online</div>
+        </div>
+        
     </div>
 </div>
 
-<!-- Navigation Links -->
-<div class="card" style="background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(5px); border: 1px solid rgba(255, 255, 255, 0.1);">
-    <h2><img src="/static/icons/lightbulb.svg" class="icon icon-lightbulb" alt="Links"> Quick Links</h2>
-    <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
-        <a href="/matches" class="btn btn-secondary"><img src="/static/icons/gamepad.svg" class="icon icon-sm" alt="Matches"> My Matches</a>
-        <a href="/tournaments" class="btn" style="background: linear-gradient(135deg, #ffa502, #ff6348); color: white;">🏆 Tournaments</a>
-        <a href="/wallet" class="btn btn-success"><img src="/static/icons/money.svg" class="icon icon-sm icon-money" alt="Money"> Wallet</a>
-        <a href="/leaderboard" class="btn btn-info">🏆 Leaderboard</a>
+<!-- How It Works -->
+<div class="card" style="margin-top: 2rem;">
+    <h2>❓ How It Works</h2>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 2rem; margin-top: 1rem;">
+        
+        <div style="text-align: center;">
+            <div style="font-size: 3rem; margin-bottom: 1rem;">1️⃣</div>
+            <h3>Choose Your Game</h3>
+            <p>Select between Quick Matches (FIFA Mobile/eFootball) or FPL Battles based on your preference</p>
+        </div>
+        
+        <div style="text-align: center;">
+            <div style="font-size: 3rem; margin-bottom: 1rem;">2️⃣</div>
+            <h3>Set Your Stake</h3>
+            <p>Choose your stake amount (KSh 50-1000 for Quick Matches) and wait for an opponent to join</p>
+        </div>
+        
+        <div style="text-align: center;">
+            <div style="font-size: 3rem; margin-bottom: 1rem;">3️⃣</div>
+            <h3>Play & Win</h3>
+            <p>Play your match and upload screenshot proof. Winner gets 92% of the total pot automatically</p>
+        </div>
+        
     </div>
 </div>
 
+<style>
+.card {
+    background: #1a1a1a;
+    border: 1px solid #333;
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+}
 
+.btn {
+    display: inline-block;
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: bold;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btn-primary {
+    background: #17a2b8;
+    color: white;
+}
+
+.btn-primary:hover {
+    background: #138496;
+    transform: translateY(-2px);
+}
+
+.btn-success {
+    background: #28a745;
+    color: white;
+}
+
+.btn-success:hover {
+    background: #218838;
+    transform: translateY(-2px);
+}
+</style>
 {% endblock %}

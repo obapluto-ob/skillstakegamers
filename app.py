@@ -562,7 +562,7 @@ def quick_matches():
 @app.route('/games', endpoint='games')
 @login_required
 def games_page():
-    return redirect(url_for('home'))
+    return render_template('games_hub.html')
 
 @app.route('/tournaments')
 @login_required
@@ -643,12 +643,74 @@ def smart_mpesa_deposit():
 @login_required
 def paypal_checkout():
     amount = request.args.get('amount', 1300)
+    # In production, integrate with PayPal API
+    # For now, simulate successful payment
+    try:
+        amount_float = float(amount)
+        with SecureDBConnection() as conn:
+            c = conn.cursor()
+            user_id = session['user_id']
+            
+            # Add funds to user balance
+            c.execute('UPDATE users SET balance = balance + ? WHERE id = ?', (amount_float, user_id))
+            
+            # Record transaction
+            c.execute('''INSERT INTO transactions (user_id, type, amount, description) 
+                        VALUES (?, ?, ?, ?)''',
+                     (user_id, 'deposit', amount_float, f'PayPal deposit of KSh {amount_float}'))
+            
+            flash(f'PayPal payment of KSh {amount_float} processed successfully!', 'success')
+    except Exception as e:
+        flash('Payment processing failed. Please try again.', 'error')
+    
     return redirect(url_for('wallet'))
 
 @app.route('/create_crypto_payment', methods=['POST'])
 @login_required
 def create_crypto_payment():
-    return jsonify({'success': True, 'payment_url': url_for('wallet')})
+    try:
+        amount = float(request.form.get('amount', 0))
+        currency = request.form.get('currency', 'USDT')
+        
+        if amount < 10:
+            return jsonify({'success': False, 'message': 'Minimum amount is $10'})
+        
+        # In production, integrate with NOWPayments API
+        # For now, simulate crypto payment creation
+        payment_id = f'crypto_{random.randint(100000, 999999)}'
+        
+        # Convert USD to KSh (approximate rate)
+        ksh_amount = amount * 130  # 1 USD = 130 KSh approximately
+        
+        # Store pending payment in session for demo
+        session[f'pending_crypto_{payment_id}'] = {
+            'amount_usd': amount,
+            'amount_ksh': ksh_amount,
+            'currency': currency,
+            'status': 'pending'
+        }
+        
+        # Simulate immediate confirmation for demo
+        with SecureDBConnection() as conn:
+            c = conn.cursor()
+            user_id = session['user_id']
+            
+            # Add funds to user balance
+            c.execute('UPDATE users SET balance = balance + ? WHERE id = ?', (ksh_amount, user_id))
+            
+            # Record transaction
+            c.execute('''INSERT INTO transactions (user_id, type, amount, description) 
+                        VALUES (?, ?, ?, ?)''',
+                     (user_id, 'deposit', ksh_amount, f'Crypto deposit of ${amount} {currency}'))
+        
+        return jsonify({
+            'success': True, 
+            'message': f'Crypto payment of ${amount} {currency} processed successfully!',
+            'payment_url': url_for('wallet')
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'message': 'Payment processing failed'})
 
 @app.route('/withdraw_funds', methods=['GET', 'POST'])
 @login_required

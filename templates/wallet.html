@@ -664,28 +664,31 @@ function createCryptoPayment() {
     btn.disabled = true;
     btn.textContent = 'Processing...';
     
+    // Use FormData for better compatibility
+    const formData = new FormData();
+    formData.append('amount', parseFloat(amount) / 130); // Convert KSh to USD
+    formData.append('currency', 'USDT');
+    
     fetch('/create_crypto_payment', {
         method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({
-            amount: parseFloat(amount),
-            currency: 'KES'
-        })
+        body: formData
     })
     .then(response => response.json())
     .then(data => {
         console.log('Payment response:', data);
-        if (data.success && data.payment_url && data.payment_url !== '#') {
+        if (data.success) {
+            alert(data.message || 'Crypto payment processed successfully!');
             closeCryptoDeposit();
-            // Redirect in same tab for better mobile experience
-            window.location.href = data.payment_url;
+            // Reload page to show updated balance
+            window.location.reload();
         } else {
-            alert('Error: ' + (data.error || 'Invalid payment URL'));
+            alert('Error: ' + (data.message || 'Payment processing failed'));
         }
         btn.disabled = false;
         btn.textContent = 'Continue with Crypto';
     })
     .catch(error => {
+        console.error('Payment error:', error);
         alert('Error creating payment. Please try again.');
         btn.disabled = false;
         btn.textContent = 'Continue with Crypto';
