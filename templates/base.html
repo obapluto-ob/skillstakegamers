@@ -2,54 +2,135 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="SkillStake">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#667eea">
+    <meta name="msapplication-navbutton-color" content="#667eea">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='icons/apple-touch-icon.png') }}">
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='icons/favicon-32x32.png') }}">
+    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
     <title>{% block title %}SkillStake{% endblock %}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; z-index: auto; }
         body { 
-            font-family: 'Segoe UI', sans-serif; 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif; 
             background: linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.4)), url('https://images.unsplash.com/photo-1542751371-adc38448a05e?w=1920&h=1080&fit=crop&crop=center');
             background-size: cover;
             background-attachment: fixed;
             min-height: 100vh;
+            min-height: -webkit-fill-available;
+            min-height: calc(var(--vh, 1vh) * 100);
             color: white;
             font-size: 16px;
             line-height: 1.4;
             position: relative;
             z-index: 0;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            -webkit-text-size-adjust: 100%;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+            overscroll-behavior: none;
         }
+        /* iPhone 16 Pro Max and large phones */
+        @media (max-width: 430px) and (min-height: 900px) {
+            body { font-size: 16px; padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); }
+            .navbar { padding: max(env(safe-area-inset-top), 1rem) 1rem 1rem 1rem; }
+            .container { padding: 1rem; padding-bottom: max(env(safe-area-inset-bottom), 1rem); }
+        }
+        
+        /* Standard mobile devices */
         @media (max-width: 768px) {
-            body { font-size: 14px; }
-            .navbar { padding: 0.5rem 1rem; flex-direction: column; }
-            .nav-links { flex-wrap: wrap; gap: 0.3rem; margin-top: 0.5rem; justify-content: center; }
-            .nav-links a { padding: 0.4rem 0.8rem; font-size: 0.9rem; }
-            .dropdown-content { position: fixed; top: 60px; right: 10px; left: auto; min-width: 200px; z-index: 9999; }
-            .dropdown-btn { font-size: 0.9rem; padding: 0.4rem 0.8rem; }
-            .container { padding: 10px; }
-            .card { padding: 1rem; margin: 0.5rem 0; }
-            .btn { padding: 0.6rem 1rem; font-size: 13px; min-height: 44px; touch-action: manipulation; }
-            .form-control { padding: 1rem; font-size: 16px; min-height: 44px; }
-            .games-grid { grid-template-columns: 1fr; gap: 1rem; }
-            .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 0.5rem; }
-            .match-card { padding: 1rem; }
-            .balance { margin: 0.3rem 0; font-size: 0.9rem; }
+            body { font-size: 16px; padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); }
+            .navbar { 
+                padding: max(env(safe-area-inset-top), 0.5rem) 1rem 0.5rem 1rem; 
+                flex-wrap: wrap; 
+                position: sticky;
+                top: 0;
+                backdrop-filter: blur(20px);
+                -webkit-backdrop-filter: blur(20px);
+            }
+            .nav-links { 
+                flex-wrap: wrap; 
+                gap: 0.5rem; 
+                margin-top: 0.5rem; 
+                justify-content: center;
+                width: 100%;
+            }
+            .nav-links a { padding: 0.6rem 1rem; font-size: 0.9rem; min-height: 44px; }
+            .dropdown-content { 
+                position: fixed; 
+                top: 80px; 
+                right: 10px; 
+                left: 10px;
+                min-width: auto;
+                max-width: calc(100vw - 20px);
+                z-index: 999999;
+                box-shadow: 0 20px 40px rgba(0,0,0,0.8);
+            }
+            .dropdown-btn { font-size: 0.9rem; padding: 0.6rem 1rem; min-height: 44px; }
+            .container { padding: 1rem; padding-bottom: max(env(safe-area-inset-bottom), 1rem); }
+            .card { padding: 1.5rem; margin: 1rem 0; }
+            .btn { 
+                padding: 0.8rem 1.5rem; 
+                font-size: 16px; 
+                min-height: 48px; 
+                touch-action: manipulation;
+                -webkit-appearance: none;
+                border-radius: 12px;
+            }
+            .form-control { 
+                padding: 1rem; 
+                font-size: 16px; 
+                min-height: 48px;
+                -webkit-appearance: none;
+                border-radius: 12px;
+            }
+            .games-grid { grid-template-columns: 1fr; gap: 1.5rem; }
+            .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 1rem; }
+            .match-card { padding: 1.5rem; }
+            .balance { margin: 0.5rem 0; font-size: 1rem; padding: 0.6rem 1.2rem; }
             .users-grid { grid-template-columns: 1fr; }
-            .user-card { flex-direction: column; gap: 0.5rem; text-align: center; }
-            table { font-size: 0.8rem; }
-            .hero-title { font-size: 2rem; }
-            .modal-content { width: 95%; margin: 10% auto; padding: 1rem; }
+            .user-card { flex-direction: column; gap: 1rem; text-align: center; padding: 1.5rem; }
+            table { font-size: 0.9rem; }
+            .hero-title { font-size: 2.5rem; }
+            .modal-content { 
+                width: 95%; 
+                margin: 5% auto; 
+                padding: 1.5rem;
+                max-height: 90vh;
+                overflow-y: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+            .game-card { padding: 2rem 1.5rem; }
+            .game-card:active { transform: scale(0.98); }
         }
-        @media (max-width: 480px) {
-            .navbar { padding: 0.3rem 0.5rem; }
-            .container { padding: 5px; }
-            .card { padding: 0.8rem; margin: 0.3rem 0; }
-            .btn { padding: 0.5rem 0.8rem; font-size: 12px; min-height: 40px; }
-            .form-control { padding: 0.8rem; font-size: 16px; }
-            .stats-grid { grid-template-columns: 1fr; }
-            .hero-title { font-size: 1.5rem; }
-            .balance { font-size: 0.8rem; }
+        /* Small phones */
+        @media (max-width: 380px) {
+            .navbar { padding: max(env(safe-area-inset-top), 0.5rem) 0.5rem 0.5rem 0.5rem; }
+            .container { padding: 0.5rem; padding-bottom: max(env(safe-area-inset-bottom), 0.5rem); }
+            .card { padding: 1rem; margin: 0.5rem 0; }
+            .btn { padding: 0.8rem 1rem; font-size: 16px; min-height: 48px; }
+            .form-control { padding: 1rem; font-size: 16px; min-height: 48px; }
+            .stats-grid { grid-template-columns: 1fr; gap: 1rem; }
+            .hero-title { font-size: 2rem; }
+            .balance { font-size: 0.9rem; padding: 0.5rem 1rem; }
+            .navbar-brand { font-size: 1.2rem; }
+            .logo { height: 30px; }
+        }
+        
+        /* Landscape orientation fixes */
+        @media (max-height: 500px) and (orientation: landscape) {
+            .hero-section { padding: 1rem 0; }
+            .hero-title { font-size: 1.8rem; }
+            .card { margin: 0.5rem 0; }
+            .navbar { padding: 0.5rem 1rem; }
         }
         .navbar { 
             background: rgba(0,0,0,0.9); 
@@ -148,7 +229,7 @@
         .btn { 
             padding: 0.75rem 1.5rem; 
             border: none; 
-            border-radius: 8px; 
+            border-radius: 12px; 
             font-weight: 600; 
             cursor: pointer;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -156,24 +237,55 @@
             text-decoration: none;
             display: inline-block;
             margin: 0.5rem;
-            transition: transform 0.2s;
+            transition: all 0.2s ease;
+            -webkit-appearance: none;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+            user-select: none;
+            position: relative;
+            overflow: hidden;
         }
         .btn:hover { transform: translateY(-2px); }
+        .btn:active { transform: translateY(0) scale(0.98); }
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.5s;
+        }
+        .btn:active::before { left: 100%; }
         .btn-success { background: #28a745; }
         .btn-danger { background: #dc3545; }
         .btn-secondary { background: #6c757d; }
         .form-group { margin: 1rem 0; }
         .form-control { 
             width: 100%; 
-            padding: 0.75rem; 
+            padding: 1rem; 
             border: 2px solid rgba(255, 255, 255, 0.3); 
-            border-radius: 8px;
-            font-size: 1rem;
+            border-radius: 12px;
+            font-size: 16px;
             background: rgba(255, 255, 255, 0.1);
             color: white;
             backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            -webkit-appearance: none;
+            -webkit-tap-highlight-color: transparent;
+            transition: all 0.3s ease;
         }
-        .form-control:focus { outline: none; border-color: #00ff88; }
+        .form-control:focus { 
+            outline: none; 
+            border-color: #00ff88; 
+            background: rgba(255, 255, 255, 0.15);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 255, 136, 0.2);
+        }
+        .form-control::placeholder {
+            color: rgba(255, 255, 255, 0.6);
+        }
         .alert { 
             padding: 1rem; 
             border-radius: 8px; 
@@ -198,6 +310,11 @@
             color: white;
         }
         .game-card:hover { border-color: #00ff88; transform: translateY(-5px); box-shadow: 0 10px 30px rgba(0, 255, 136, 0.3); }
+        .game-card:active { transform: translateY(-2px) scale(0.98); }
+        @media (hover: none) {
+            .game-card:hover { transform: none; }
+            .game-card:active { transform: scale(0.95); }
+        }
         .game-icon { font-size: 3rem; margin-bottom: 1rem; }
         .match-card { 
             border: 1px solid rgba(255, 255, 255, 0.2); 
@@ -506,6 +623,43 @@
         function stopPropagation(e) {
             e.stopPropagation();
         }
+        
+        // PWA Service Worker Registration
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/static/sw.js')
+                    .then(registration => {
+                        console.log('SW registered: ', registration);
+                    })
+                    .catch(registrationError => {
+                        console.log('SW registration failed: ', registrationError);
+                    });
+            });
+        }
+        
+        // Prevent zoom on double tap for iOS
+        let lastTouchEnd = 0;
+        document.addEventListener('touchend', function (event) {
+            const now = (new Date()).getTime();
+            if (now - lastTouchEnd <= 300) {
+                event.preventDefault();
+            }
+            lastTouchEnd = now;
+        }, false);
+        
+        // Smooth scrolling for iOS
+        document.addEventListener('touchmove', function(e) {
+            e.preventDefault();
+        }, { passive: false });
+        
+        // Fix viewport height on mobile browsers
+        function setVH() {
+            let vh = window.innerHeight * 0.01;
+            document.documentElement.style.setProperty('--vh', `${vh}px`);
+        }
+        setVH();
+        window.addEventListener('resize', setVH);
+        window.addEventListener('orientationchange', setVH);
     </script>
 </body>
 </html>

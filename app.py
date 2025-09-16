@@ -1280,6 +1280,16 @@ def favicon():
     """Serve favicon"""
     return app.send_static_file('favicon.ico')
 
+@app.route('/sw.js')
+def service_worker():
+    """Serve service worker"""
+    return app.send_static_file('sw.js')
+
+@app.route('/manifest.json')
+def manifest():
+    """Serve PWA manifest"""
+    return app.send_static_file('manifest.json')
+
 @app.route('/logout')
 def logout():
     # Don't clear saved login credentials - only clear session
