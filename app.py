@@ -404,6 +404,7 @@ def forgot_password():
                             session['reset_code'] = reset_code
                             session['reset_email'] = email
                             flash('Password reset code sent to your email.', 'success')
+                            return redirect(url_for('forgot_password'))
                         else:
                             flash('Error sending email. Please try again.', 'error')
                     else:
