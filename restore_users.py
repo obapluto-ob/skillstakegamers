@@ -18,10 +18,10 @@ def restore_user(username, phone, referrer_username=None, balance=0):
         referrer_username: Username of the person who referred them (optional)
         balance: Starting balance (default 0)
     """
-    conn = sqlite3.connect('gamebet.db')
-    cursor = conn.cursor()
-    
+    conn = None
     try:
+        conn = sqlite3.connect('gamebet.db')
+        cursor = conn.cursor()
         # Check if user already exists
         cursor.execute('SELECT id FROM users WHERE phone = ?', (phone,))
         existing = cursor.fetchone()
@@ -77,7 +77,8 @@ def restore_user(username, phone, referrer_username=None, balance=0):
         conn.rollback()
         return None
     finally:
-        conn.close()
+        if conn:
+            conn.close()
 
 def check_referral_system():
     """Check the current state of the referral system"""

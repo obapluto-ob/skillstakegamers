@@ -55,12 +55,22 @@ const intervalManager = new IntervalManager();
 
 // Input sanitization
 function sanitizeHTML(str) {
+    if (typeof str !== 'string') return '';
     const div = document.createElement('div');
     div.textContent = str;
     return div.innerHTML;
 }
 
 function validateNumericInput(value, min = null, max = null) {
+    // Prevent NaN injection by strict validation
+    if (typeof value === 'string') {
+        const lowerValue = value.toLowerCase();
+        const dangerousValues = ['nan', 'infinity', 'inf', '-inf', '+inf'];
+        if (dangerousValues.some(dangerous => lowerValue.includes(dangerous))) {
+            return { valid: false, error: 'Invalid input detected' };
+        }
+    }
+    
     const num = parseFloat(value);
     
     if (isNaN(num) || !isFinite(num)) {
@@ -76,6 +86,47 @@ function validateNumericInput(value, min = null, max = null) {
     }
     
     return { valid: true, value: num };
+}
+
+// Safe JSON parsing without eval
+function safeJSONParse(jsonString) {
+    try {
+        return JSON.parse(jsonString);
+    } catch (e) {
+        // Don't log sensitive information in production
+        return null;
+    }
+}
+
+// Secure URL validation
+function validateURL(url) {
+    try {
+        const urlObj = new URL(url);
+        // Only allow https and http protocols
+        return ['https:', 'http:'].includes(urlObj.protocol);
+    } catch {
+        return false;
+    }
+}
+
+// Enhanced path traversal protection
+function sanitizePath(path) {
+    if (typeof path !== 'string') return '';
+    
+    // Normalize path separators
+    path = path.replace(/\\/g, '/');
+    
+    // Remove path traversal attempts more thoroughly
+    path = path.replace(/\.\./g, '');
+    path = path.replace(/\.\/|\.\\/g, '');
+    
+    // Remove dangerous characters
+    path = path.replace(/[<>:"|?*\x00-\x1f]/g, '');
+    
+    // Ensure path doesn't start with /
+    path = path.replace(/^\/+/, '');
+    
+    return path;
 }
 
 // Cleanup on page unload

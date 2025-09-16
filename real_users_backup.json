@@ -115,7 +115,7 @@
     {
       "username": "test_deposit_user",
       "email": "test_deposit_user@test.com",
-      "password_hash": "test123",
+      "password_hash": "[REDACTED_FOR_SECURITY]",
       "balance": 970.0,
       "phone": null,
       "referral_code": null,
@@ -129,7 +129,7 @@
     {
       "username": "test_withdrawal_user",
       "email": "test_withdrawal_user@test.com",
-      "password_hash": "test123",
+      "password_hash": "[REDACTED_FOR_SECURITY]",
       "balance": 0.0,
       "phone": null,
       "referral_code": null,

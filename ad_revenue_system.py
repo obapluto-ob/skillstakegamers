@@ -1,12 +1,7 @@
-# Ad Revenue System for SkillStake Platform
+# This file has been replaced with ad_revenue_system_secure.py
+# Please use the secure version for all ad revenue operations
 
-import sqlite3
-from flask import session, request, jsonify
-
-def init_ad_tables():
-    """Initialize ad revenue tracking tables"""
-    conn = sqlite3.connect('gamebet.db')
-    c = conn.cursor()
+from ad_revenue_system_secure import *
     
     # Ad views tracking
     c.execute('''CREATE TABLE IF NOT EXISTS ad_views (

@@ -28,8 +28,11 @@ def create_deployment_backup():
         ]
         
         for file in files_to_backup:
-            if os.path.exists(file):
-                shutil.copy2(file, os.path.join(backup_dir, file))
+            # Validate file path to prevent path traversal
+            if os.path.exists(file) and not '..' in file:
+                # Use basename for destination to prevent path traversal
+                safe_dest = os.path.join(backup_dir, os.path.basename(file))
+                shutil.copy2(file, safe_dest)
                 print(f"Backed up: {file}")
         
         print(f"Deployment backup created in: {backup_dir}")

@@ -10,11 +10,20 @@ import random
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+import re
+import math
+from security_config import SecurityConfig, admin_required, secure_headers, SecureDBConnection
 
 load_dotenv()
 
+# Use SecurityConfig for all validation functions
+validate_numeric_input = SecurityConfig.validate_numeric_input
+sanitize_input = SecurityConfig.sanitize_input
+validate_email = SecurityConfig.validate_email
+
 def send_email(to_email, subject, body):
-    """Send email using Gmail SMTP"""
+    """Send email using Gmail SMTP with proper resource management"""
+    server = None
     try:
         gmail_user = os.getenv('GMAIL_USER')
         gmail_pass = os.getenv('GMAIL_PASS')
@@ -32,16 +41,35 @@ def send_email(to_email, subject, body):
         server.starttls()
         server.login(gmail_user, gmail_pass)
         server.send_message(msg)
-        server.quit()
         return True
     except Exception as e:
         print(f'Email error: {e}')
         return False
+    finally:
+        if server:
+            try:
+                server.quit()
+            except:
+                pass
 
 def get_db_connection():
     conn = sqlite3.connect('gamebet.db', timeout=30.0)
     conn.row_factory = sqlite3.Row
     return conn
+
+def safe_db_operation(operation):
+    """Execute database operation with proper resource management"""
+    conn = None
+    try:
+        conn = get_db_connection()
+        return operation(conn)
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        raise e
+    finally:
+        if conn:
+            conn.close()
 
 def init_database():
     conn = get_db_connection()
@@ -125,6 +153,11 @@ limiter = Limiter(
     default_limits=["5000 per day", "1000 per hour"]
 )
 
+# Add security headers to all responses
+@app.after_request
+def add_security_headers(response):
+    return secure_headers(response)
+
 init_database()
 
 @app.route('/')
@@ -169,12 +202,25 @@ def dashboard():
 @app.route('/register_fixed', methods=['GET', 'POST'])
 def register_fixed():
     if request.method == 'POST':
-        username = request.form.get('username', '').strip()
-        email = request.form.get('email', '').strip()
+        username = sanitize_input(request.form.get('username', '').strip())
+        email = sanitize_input(request.form.get('email', '').strip())
         password = request.form.get('password', '')
         
         if not username or not email or not password:
             flash('All fields are required!', 'error')
+            return render_template('register_fixed.html')
+        
+        # Validate input formats
+        if not SecurityConfig.validate_username(username):
+            flash('Username must be 3-20 characters, letters, numbers, and underscores only!', 'error')
+            return render_template('register_fixed.html')
+        
+        if not validate_email(email):
+            flash('Please enter a valid email address!', 'error')
+            return render_template('register_fixed.html')
+        
+        if len(password) < 6:
+            flash('Password must be at least 6 characters long!', 'error')
             return render_template('register_fixed.html')
         
         conn = None
@@ -233,11 +279,16 @@ def register_fixed():
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        login_input = request.form.get('login_input', '').strip()
+        login_input = sanitize_input(request.form.get('login_input', '').strip())
         password = request.form.get('password', '')
         
         if not login_input or not password:
             flash('Please enter both username/email and password!', 'error')
+            return render_template('login_fixed.html')
+        
+        # Additional validation
+        if len(login_input) > 100 or len(password) > 100:
+            flash('Invalid input length!', 'error')
             return render_template('login_fixed.html')
         
         conn = None
@@ -274,7 +325,9 @@ def login():
 @app.route('/admin_dashboard')
 @login_required
 def admin_dashboard():
-    if session.get('username') != 'admin':
+    # Use server-side session data for authorization
+    if not session.get('is_admin') or session.get('username') != 'admin':
+        flash('Access denied. Admin privileges required.', 'error')
         return redirect(url_for('dashboard'))
     
     try:
@@ -329,7 +382,11 @@ def admin_dashboard():
 @app.route('/forgot_password', methods=['GET', 'POST'])
 def forgot_password():
     if request.method == 'POST':
-        email = request.form.get('email', '').strip()
+        email = sanitize_input(request.form.get('email', '').strip())
+        
+        if not validate_email(email):
+            flash('Please enter a valid email address.', 'error')
+            return render_template('forgot_password.html')
         if email:
             conn = None
             try:
@@ -363,46 +420,42 @@ def forgot_password():
             flash('Please enter your email address.', 'error')
     return render_template('forgot_password.html')
 
+# Use admin_required from security_config
+
 @app.route('/admin/users')
 @login_required
+@admin_required
 def admin_users():
-    if session.get('username') != 'admin':
-        return redirect(url_for('dashboard'))
     return redirect(url_for('admin_dashboard'))
 
 @app.route('/admin/transactions')
 @login_required
+@admin_required
 def admin_transactions():
-    if session.get('username') != 'admin':
-        return redirect(url_for('dashboard'))
     return redirect(url_for('admin_dashboard'))
 
 @app.route('/admin/matches')
 @login_required
+@admin_required
 def admin_matches():
-    if session.get('username') != 'admin':
-        return redirect(url_for('dashboard'))
     return redirect(url_for('admin_dashboard'))
 
 @app.route('/admin/support_center')
 @login_required
+@admin_required
 def admin_support_center():
-    if session.get('username') != 'admin':
-        return redirect(url_for('dashboard'))
     return redirect(url_for('admin_dashboard'))
 
 @app.route('/api_test')
 @login_required
+@admin_required
 def api_test():
-    if session.get('username') != 'admin':
-        return redirect(url_for('dashboard'))
     return redirect(url_for('admin_dashboard'))
 
 @app.route('/admin/tournaments')
 @login_required
+@admin_required
 def admin_tournaments():
-    if session.get('username') != 'admin':
-        return redirect(url_for('dashboard'))
     return redirect(url_for('admin_dashboard'))
 
 @app.route('/wallet')
@@ -489,5 +542,11 @@ def internal_error(error):
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     debug_mode = os.environ.get('DEBUG', 'False').lower() == 'true'
+    
+    # Secure host binding - only allow 0.0.0.0 in production with proper security
     host = os.environ.get('HOST', '127.0.0.1')
+    if host == '0.0.0.0' and debug_mode:
+        app.logger.warning("Using 0.0.0.0 in debug mode is insecure, switching to 127.0.0.1")
+        host = '127.0.0.1'
+    
     app.run(debug=debug_mode, host=host, port=port)
