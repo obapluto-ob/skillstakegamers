@@ -323,6 +323,50 @@ def quick_matches():
 def games_page():
     return redirect(url_for('home'))
 
+@app.route('/tournaments')
+@login_required
+def tournaments():
+    return redirect(url_for('dashboard'))
+
+@app.route('/matches')
+@login_required
+def matches():
+    return redirect(url_for('dashboard'))
+
+@app.route('/user_bonuses_page')
+@login_required
+def user_bonuses_page():
+    return redirect(url_for('dashboard'))
+
+@app.route('/referrals')
+@login_required
+def referrals():
+    return redirect(url_for('dashboard'))
+
+@app.route('/friends')
+@login_required
+def friends():
+    return redirect(url_for('dashboard'))
+
+@app.route('/leaderboard')
+def leaderboard():
+    return redirect(url_for('home'))
+
+@app.route('/match_history')
+@login_required
+def match_history():
+    return redirect(url_for('dashboard'))
+
+@app.route('/profile')
+@login_required
+def profile():
+    return redirect(url_for('dashboard'))
+
+@app.route('/support_chat')
+@login_required
+def support_chat():
+    return redirect(url_for('dashboard'))
+
 @app.route('/logout')
 def logout():
     session.clear()
