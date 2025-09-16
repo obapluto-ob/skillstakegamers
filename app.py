@@ -246,16 +246,27 @@ def admin_dashboard():
             'net_earnings': 0
         }
         
+        earnings_data = {
+            'match_commission': 0,
+            'total_earnings': 0,
+            'monthly_earnings': 0
+        }
+        
         conn.close()
-        return render_template('admin_dashboard.html', stats=stats, earnings_data={}, 
+        return render_template('admin_dashboard.html', stats=stats, earnings_data=earnings_data, 
                              pending_deposits=[], pending_withdrawals=[], 
                              active_game_matches=[], notifications=[], unread_alerts=0)
         
     except Exception as e:
         flash(f'Error loading admin dashboard: {str(e)}', 'error')
-        return render_template('admin_dashboard.html', stats={}, earnings_data={}, 
-                             pending_deposits=[], pending_withdrawals=[], 
-                             active_game_matches=[], notifications=[], unread_alerts=0)
+        return render_template('admin_dashboard.html', stats={
+            'total_users': 0, 'total_transactions': 0, 'total_balance': 0,
+            'pending_deposits': 0, 'unresolved_alerts': 0, 'active_matches': 0,
+            'total_deposits': 0, 'net_earnings': 0
+        }, earnings_data={
+            'match_commission': 0, 'total_earnings': 0, 'monthly_earnings': 0
+        }, pending_deposits=[], pending_withdrawals=[], 
+        active_game_matches=[], notifications=[], unread_alerts=0)
 
 @app.route('/forgot_password', methods=['GET', 'POST'])
 def forgot_password():
