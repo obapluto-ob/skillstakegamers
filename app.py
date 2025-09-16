@@ -249,7 +249,8 @@ def admin_dashboard():
         earnings_data = {
             'match_commission': 0,
             'total_earnings': 0,
-            'monthly_earnings': 0
+            'monthly_earnings': 0,
+            'deposit_fees': 0
         }
         
         conn.close()
@@ -264,7 +265,7 @@ def admin_dashboard():
             'pending_deposits': 0, 'unresolved_alerts': 0, 'active_matches': 0,
             'total_deposits': 0, 'net_earnings': 0
         }, earnings_data={
-            'match_commission': 0, 'total_earnings': 0, 'monthly_earnings': 0
+            'match_commission': 0, 'total_earnings': 0, 'monthly_earnings': 0, 'deposit_fees': 0
         }, pending_deposits=[], pending_withdrawals=[], 
         active_game_matches=[], notifications=[], unread_alerts=0)
 
