@@ -309,6 +309,11 @@ def admin_tournaments():
         return redirect(url_for('dashboard'))
     return redirect(url_for('admin_dashboard'))
 
+@app.route('/wallet')
+@login_required
+def wallet():
+    return redirect(url_for('dashboard'))
+
 @app.route('/games', endpoint='games')
 def games_page():
     return redirect(url_for('home'))
