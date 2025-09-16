@@ -303,7 +303,7 @@ def api_test():
     return redirect(url_for('admin_dashboard'))
 
 @app.route('/games')
-def games():
+def games_page():
     return redirect(url_for('home'))
 
 @app.route('/logout')
