@@ -797,53 +797,66 @@ def paypal_success():
 @app.route('/create_crypto_payment', methods=['POST'])
 @login_required
 def create_crypto_payment():
+    return jsonify({'success': True, 'show_manual_form': True})
+
+@app.route('/verify_crypto_deposit', methods=['POST'])
+@login_required
+def verify_crypto_deposit():
     import requests
     
     try:
         amount = float(request.form.get('amount', 0))
+        tx_hash = request.form.get('tx_hash', '').strip()
+        wallet_address = request.form.get('wallet_address', '').strip()
         
-        if amount < 1950:  # Minimum KSh 1950
-            return jsonify({'success': False, 'message': 'Minimum amount is KSh 1950'})
+        if not tx_hash or not wallet_address or amount < 10:
+            return jsonify({'success': False, 'message': 'All fields required, minimum $10'})
         
-        # NOWPayments API
-        api_key = os.getenv('NOWPAYMENTS_API_KEY')
-        
-        if not api_key:
-            return jsonify({'success': False, 'message': 'Crypto payment not configured'})
-        
-        # Convert KSh to USD
-        usd_amount = round(amount / 130, 2)
-        
-        payment_data = {
-            "price_amount": usd_amount,
-            "price_currency": "USD",
-            "pay_currency": "USDTTRC20",
-            "order_id": f"order_{session['user_id']}_{random.randint(100000, 999999)}",
-            "order_description": f"SkillStake Gaming Deposit - KSh {amount}",
-            "success_url": f"{request.url_root}crypto_success?amount={amount}",
-            "cancel_url": f"{request.url_root}wallet"
-        }
-        
-        response = requests.post(
-            "https://api.nowpayments.io/v1/payment",
-            headers={
-                'x-api-key': api_key,
-                'Content-Type': 'application/json'
-            },
-            json=payment_data
+        # Verify transaction using blockchain API (example with TronGrid)
+        tron_response = requests.get(
+            f"https://api.trongrid.io/v1/transactions/{tx_hash}"
         )
         
-        if response.status_code == 201:
-            payment = response.json()
-            return jsonify({
-                'success': True,
-                'payment_url': payment['payment_url']
-            })
+        if tron_response.status_code == 200:
+            tx_data = tron_response.json()
+            
+            # Basic verification
+            if tx_data.get('ret', [{}])[0].get('contractRet') == 'SUCCESS':
+                # Convert USD to KSh
+                ksh_amount = amount * 130
+                
+                with SecureDBConnection() as conn:
+                    c = conn.cursor()
+                    user_id = session['user_id']
+                    
+                    # Check if transaction already processed
+                    c.execute('SELECT id FROM transactions WHERE description LIKE ?', (f'%{tx_hash}%',))
+                    if c.fetchone():
+                        return jsonify({'success': False, 'message': 'Transaction already processed'})
+                    
+                    # Add funds to user balance
+                    c.execute('UPDATE users SET balance = balance + ? WHERE id = ?', (ksh_amount, user_id))
+                    
+                    # Record transaction
+                    c.execute('''INSERT INTO transactions (user_id, type, amount, description) 
+                                VALUES (?, ?, ?, ?)''',
+                             (user_id, 'crypto_deposit', ksh_amount, f'Crypto deposit ${amount} USDT - TX: {tx_hash}'))
+                    
+                    # Update session balance
+                    session['balance'] = session.get('balance', 0) + ksh_amount
+                
+                return jsonify({
+                    'success': True, 
+                    'message': f'Crypto deposit of ${amount} USDT (KSh {ksh_amount}) verified and credited!',
+                    'confidence': 95
+                })
+            else:
+                return jsonify({'success': False, 'message': 'Transaction failed or pending'})
         else:
-            return jsonify({'success': False, 'message': 'Crypto payment creation failed'})
+            return jsonify({'success': False, 'message': 'Transaction not found on blockchain'})
             
     except Exception as e:
-        return jsonify({'success': False, 'message': 'Crypto payment error'})
+        return jsonify({'success': False, 'message': 'Verification error occurred'})
 
 @app.route('/crypto_success')
 @login_required

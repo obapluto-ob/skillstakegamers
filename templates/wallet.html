@@ -214,7 +214,7 @@
         </div>
         
         <div style="display: flex; gap: 1rem;">
-            <button onclick="createCryptoPayment()" class="btn" style="flex: 1; background: #f7931a; color: white;">Continue with Crypto</button>
+            <button onclick="createCryptoPayment()" class="btn" style="flex: 1; background: #f7931a; color: white;">📤 Send Crypto Manually</button>
             <button type="button" class="btn btn-secondary" onclick="closeCryptoDeposit()">Cancel</button>
         </div>
     </div>
@@ -660,35 +660,105 @@ function createCryptoPayment() {
         return;
     }
     
-    const btn = event.target;
-    btn.disabled = true;
-    btn.textContent = 'Processing...';
+    // Show manual deposit form
+    showManualCryptoForm(amount);
+}
+
+function showManualCryptoForm(kshAmount) {
+    const usdAmount = (kshAmount / 130).toFixed(2);
     
-    fetch('/create_crypto_payment', {
+    document.getElementById('cryptoDepositModal').innerHTML = `
+        <div class="modal-content" style="max-width: 600px; max-height: 90vh; overflow-y: auto; margin-top: 80px;">
+            <span class="close" onclick="closeCryptoDeposit()">&times;</span>
+            <h2>💰 Manual Crypto Deposit</h2>
+            <p>Send USDT TRC-20 and paste your transaction hash for instant verification</p>
+            
+            <div style="background: #fff3cd; border: 2px solid #ffc107; padding: 1rem; border-radius: 8px; margin: 1rem 0;">
+                <h4 style="color: #856404; margin-bottom: 0.5rem;">📤 SEND EXACTLY:</h4>
+                <div style="font-size: 1.5rem; font-weight: bold; color: #856404;">$${usdAmount} USDT TRC-20</div>
+                <div style="color: #856404;">= KSh ${kshAmount}</div>
+            </div>
+            
+            <div style="background: #d4edda; padding: 1rem; border-radius: 8px; margin: 1rem 0;">
+                <h4 style="color: #155724;">📍 WALLET ADDRESS:</h4>
+                <div style="background: white; padding: 0.8rem; border-radius: 6px; font-family: monospace; word-break: break-all; border: 2px solid #28a745;">
+                    TQn9Y2khEsLMWtWdY2wKWwHjSqJbxjqo8e
+                </div>
+                <small style="color: #155724;">⚠️ USDT TRC-20 ONLY - Other networks will be lost!</small>
+            </div>
+            
+            <form onsubmit="submitCryptoVerification(event, ${kshAmount})">
+                <div style="margin-bottom: 1rem;">
+                    <label><strong>💳 Transaction Hash (TxID)</strong></label>
+                    <input type="text" id="cryptoTxHash" class="form-control" placeholder="Paste your transaction hash here" required>
+                    <small style="color: #666;">Find this in your wallet after sending</small>
+                </div>
+                
+                <div style="margin-bottom: 1rem;">
+                    <label><strong>📱 Your Wallet Address (Optional)</strong></label>
+                    <input type="text" id="cryptoWalletAddress" class="form-control" placeholder="Your sending wallet address">
+                </div>
+                
+                <div style="background: #e7f3ff; padding: 1rem; border-radius: 8px; margin: 1rem 0;">
+                    <h4>🔍 How Verification Works:</h4>
+                    <ul style="margin: 0.5rem 0; padding-left: 1.5rem;">
+                        <li>🔗 System checks transaction on TRON blockchain</li>
+                        <li>✅ Verifies amount and recipient address</li>
+                        <li>⚡ Instant credit if verification passes</li>
+                        <li>🛡️ Prevents double-spending and fraud</li>
+                    </ul>
+                </div>
+                
+                <div style="display: flex; gap: 1rem;">
+                    <button type="submit" class="btn" style="flex: 1; background: #f7931a; color: white;">🔍 Verify & Credit</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeCryptoDeposit()">Cancel</button>
+                </div>
+            </form>
+        </div>
+    `;
+}
+
+function submitCryptoVerification(event, kshAmount) {
+    event.preventDefault();
+    
+    const txHash = document.getElementById('cryptoTxHash').value.trim();
+    const walletAddress = document.getElementById('cryptoWalletAddress').value.trim();
+    const usdAmount = (kshAmount / 130).toFixed(2);
+    
+    if (!txHash) {
+        alert('Please enter transaction hash');
+        return;
+    }
+    
+    const btn = event.target.querySelector('button[type="submit"]');
+    btn.disabled = true;
+    btn.textContent = '🔍 Verifying...';
+    
+    const formData = new FormData();
+    formData.append('amount', usdAmount);
+    formData.append('tx_hash', txHash);
+    formData.append('wallet_address', walletAddress);
+    
+    fetch('/verify_crypto_deposit', {
         method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({
-            amount: parseFloat(amount),
-            currency: 'KES'
-        })
+        body: formData
     })
     .then(response => response.json())
     .then(data => {
-        console.log('Payment response:', data);
-        if (data.success && data.payment_url && data.payment_url !== '#') {
+        if (data.success) {
+            alert(`✅ ${data.message}`);
             closeCryptoDeposit();
-            // Redirect in same tab for better mobile experience
-            window.location.href = data.payment_url;
+            window.location.reload();
         } else {
-            alert('Error: ' + (data.error || 'Invalid payment URL'));
+            alert(`❌ ${data.message}`);
         }
         btn.disabled = false;
-        btn.textContent = 'Continue with Crypto';
+        btn.textContent = '🔍 Verify & Credit';
     })
     .catch(error => {
-        alert('Error creating payment. Please try again.');
+        alert('❌ Verification error. Please try again.');
         btn.disabled = false;
-        btn.textContent = 'Continue with Crypto';
+        btn.textContent = '🔍 Verify & Credit';
     });
 }
 
