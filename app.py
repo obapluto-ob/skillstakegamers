@@ -302,6 +302,15 @@ def api_test():
         return redirect(url_for('dashboard'))
     return redirect(url_for('admin_dashboard'))
 
+@app.route('/games')
+@login_required
+def games():
+    return redirect(url_for('dashboard'))
+
+@app.route('/games')
+def games():
+    return redirect(url_for('home'))
+
 @app.route('/logout')
 def logout():
     session.clear()
