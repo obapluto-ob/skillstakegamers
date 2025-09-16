@@ -367,6 +367,11 @@ def profile():
 def support_chat():
     return redirect(url_for('dashboard'))
 
+@app.route('/fpl_battles')
+@login_required
+def fpl_battles():
+    return redirect(url_for('dashboard'))
+
 @app.route('/logout')
 def logout():
     session.clear()
