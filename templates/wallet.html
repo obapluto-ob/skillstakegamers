@@ -692,18 +692,37 @@ function createCryptoPayment() {
     });
 }
 
-// Receipt screenshot preview
-document.getElementById('receiptInput').addEventListener('change', function(e) {
-    const file = e.target.files[0];
-    if (file) {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            document.getElementById('receiptImage').src = e.target.result;
-            document.getElementById('receiptPreview').style.display = 'block';
-        };
-        reader.readAsDataURL(file);
-    }
-});
+// Receipt screenshot preview - with file validation
+const receiptInput = document.getElementById('receiptInput');
+if (receiptInput) {
+    receiptInput.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            // File validation
+            const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
+            const maxSize = 5 * 1024 * 1024; // 5MB
+            
+            if (!allowedTypes.includes(file.type)) {
+                alert('Please select a valid image file (JPEG, PNG, GIF)');
+                e.target.value = '';
+                return;
+            }
+            
+            if (file.size > maxSize) {
+                alert('File size must be less than 5MB');
+                e.target.value = '';
+                return;
+            }
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                document.getElementById('receiptImage').src = e.target.result;
+                document.getElementById('receiptPreview').style.display = 'block';
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+}
 
 // Smart withdrawal system functions
 function updateWithdrawalForm() {
@@ -848,22 +867,30 @@ document.addEventListener('DOMContentLoaded', function() {
     updateWithdrawalForm();
 });
 
-// Close modal when clicking outside
-window.onclick = function(event) {
-    const addModal = document.getElementById('addFundsModal');
-    const withdrawModal = document.getElementById('withdrawModal');
-    const cryptoModal = document.getElementById('cryptoDepositModal');
-    const mpesaModal = document.getElementById('mpesaModal');
-    if (event.target == withdrawModal) {
-        withdrawModal.style.display = 'none';
+// Close modal when clicking outside - memory leak fix
+let modalClickHandler = null;
+function setupModalClickHandler() {
+    if (modalClickHandler) {
+        window.removeEventListener('click', modalClickHandler);
     }
-    if (event.target == cryptoModal) {
-        cryptoModal.style.display = 'none';
-    }
-    if (event.target == mpesaModal) {
-        mpesaModal.style.display = 'none';
-    }
+    modalClickHandler = function(event) {
+        const addModal = document.getElementById('addFundsModal');
+        const withdrawModal = document.getElementById('withdrawModal');
+        const cryptoModal = document.getElementById('cryptoDepositModal');
+        const mpesaModal = document.getElementById('mpesaModal');
+        if (event.target == withdrawModal) {
+            withdrawModal.style.display = 'none';
+        }
+        if (event.target == cryptoModal) {
+            cryptoModal.style.display = 'none';
+        }
+        if (event.target == mpesaModal) {
+            mpesaModal.style.display = 'none';
+        }
+    };
+    window.addEventListener('click', modalClickHandler);
 }
+setupModalClickHandler();
 </script>
 <div class="card">
     <h2>Withdrawal History</h2>

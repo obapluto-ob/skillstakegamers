@@ -456,32 +456,56 @@
             }
         }
         
-        // Close dropdown when clicking outside
-        document.addEventListener('click', function(event) {
-            const dropdown = document.getElementById('mainDropdown');
-            const dropdownBtn = dropdown?.querySelector('.dropdown-btn');
-            
-            if (dropdown && !dropdown.contains(event.target)) {
-                dropdown.classList.remove('show');
-                document.getElementById('dropdownContent').style.display = 'none';
-                document.getElementById('dropdownArrow').innerHTML = '▼';
+        // Close dropdown when clicking outside - memory leak fix
+        let dropdownClickHandler = null;
+        function setupDropdownHandler() {
+            if (dropdownClickHandler) {
+                document.removeEventListener('click', dropdownClickHandler);
             }
-        });
-        
-        // Close dropdown on mobile when link is clicked
-        document.querySelectorAll('.dropdown-content a').forEach(link => {
-            link.addEventListener('click', function() {
+            dropdownClickHandler = function(event) {
                 const dropdown = document.getElementById('mainDropdown');
-                dropdown.classList.remove('show');
-                document.getElementById('dropdownContent').style.display = 'none';
-                document.getElementById('dropdownArrow').innerHTML = '▼';
-            });
-        });
+                if (dropdown && !dropdown.contains(event.target)) {
+                    dropdown.classList.remove('show');
+                    const content = document.getElementById('dropdownContent');
+                    const arrow = document.getElementById('dropdownArrow');
+                    if (content) content.style.display = 'none';
+                    if (arrow) arrow.innerHTML = '▼';
+                }
+            };
+            document.addEventListener('click', dropdownClickHandler);
+        }
+        setupDropdownHandler();
         
-        // Prevent dropdown from closing when clicking inside
-        document.getElementById('dropdownContent')?.addEventListener('click', function(e) {
+        // Close dropdown on mobile when link is clicked - memory leak fix
+        function setupDropdownLinks() {
+            document.querySelectorAll('.dropdown-content a').forEach(link => {
+                // Remove existing listeners first
+                link.removeEventListener('click', closeDropdown);
+                link.addEventListener('click', closeDropdown);
+            });
+        }
+        
+        function closeDropdown() {
+            const dropdown = document.getElementById('mainDropdown');
+            const content = document.getElementById('dropdownContent');
+            const arrow = document.getElementById('dropdownArrow');
+            if (dropdown) dropdown.classList.remove('show');
+            if (content) content.style.display = 'none';
+            if (arrow) arrow.innerHTML = '▼';
+        }
+        
+        setupDropdownLinks();
+        
+        // Prevent dropdown from closing when clicking inside - memory leak fix
+        const dropdownContent = document.getElementById('dropdownContent');
+        if (dropdownContent) {
+            dropdownContent.removeEventListener('click', stopPropagation);
+            dropdownContent.addEventListener('click', stopPropagation);
+        }
+        
+        function stopPropagation(e) {
             e.stopPropagation();
-        });
+        }
     </script>
 </body>
 </html>

@@ -26,11 +26,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             });
             
-            document.addEventListener('click', function(e) {
-                if (!dropdown.contains(e.target)) {
-                    content.style.display = 'none';
-                }
-            });
+            // Use single event listener to prevent memory leaks
+            if (!dropdown.hasAttribute('data-listener-added')) {
+                document.addEventListener('click', function(e) {
+                    if (!dropdown.contains(e.target)) {
+                        content.style.display = 'none';
+                    }
+                });
+                dropdown.setAttribute('data-listener-added', 'true');
+            }
         }
     });
     
@@ -62,7 +66,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Auto-refresh balance
     if (window.location.pathname.includes('dashboard')) {
-        setInterval(function() {
+        let balanceInterval = setInterval(function() {
             fetch('/api/user_balance')
                 .then(response => response.json())
                 .then(data => {
@@ -75,6 +79,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 })
                 .catch(err => console.log('Balance refresh failed'));
         }, 60000);
+        
+        // Cleanup interval on page unload
+        window.addEventListener('beforeunload', function() {
+            if (balanceInterval) clearInterval(balanceInterval);
+        });
     }
     
     console.log('All button fixes applied successfully');

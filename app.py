@@ -11,7 +11,9 @@ import random
 load_dotenv()
 
 def get_db_connection():
-    return sqlite3.connect('gamebet.db', timeout=30.0)
+    conn = sqlite3.connect('gamebet.db', timeout=30.0)
+    conn.row_factory = sqlite3.Row
+    return conn
 
 def init_database():
     conn = get_db_connection()
@@ -170,7 +172,13 @@ def register_fixed():
                      (username, email, hashed_password, referral_code, 1))
             
             conn.commit()
-            conn.close()
+        except Exception as e:
+            if conn:
+                conn.rollback()
+            raise e
+        finally:
+            if conn:
+                conn.close()
             
             flash('Registration successful! You can now login.', 'success')
             return redirect(url_for('login'))
@@ -216,6 +224,9 @@ def login():
             conn.close()
         except Exception as e:
             flash('Login error occurred. Please try again.', 'error')
+        finally:
+            if 'conn' in locals() and conn:
+                conn.close()
     
     return render_template('login_fixed.html')
 
@@ -256,7 +267,6 @@ def admin_dashboard():
             'deposit_fees': 0
         }
         
-        conn.close()
         return render_template('admin_dashboard.html', stats=stats, earnings_data=earnings_data, 
                              pending_deposits=[], pending_withdrawals=[], 
                              active_game_matches=[], notifications=[], unread_alerts=0)
@@ -271,6 +281,9 @@ def admin_dashboard():
             'match_commission': 0, 'total_earnings': 0, 'monthly_earnings': 0, 'deposit_fees': 0
         }, pending_deposits=[], pending_withdrawals=[], 
         active_game_matches=[], notifications=[], unread_alerts=0)
+    finally:
+        if 'conn' in locals() and conn:
+            conn.close()
 
 @app.route('/forgot_password', methods=['GET', 'POST'])
 def forgot_password():
