@@ -2,163 +2,104 @@
 
 {% block content %}
 <div class="card">
-    <h1>Referral System</h1>
-    <p>Invite friends and earn money from their activity!</p>
+    <h1>🎯 Referral Program</h1>
+    <p>Earn KSh 50 for every friend you refer who joins SkillStake Gaming!</p>
 </div>
 
-<!-- Referral Stats -->
 <div class="card">
-    <h2>Your Referral Stats</h2>
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
-        <div style="background: rgba(40, 167, 69, 0.1); padding: 1rem; border-radius: 8px; text-align: center;">
-            <div style="font-size: 2rem; font-weight: bold; color: #28a745;">{{ referred_users|length }}</div>
+    <h2>📋 Your Referral Details</h2>
+    
+    {% if referral_code %}
+    <div style="background: #d4edda; padding: 1rem; border-radius: 8px; margin: 1rem 0;">
+        <h4 style="color: #155724;">🔗 Your Referral Code:</h4>
+        <div style="background: white; padding: 0.8rem; border-radius: 6px; font-family: monospace; font-size: 1.2rem; font-weight: bold; color: #28a745; border: 2px solid #28a745;">
+            {{ referral_code }}
+        </div>
+    </div>
+    
+    <div style="background: #e7f3ff; padding: 1rem; border-radius: 8px; margin: 1rem 0;">
+        <h4 style="color: #0c5460;">🌐 Your Referral Link:</h4>
+        <div style="background: white; padding: 0.8rem; border-radius: 6px; font-family: monospace; word-break: break-all; border: 2px solid #17a2b8;">
+            {{ referral_link }}
+        </div>
+        <button onclick="copyReferralLink()" class="btn btn-primary" style="margin-top: 0.5rem;">📋 Copy Link</button>
+    </div>
+    {% endif %}
+    
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin: 1rem 0;">
+        <div style="background: #28a745; color: white; padding: 1rem; border-radius: 8px; text-align: center;">
+            <div style="font-size: 2rem;">{{ referred_users|length }}</div>
             <div>Friends Referred</div>
         </div>
-        <div style="background: rgba(255, 193, 7, 0.1); padding: 1rem; border-radius: 8px; text-align: center;">
-            <div style="font-size: 2rem; font-weight: bold; color: #ffc107;">KSh {{ "%.0f"|format(referral_earnings) }}</div>
-            <div>Total Earnings</div>
-        </div>
-        <div style="background: rgba(23, 162, 184, 0.1); padding: 1rem; border-radius: 8px; text-align: center;">
-            <div style="font-size: 2rem; font-weight: bold; color: #17a2b8;">KSh {{ "%.0f"|format(referred_users|length * 30) }}</div>
-            <div>Signup Bonuses</div>
+        <div style="background: #17a2b8; color: white; padding: 1rem; border-radius: 8px; text-align: center;">
+            <div style="font-size: 2rem;">KSh {{ "%.0f"|format(total_earnings) }}</div>
+            <div>Total Earned</div>
         </div>
     </div>
 </div>
 
-<!-- Referral Code -->
 <div class="card">
-    <h2>Your Referral Link</h2>
-    <div style="background: rgba(0,255,136,0.1); padding: 2rem; border-radius: 8px; text-align: center;">
-        <div style="font-size: 3rem; font-weight: bold; color: #00ff88; margin-bottom: 1rem;">
-            {{ referral_code or 'Loading...' }}
+    <h2>💰 How It Works</h2>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 2rem; margin: 1rem 0;">
+        <div style="text-align: center;">
+            <div style="font-size: 3rem; margin-bottom: 1rem;">1️⃣</div>
+            <h3>Share Your Link</h3>
+            <p>Send your referral link to friends via WhatsApp, SMS, or social media</p>
         </div>
-        <div style="background: rgba(255,255,255,0.1); padding: 1rem; border-radius: 8px; margin: 1rem 0; font-family: monospace; word-break: break-all;">
-            {% if referral_code and referral_code != 'None' %}
-                {{ request.url_root }}register?ref={{ referral_code }}
-            {% else %}
-                Loading referral link...
-            {% endif %}
+        <div style="text-align: center;">
+            <div style="font-size: 3rem; margin-bottom: 1rem;">2️⃣</div>
+            <h3>Friend Registers</h3>
+            <p>When they sign up using your link, they become your referral</p>
         </div>
-        <button onclick="copyReferralLink()" class="btn btn-success" style="margin-right: 1rem;">Copy Link</button>
-        <button onclick="shareReferralLink()" class="btn btn-primary">Share Link</button>
-    </div>
-</div>
-
-<!-- How It Works -->
-<div class="card">
-    <h2>How Referrals Work</h2>
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem;">
-        <div style="background: rgba(255,255,255,0.1); padding: 1rem; border-radius: 8px;">
-            <h3 style="color: #00ff88;">1. Share Your Link</h3>
-            <p>Send your referral link to friends</p>
-        </div>
-        <div style="background: rgba(255,255,255,0.1); padding: 1rem; border-radius: 8px;">
-            <h3 style="color: #ffc107;">2. Instant Bonus</h3>
-            <p>Get KSh 30 immediately when they sign up</p>
-        </div>
-        <div style="background: rgba(255,255,255,0.1); padding: 1rem; border-radius: 8px;">
-            <h3 style="color: #17a2b8;">3. Ongoing Commission</h3>
-            <p>Earn 4% of all their match losses forever!</p>
+        <div style="text-align: center;">
+            <div style="font-size: 3rem; margin-bottom: 1rem;">3️⃣</div>
+            <h3>Earn KSh 50</h3>
+            <p>You instantly receive KSh 50 bonus credited to your wallet</p>
         </div>
     </div>
 </div>
 
-<!-- Referred Friends -->
+{% if referred_users %}
 <div class="card">
-    <h2>Your Referred Friends</h2>
-    {% if referred_users %}
-        <div style="overflow-x: auto;">
-            <table style="width: 100%; border-collapse: collapse;">
-                <thead>
-                    <tr style="background: rgba(255,255,255,0.1);">
-                        <th style="padding: 1rem; text-align: left;">Username</th>
-                        <th style="padding: 1rem; text-align: left;">Joined Date</th>
-                        <th style="padding: 1rem; text-align: left;">Status</th>
-                        <th style="padding: 1rem; text-align: left;">Your Earnings</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for friend in referred_users %}
-                    <tr style="border-bottom: 1px solid rgba(255,255,255,0.1);">
-                        <td style="padding: 1rem;">{{ friend[0] }}</td>
-                        <td style="padding: 1rem;">{{ friend[1] }}</td>
-                        <td style="padding: 1rem;"><span style="color: #28a745;">Active</span></td>
-                        <td style="padding: 1rem; color: #00ff88;">KSh 30 + KSh {{ "%.0f"|format(friend[2] if friend|length > 2 else 0) }}</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    {% else %}
-        <div style="text-align: center; padding: 2rem;">
-            <p>No friends referred yet. Start sharing your code!</p>
-            <button onclick="shareReferralLink()" class="btn btn-primary">Share Now</button>
-        </div>
-    {% endif %}
-</div>
-
-<!-- Referral Tips -->
-<div class="card">
-    <h2>Maximize Your Earnings</h2>
-    <div style="background: rgba(255,255,255,0.1); padding: 1rem; border-radius: 8px;">
-        <div style="background: rgba(40,167,69,0.2); padding: 15px; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid #28a745;">
-            <h4 style="color: #28a745; margin: 0 0 10px 0;">How Referrals Work:</h4>
-            <div style="font-size: 14px; line-height: 1.6;">
-                <strong>1. Instant Bonus:</strong> Get KSh 30 when friend signs up<br>
-                <strong>2. Ongoing Commission:</strong> Earn 4% of all their match losses automatically<br>
-                <strong>3. No Limits:</strong> Refer unlimited friends, earn forever from their activity
+    <h2>👥 Your Referrals</h2>
+    <div style="display: grid; gap: 1rem;">
+        {% for user in referred_users %}
+        <div style="background: #f8f9fa; padding: 1rem; border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
+            <div>
+                <strong>{{ user[0] }}</strong>
+                <div style="color: #666; font-size: 0.9rem;">Joined: {{ user[1].split(' ')[0] if user[1] else 'N/A' }}</div>
+            </div>
+            <div style="background: #28a745; color: white; padding: 0.3rem 0.8rem; border-radius: 15px; font-size: 0.8rem;">
+                +KSh 50
             </div>
         </div>
-        <ul style="margin: 0; padding-left: 1.5rem;">
-            <li><strong>Share on WhatsApp:</strong> Send to gaming groups</li>
-            <li><strong>Social Media:</strong> Post on Facebook, Instagram</li>
-            <li><strong>Gaming Communities:</strong> Share in PUBG/FIFA groups</li>
-            <li><strong>Friends & Family:</strong> Personal invitations work best</li>
-            <li><strong>Offer Help:</strong> Teach them how to play and win</li>
-        </ul>
+        {% endfor %}
     </div>
 </div>
+{% else %}
+<div class="card">
+    <div style="text-align: center; padding: 2rem;">
+        <h3>No referrals yet</h3>
+        <p>Start sharing your referral link to earn bonuses!</p>
+    </div>
+</div>
+{% endif %}
 
 <script>
 function copyReferralLink() {
-    const code = '{{ referral_code }}';
-    if (code && code !== 'None') {
-        const link = '{{ request.url_root }}register?ref=' + code;
-        navigator.clipboard.writeText(link).then(() => {
-            alert('Referral link copied!');
-        });
-    } else {
-        alert('Referral code not ready yet. Please refresh the page.');
-    }
-}
-
-function shareReferralLink() {
-    const code = '{{ referral_code }}';
-    if (code && code !== 'None') {
-        const link = '{{ request.url_root }}register?ref=' + code;
-        const message = `Join SkillState and win money playing games!
-
-Register using my link: ${link}
-
-Bet on PUBG, FIFA, COD Mobile
-Join tournaments with big prizes
-Instant M-Pesa withdrawals
-
-Start earning money from gaming!`;
-
-        if (navigator.share) {
-            navigator.share({
-                title: 'Join SkillState - Win Money Gaming!',
-                text: message
-            });
-        } else {
-            navigator.clipboard.writeText(message).then(() => {
-                alert('Referral message copied! Share it anywhere.');
-            });
-        }
-    } else {
-        alert('Referral code not ready yet. Please refresh the page.');
-    }
+    const link = "{{ referral_link }}";
+    navigator.clipboard.writeText(link).then(function() {
+        alert('✅ Referral link copied to clipboard!');
+    }, function(err) {
+        // Fallback for older browsers
+        const textArea = document.createElement("textarea");
+        textArea.value = link;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        alert('✅ Referral link copied to clipboard!');
+    });
 }
 </script>
 {% endblock %}

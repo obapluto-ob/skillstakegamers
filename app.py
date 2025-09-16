@@ -145,7 +145,7 @@ def login_required(f):
 
 app = Flask(__name__)
 app.secret_key = os.getenv('SECRET_KEY', 'fallback-key-change-in-production')
-app.permanent_session_lifetime = timedelta(hours=24)
+app.permanent_session_lifetime = timedelta(days=30)  # Keep users logged in for 30 days
 
 limiter = Limiter(
     key_func=get_remote_address,
@@ -241,9 +241,25 @@ def register_fixed():
                         break
                 verification_code = random.randint(100000, 999999)
                 
-                c.execute('''INSERT INTO users (username, email, password, referral_code, email_verified) 
-                             VALUES (?, ?, ?, ?, ?)''',
-                         (username, email, hashed_password, referral_code, 0))
+                # Check for referral
+                referred_by = None
+                ref_code = request.form.get('ref_code') or request.args.get('ref')
+                if ref_code:
+                    c.execute('SELECT id FROM users WHERE referral_code = ?', (ref_code,))
+                    referrer = c.fetchone()
+                    if referrer:
+                        referred_by = referrer[0]
+                
+                c.execute('''INSERT INTO users (username, email, password, referral_code, email_verified, referred_by) 
+                             VALUES (?, ?, ?, ?, ?, ?)''',
+                         (username, email, hashed_password, referral_code, 0, referred_by))
+                
+                # Give referral bonus
+                if referred_by:
+                    c.execute('UPDATE users SET balance = balance + 50 WHERE id = ?', (referred_by,))
+                    c.execute('''INSERT INTO transactions (user_id, type, amount, description) 
+                                VALUES (?, ?, ?, ?)''',
+                             (referred_by, 'referral_bonus', 50, f'Referral bonus for {username}'))
                 
                 # Send verification email
                 email_body = f'''
@@ -293,9 +309,12 @@ def login():
                     session.permanent = True
                     session['user_id'] = user[0]
                     session['username'] = user[1]
-                    session['balance'] = user[4]
+                    session['balance'] = user[4] or 0
                     session['is_admin'] = user[1] == 'admin'
                     session['logged_in'] = True
+                    
+                    # Update last login
+                    c.execute('UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = ?', (user[0],))
                     
                     if user[1] == 'admin':
                         return redirect(url_for('admin_dashboard'))
@@ -582,7 +601,33 @@ def user_bonuses_page():
 @app.route('/referrals')
 @login_required
 def referrals():
-    return redirect(url_for('dashboard'))
+    try:
+        with SecureDBConnection() as conn:
+            c = conn.cursor()
+            user_id = session['user_id']
+            
+            # Get user's referral code
+            c.execute('SELECT referral_code FROM users WHERE id = ?', (user_id,))
+            user_data = c.fetchone()
+            referral_code = user_data[0] if user_data else None
+            
+            # Get referred users
+            c.execute('SELECT username, created_at FROM users WHERE referred_by = ?', (user_id,))
+            referred_users = c.fetchall()
+            
+            # Get referral earnings
+            c.execute('SELECT SUM(amount) FROM transactions WHERE user_id = ? AND type = "referral_bonus"', (user_id,))
+            total_earnings = c.fetchone()[0] or 0
+            
+            referral_link = f"{request.url_root}register_fixed?ref={referral_code}" if referral_code else None
+            
+        return render_template('referrals.html', 
+                             referral_code=referral_code,
+                             referral_link=referral_link,
+                             referred_users=referred_users,
+                             total_earnings=total_earnings)
+    except:
+        return redirect(url_for('dashboard'))
 
 @app.route('/friends')
 @login_required
@@ -1019,6 +1064,22 @@ def upload_match_screenshot():
         
     except Exception as e:
         return jsonify({'success': False, 'message': 'Error uploading result'})
+
+@app.route('/test_email')
+@login_required
+@admin_required
+def test_email():
+    """Test email configuration"""
+    test_result = send_email(
+        'test@example.com', 
+        'SkillStake Test Email', 
+        '<h2>Email Configuration Test</h2><p>If you receive this, email is working!</p>'
+    )
+    return jsonify({
+        'email_working': test_result,
+        'gmail_user': os.getenv('GMAIL_USER'),
+        'gmail_configured': bool(os.getenv('GMAIL_USER') and os.getenv('GMAIL_PASS'))
+    })
 
 @app.route('/api/user_balance')
 @login_required
