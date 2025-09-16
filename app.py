@@ -342,9 +342,18 @@ def admin_dashboard():
         
         earnings_data = {
             'match_commission': 0,
-            'total_earnings': 0,
-            'monthly_earnings': 0,
-            'deposit_fees': 0
+            'commission_rate': 8,
+            'deposit_fees': 0,
+            'withdrawal_fees': 0,
+            'referral_profits': 0,
+            'fraud_commissions': 0,
+            'total_battles': 0,
+            'bank_fees': 0,
+            'gross_earnings': 0,
+            'net_earnings': 0,
+            'pending_deposits': 0,
+            'pending_withdrawals': 0,
+            'total_game_matches': 0
         }
         
         return render_template('admin_dashboard.html', stats=stats, earnings_data=earnings_data, 
@@ -358,7 +367,10 @@ def admin_dashboard():
             'pending_deposits': 0, 'unresolved_alerts': 0, 'active_matches': 0,
             'total_deposits': 0, 'net_earnings': 0
         }, earnings_data={
-            'match_commission': 0, 'total_earnings': 0, 'monthly_earnings': 0, 'deposit_fees': 0
+            'match_commission': 0, 'commission_rate': 8, 'deposit_fees': 0, 'withdrawal_fees': 0,
+            'referral_profits': 0, 'fraud_commissions': 0, 'total_battles': 0, 'bank_fees': 0,
+            'gross_earnings': 0, 'net_earnings': 0, 'pending_deposits': 0, 'pending_withdrawals': 0,
+            'total_game_matches': 0
         }, pending_deposits=[], pending_withdrawals=[], 
         active_game_matches=[], notifications=[], unread_alerts=0)
     finally:
@@ -400,6 +412,52 @@ def forgot_password():
                 flash('Error processing request. Please try again.', 'error')
         else:
             flash('Please enter your email address.', 'error')
+    return render_template('forgot_password.html')
+
+@app.route('/reset_password', methods=['GET', 'POST'])
+def reset_password():
+    if request.method == 'POST':
+        reset_code = request.form.get('reset_code', '').strip()
+        new_password = request.form.get('new_password', '')
+        confirm_password = request.form.get('confirm_password', '')
+        
+        if not all([reset_code, new_password, confirm_password]):
+            flash('All fields are required.', 'error')
+            return render_template('forgot_password.html')
+        
+        if new_password != confirm_password:
+            flash('Passwords do not match.', 'error')
+            return render_template('forgot_password.html')
+        
+        if len(new_password) < 6:
+            flash('Password must be at least 6 characters long.', 'error')
+            return render_template('forgot_password.html')
+        
+        # Verify reset code
+        if ('reset_code' not in session or 
+            'reset_email' not in session or 
+            str(session['reset_code']) != reset_code):
+            flash('Invalid or expired reset code.', 'error')
+            return render_template('forgot_password.html')
+        
+        try:
+            with SecureDBConnection() as conn:
+                c = conn.cursor()
+                hashed_password = generate_password_hash(new_password)
+                c.execute('UPDATE users SET password = ? WHERE email = ?', 
+                         (hashed_password, session['reset_email']))
+                
+                if c.rowcount > 0:
+                    # Clear reset session data
+                    session.pop('reset_code', None)
+                    session.pop('reset_email', None)
+                    flash('Password reset successful! You can now login with your new password.', 'success')
+                    return redirect(url_for('login'))
+                else:
+                    flash('Error resetting password. Please try again.', 'error')
+        except Exception as e:
+            flash('Error resetting password. Please try again.', 'error')
+    
     return render_template('forgot_password.html')
 
 # Use admin_required from security_config
