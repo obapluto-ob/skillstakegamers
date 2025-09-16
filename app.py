@@ -17,8 +17,7 @@ def get_db_connection():
 
 def init_database():
     conn = get_db_connection()
-    try:
-        c = conn.cursor()
+    c = conn.cursor()
     c.execute('''CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         username TEXT UNIQUE NOT NULL,
@@ -76,10 +75,8 @@ def init_database():
                      VALUES (?, ?, ?, ?, ?, ?)''',
                  ('admin', 'admin@skillstake.com', admin_password, 0.0, '0700000000', 'ADMIN001'))
     
-        conn.commit()
-    finally:
-        if conn:
-            conn.close()
+    conn.commit()
+    conn.close()
 
 def login_required(f):
     def wrapper(*args, **kwargs):
@@ -172,19 +169,16 @@ def register_fixed():
                      (username, email, hashed_password, referral_code, 1))
             
             conn.commit()
-        except Exception as e:
-            if conn:
-                conn.rollback()
-            raise e
-        finally:
-            if conn:
-                conn.close()
-            
             flash('Registration successful! You can now login.', 'success')
             return redirect(url_for('login'))
             
         except Exception as e:
+            if conn:
+                conn.rollback()
             flash('Registration failed. Please try again.', 'error')
+        finally:
+            if conn:
+                conn.close()
     
     return render_template('register_fixed.html')
 
