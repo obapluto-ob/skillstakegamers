@@ -54,6 +54,15 @@
 </div>
 
 <div class="card">
+    <h2>Privacy & Security</h2>
+    <div style="background: #fff3cd; padding: 1rem; border-radius: 8px; margin: 1rem 0;">
+        <h4 style="color: #856404; margin-top: 0;">🔐 Saved Login Details</h4>
+        <p style="color: #856404; margin: 0.5rem 0;">Your browser may have saved your login details for convenience.</p>
+        <button onclick="clearSavedLogin()" class="btn btn-warning">Clear Saved Login Details</button>
+    </div>
+</div>
+
+<div class="card">
     <h2>Gaming Stats</h2>
     <div class="stats-grid">
         <div class="stat-card">
@@ -74,4 +83,14 @@
         </div>
     </div>
 </div>
+
+<script>
+function clearSavedLogin() {
+    if (confirm('Are you sure you want to clear your saved login details? You will need to enter them manually next time.')) {
+        localStorage.removeItem('skillstake_username');
+        localStorage.removeItem('skillstake_password');
+        alert('✅ Saved login details cleared successfully!');
+    }
+}
+</script>
 {% endblock %}

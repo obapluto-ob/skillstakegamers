@@ -33,6 +33,11 @@
                 </div>
             </div>
             
+            <div class="form-group" style="display: flex; align-items: center; gap: 0.5rem; margin: 1rem 0;">
+                <input type="checkbox" id="rememberMe" name="remember_me" style="margin: 0;">
+                <label for="rememberMe" style="margin: 0; cursor: pointer;">Remember my login details</label>
+            </div>
+            
             <button type="submit" class="btn auth-btn">Login & Start Playing</button>
         </form>
         
@@ -82,6 +87,41 @@ function toggleLoginPassword() {
         button.textContent = 'Show';
     }
 }
+
+// Load saved credentials on page load
+document.addEventListener('DOMContentLoaded', function() {
+    const savedUsername = localStorage.getItem('skillstake_username');
+    const savedPassword = localStorage.getItem('skillstake_password');
+    
+    if (savedUsername && savedPassword) {
+        document.querySelector('input[name="login_input"]').value = savedUsername;
+        document.querySelector('input[name="password"]').value = savedPassword;
+        document.getElementById('rememberMe').checked = true;
+    }
+});
+
+// Save credentials when form is submitted
+document.querySelector('form').addEventListener('submit', function(e) {
+    const username = document.querySelector('input[name="login_input"]').value;
+    const password = document.querySelector('input[name="password"]').value;
+    const rememberMe = document.getElementById('rememberMe').checked;
+    
+    if (rememberMe) {
+        localStorage.setItem('skillstake_username', username);
+        localStorage.setItem('skillstake_password', password);
+    } else {
+        localStorage.removeItem('skillstake_username');
+        localStorage.removeItem('skillstake_password');
+    }
+});
+
+// Clear saved credentials when remember me is unchecked
+document.getElementById('rememberMe').addEventListener('change', function() {
+    if (!this.checked) {
+        localStorage.removeItem('skillstake_username');
+        localStorage.removeItem('skillstake_password');
+    }
+});
 </script>
 
 <style>

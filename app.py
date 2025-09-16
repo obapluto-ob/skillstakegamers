@@ -1105,8 +1105,9 @@ def favicon():
 
 @app.route('/logout')
 def logout():
+    # Don't clear saved login credentials - only clear session
     session.clear()
-    flash('Logged out successfully!', 'success')
+    flash('Logged out successfully! Your login details are saved for next time.', 'success')
     return redirect(url_for('home'))
 
 @app.errorhandler(404)
