@@ -380,12 +380,57 @@ def admin_dashboard():
 @app.route('/forgot_password', methods=['GET', 'POST'])
 def forgot_password():
     if request.method == 'POST':
-        email = sanitize_input(request.form.get('email', '').strip())
+        # Check if this is a reset code submission
+        if 'reset_code' in request.form:
+            reset_code = request.form.get('reset_code', '').strip()
+            new_password = request.form.get('new_password', '')
+            confirm_password = request.form.get('confirm_password', '')
+            
+            if not all([reset_code, new_password, confirm_password]):
+                flash('All fields are required.', 'error')
+                return render_template('forgot_password.html')
+            
+            if new_password != confirm_password:
+                flash('Passwords do not match.', 'error')
+                return render_template('forgot_password.html')
+            
+            if len(new_password) < 6:
+                flash('Password must be at least 6 characters long.', 'error')
+                return render_template('forgot_password.html')
+            
+            # Verify reset code
+            if ('reset_code' not in session or 
+                'reset_email' not in session or 
+                str(session['reset_code']) != reset_code):
+                flash('Invalid or expired reset code.', 'error')
+                return render_template('forgot_password.html')
+            
+            try:
+                with SecureDBConnection() as conn:
+                    c = conn.cursor()
+                    hashed_password = generate_password_hash(new_password)
+                    c.execute('UPDATE users SET password = ? WHERE email = ?', 
+                             (hashed_password, session['reset_email']))
+                    
+                    if c.rowcount > 0:
+                        # Clear reset session data
+                        session.pop('reset_code', None)
+                        session.pop('reset_email', None)
+                        flash('Password reset successful! You can now login with your new password.', 'success')
+                        return redirect(url_for('login'))
+                    else:
+                        flash('Error resetting password. Please try again.', 'error')
+            except Exception as e:
+                flash('Error resetting password. Please try again.', 'error')
         
-        if not validate_email(email):
-            flash('Please enter a valid email address.', 'error')
-            return render_template('forgot_password.html')
-        if email:
+        # This is an email submission
+        else:
+            email = sanitize_input(request.form.get('email', '').strip())
+            
+            if not validate_email(email):
+                flash('Please enter a valid email address.', 'error')
+                return render_template('forgot_password.html')
+            
             try:
                 with SecureDBConnection() as conn:
                     c = conn.cursor()
@@ -411,53 +456,6 @@ def forgot_password():
                         flash('Password reset instructions sent to your email (if account exists).', 'info')
             except Exception as e:
                 flash('Error processing request. Please try again.', 'error')
-        else:
-            flash('Please enter your email address.', 'error')
-    return render_template('forgot_password.html')
-
-@app.route('/reset_password', methods=['GET', 'POST'])
-def reset_password():
-    if request.method == 'POST':
-        reset_code = request.form.get('reset_code', '').strip()
-        new_password = request.form.get('new_password', '')
-        confirm_password = request.form.get('confirm_password', '')
-        
-        if not all([reset_code, new_password, confirm_password]):
-            flash('All fields are required.', 'error')
-            return render_template('forgot_password.html')
-        
-        if new_password != confirm_password:
-            flash('Passwords do not match.', 'error')
-            return render_template('forgot_password.html')
-        
-        if len(new_password) < 6:
-            flash('Password must be at least 6 characters long.', 'error')
-            return render_template('forgot_password.html')
-        
-        # Verify reset code
-        if ('reset_code' not in session or 
-            'reset_email' not in session or 
-            str(session['reset_code']) != reset_code):
-            flash('Invalid or expired reset code.', 'error')
-            return render_template('forgot_password.html')
-        
-        try:
-            with SecureDBConnection() as conn:
-                c = conn.cursor()
-                hashed_password = generate_password_hash(new_password)
-                c.execute('UPDATE users SET password = ? WHERE email = ?', 
-                         (hashed_password, session['reset_email']))
-                
-                if c.rowcount > 0:
-                    # Clear reset session data
-                    session.pop('reset_code', None)
-                    session.pop('reset_email', None)
-                    flash('Password reset successful! You can now login with your new password.', 'success')
-                    return redirect(url_for('login'))
-                else:
-                    flash('Error resetting password. Please try again.', 'error')
-        except Exception as e:
-            flash('Error resetting password. Please try again.', 'error')
     
     return render_template('forgot_password.html')
 
