@@ -539,12 +539,12 @@ def wallet():
 @app.route('/quick_matches')
 @login_required
 def quick_matches():
-    # Sample games data for the template
+    # Fixed games data with correct icon paths
     games = [
         {
             'id': 'fifa_mobile',
             'name': 'FIFA Mobile',
-            'image': '/static/icons/fifa.png',
+            'image': '/static/icons/gamepad.svg',
             'min_bet': 50,
             'max_bet': 1000,
             'modes': [
@@ -556,7 +556,7 @@ def quick_matches():
         {
             'id': 'efootball',
             'name': 'eFootball',
-            'image': '/static/icons/efootball.png',
+            'image': '/static/icons/trophy.svg',
             'min_bet': 50,
             'max_bet': 1000,
             'modes': [
@@ -581,7 +581,32 @@ def quick_matches():
 @app.route('/games', endpoint='games')
 @login_required
 def games_page():
-    return render_template('games_hub.html')
+    # Your original games data
+    games = [
+        {
+            'id': 'fifa_mobile',
+            'name': 'FIFA Mobile',
+            'image': '/static/icons/gamepad.svg',
+            'min_bet': 50,
+            'max_bet': 1000,
+            'modes': ['Head to Head', 'VS Attack', 'Manager Mode'],
+            'streaming': True,
+            'stream_bonus': 25,
+            'needs_lobby': False
+        },
+        {
+            'id': 'efootball',
+            'name': 'eFootball',
+            'image': '/static/icons/trophy.svg',
+            'min_bet': 50,
+            'max_bet': 1000,
+            'modes': ['Online Match', 'Quick Match', 'Ranked'],
+            'streaming': True,
+            'stream_bonus': 20,
+            'needs_lobby': False
+        }
+    ]
+    return render_template('games.html', games=games)
 
 @app.route('/tournaments')
 @login_required
@@ -615,17 +640,36 @@ def referrals():
             c.execute('SELECT username, created_at FROM users WHERE referred_by = ?', (user_id,))
             referred_users = c.fetchall()
             
-            # Get referral earnings
-            c.execute('SELECT SUM(amount) FROM transactions WHERE user_id = ? AND type = "referral_bonus"', (user_id,))
-            total_earnings = c.fetchone()[0] or 0
+            # Get signup bonuses
+            c.execute('SELECT COALESCE(SUM(amount), 0) FROM transactions WHERE user_id = ? AND type = "referral_bonus"', (user_id,))
+            signup_bonuses = c.fetchone()[0] or 0
+            
+            # Get ongoing commissions (4% from referred users' losses)
+            c.execute('SELECT COALESCE(SUM(amount), 0) FROM transactions WHERE user_id = ? AND type = "referral_commission"', (user_id,))
+            ongoing_commissions = c.fetchone()[0] or 0
+            
+            # Get commission details if table exists
+            try:
+                c.execute('SELECT COALESCE(SUM(commission_amount), 0) FROM referral_commissions WHERE referrer_id = ?', (user_id,))
+                lifetime_commissions = c.fetchone()[0] or 0
+            except:
+                lifetime_commissions = 0
             
             referral_link = f"{request.url_root}register_fixed?ref={referral_code}" if referral_code else None
+            
+            earnings_data = {
+                'signup_bonuses': signup_bonuses,
+                'ongoing_commissions': ongoing_commissions,
+                'total_earnings': signup_bonuses + ongoing_commissions,
+                'referred_count': len(referred_users),
+                'lifetime_commissions': lifetime_commissions
+            }
             
         return render_template('referrals.html', 
                              referral_code=referral_code,
                              referral_link=referral_link,
                              referred_users=referred_users,
-                             total_earnings=total_earnings)
+                             earnings_data=earnings_data)
     except:
         return redirect(url_for('dashboard'))
 
@@ -959,6 +1003,49 @@ def support_chat():
 @login_required
 def fpl_battles():
     return redirect(url_for('dashboard'))
+
+@app.route('/create_match', methods=['POST'])
+@login_required
+def create_match():
+    """Create match from original games page"""
+    try:
+        game = request.form.get('game')
+        bet_amount = float(request.form.get('bet_amount', 0))
+        game_mode = request.form.get('game_mode')
+        verification_type = request.form.get('verification_type', 'ocr')
+        
+        if not all([game, game_mode]) or bet_amount < 50:
+            flash('Invalid match data', 'error')
+            return redirect(url_for('games_page'))
+        
+        with SecureDBConnection() as conn:
+            c = conn.cursor()
+            user_id = session['user_id']
+            
+            # Check user balance
+            c.execute('SELECT balance FROM users WHERE id = ?', (user_id,))
+            user = c.fetchone()
+            
+            if not user or user[0] < bet_amount:
+                flash('Insufficient balance', 'error')
+                return redirect(url_for('games_page'))
+            
+            # Create match
+            total_pot = bet_amount * 2
+            c.execute('''INSERT INTO game_matches 
+                        (game_type, game_mode, creator_id, creator_game_username, stake_amount, total_pot, status)
+                        VALUES (?, ?, ?, ?, ?, ?, "open")''',
+                     (game, game_mode, user_id, session['username'], bet_amount, total_pot))
+            
+            # Deduct stake from user balance
+            c.execute('UPDATE users SET balance = balance - ? WHERE id = ?', (bet_amount, user_id))
+            
+            flash('Match created successfully!', 'success')
+            return redirect(url_for('games_page'))
+            
+    except Exception as e:
+        flash('Error creating match', 'error')
+        return redirect(url_for('games_page'))
 
 @app.route('/create_game_match', methods=['POST'])
 @login_required
