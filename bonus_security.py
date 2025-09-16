@@ -59,8 +59,9 @@ def create_bonus_security_tables():
             c.execute('ALTER TABLE users ADD COLUMN total_deposited REAL DEFAULT 0')
             c.execute('ALTER TABLE users ADD COLUMN last_bonus_claim TIMESTAMP')
             c.execute('ALTER TABLE users ADD COLUMN bonus_restriction_level INTEGER DEFAULT 0')
-        except:
-            pass  # Columns might already exist
+        except sqlite3.OperationalError:
+            # Columns already exist
+            pass
         
         conn.commit()
 

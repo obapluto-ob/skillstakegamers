@@ -83,6 +83,13 @@ class RealStreamManager {
                 this.localVideo.srcObject = this.localStream;
             }
             
+            // Remove existing tracks before adding new ones
+            this.peerConnection.getSenders().forEach(sender => {
+                if (sender.track) {
+                    this.peerConnection.removeTrack(sender);
+                }
+            });
+            
             // Add tracks to peer connection
             this.localStream.getTracks().forEach(track => {
                 this.peerConnection.addTrack(track, this.localStream);
@@ -107,10 +114,16 @@ class RealStreamManager {
     }
     
     sendSignalingMessage(message) {
+        // Get CSRF token from meta tag or cookie
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || 'no-token';
+        
         // Send signaling through your Flask backend
         fetch('/webrtc_signal', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
             body: JSON.stringify({
                 streamId: this.streamId,
                 message: message
@@ -119,32 +132,40 @@ class RealStreamManager {
     }
     
     async handleSignalingMessage(message) {
-        switch (message.type) {
-            case 'offer':
-                await this.handleOffer(message.offer);
-                break;
-            case 'answer':
-                await this.handleAnswer(message.answer);
-                break;
-            case 'ice-candidate':
-                await this.handleIceCandidate(message.candidate);
-                break;
-            case 'request-stream':
-                if (this.isOwner) {
-                    await this.createOffer();
-                }
-                break;
+        try {
+            switch (message.type) {
+                case 'offer':
+                    await this.handleOffer(message.offer);
+                    break;
+                case 'answer':
+                    await this.handleAnswer(message.answer);
+                    break;
+                case 'ice-candidate':
+                    await this.handleIceCandidate(message.candidate);
+                    break;
+                case 'request-stream':
+                    if (this.isOwner) {
+                        await this.createOffer();
+                    }
+                    break;
+            }
+        } catch (error) {
+            console.error('WebRTC signaling error:', error);
         }
     }
     
     async createOffer() {
-        const offer = await this.peerConnection.createOffer();
-        await this.peerConnection.setLocalDescription(offer);
-        
-        this.sendSignalingMessage({
-            type: 'offer',
-            offer: offer
-        });
+        try {
+            const offer = await this.peerConnection.createOffer();
+            await this.peerConnection.setLocalDescription(offer);
+            
+            this.sendSignalingMessage({
+                type: 'offer',
+                offer: offer
+            });
+        } catch (error) {
+            console.error('WebRTC offer creation error:', error);
+        }
     }
     
     async handleOffer(offer) {

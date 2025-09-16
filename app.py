@@ -170,28 +170,26 @@ def home():
 @login_required
 def dashboard():
     try:
-        conn = get_db_connection()
-        c = conn.cursor()
-        user_id = session['user_id']
-        
-        c.execute('SELECT id, username, balance, wins, losses, total_earnings FROM users WHERE id = ?', (user_id,))
-        user = c.fetchone()
-        
-        if not user:
-            session.clear()
-            flash('User not found. Please login again.', 'error')
-            return redirect(url_for('login'))
-        
-        session['balance'] = user[2] or 0
-        
-        stats = {
-            'balance': user[2] or 0,
-            'wins': user[3] or 0,
-            'losses': user[4] or 0,
-            'earnings': user[5] or 0
-        }
-        
-        conn.close()
+        with SecureDBConnection() as conn:
+            c = conn.cursor()
+            user_id = session['user_id']
+            
+            c.execute('SELECT id, username, balance, wins, losses, total_earnings FROM users WHERE id = ?', (user_id,))
+            user = c.fetchone()
+            
+            if not user:
+                session.clear()
+                flash('User not found. Please login again.', 'error')
+                return redirect(url_for('login'))
+            
+            session['balance'] = user[2] or 0
+            
+            stats = {
+                'balance': user[2] or 0,
+                'wins': user[3] or 0,
+                'losses': user[4] or 0,
+                'earnings': user[5] or 0
+            }
         return render_template('dashboard.html', stats=stats, recent_matches=[])
         
     except Exception as e:
@@ -223,56 +221,48 @@ def register_fixed():
             flash('Password must be at least 6 characters long!', 'error')
             return render_template('register_fixed.html')
         
-        conn = None
         try:
-            conn = get_db_connection()
-            c = conn.cursor()
+            with SecureDBConnection() as conn:
+                c = conn.cursor()
+                
+                # Check if user exists
+                c.execute('SELECT id FROM users WHERE username = ? OR email = ?', (username, email))
+                if c.fetchone():
+                    flash('Username or email already exists!', 'error')
+                    return render_template('register_fixed.html')
             
-            # Check if user exists
-            c.execute('SELECT id FROM users WHERE username = ? OR email = ?', (username, email))
-            if c.fetchone():
-                flash('Username or email already exists!', 'error')
-                conn.close()
-                return render_template('register_fixed.html')
-            
-            # Create user
-            hashed_password = generate_password_hash(password)
-            # Generate unique referral code
-            while True:
-                referral_code = f'REF{random.randint(100000, 999999)}'
-                c.execute('SELECT id FROM users WHERE referral_code = ?', (referral_code,))
-                if not c.fetchone():
-                    break
-            verification_code = random.randint(100000, 999999)
-            
-            c.execute('''INSERT INTO users (username, email, password, referral_code, email_verified) 
-                         VALUES (?, ?, ?, ?, ?)''',
-                     (username, email, hashed_password, referral_code, 0))
-            
-            # Send verification email
-            email_body = f'''
-            <h2>Welcome to SkillStake Gaming!</h2>
-            <p>Your verification code is: <strong>{verification_code}</strong></p>
-            <p>Use this code to verify your account.</p>
-            '''
-            
-            if send_email(email, 'SkillStake - Verify Your Account', email_body):
-                session['verification_code'] = verification_code
-                session['pending_email'] = email
-                flash('Registration successful! Check your email for verification code.', 'success')
-            else:
-                flash('Registration successful! You can now login.', 'success')
-            
-            conn.commit()
-            return redirect(url_for('login'))
-            
+                # Create user
+                hashed_password = generate_password_hash(password)
+                # Generate unique referral code
+                while True:
+                    referral_code = f'REF{random.randint(100000, 999999)}'
+                    c.execute('SELECT id FROM users WHERE referral_code = ?', (referral_code,))
+                    if not c.fetchone():
+                        break
+                verification_code = random.randint(100000, 999999)
+                
+                c.execute('''INSERT INTO users (username, email, password, referral_code, email_verified) 
+                             VALUES (?, ?, ?, ?, ?)''',
+                         (username, email, hashed_password, referral_code, 0))
+                
+                # Send verification email
+                email_body = f'''
+                <h2>Welcome to SkillStake Gaming!</h2>
+                <p>Your verification code is: <strong>{verification_code}</strong></p>
+                <p>Use this code to verify your account.</p>
+                '''
+                
+                if send_email(email, 'SkillStake - Verify Your Account', email_body):
+                    session['verification_code'] = verification_code
+                    session['pending_email'] = email
+                    flash('Registration successful! Check your email for verification code.', 'success')
+                else:
+                    flash('Registration successful! You can now login.', 'success')
+                
+                return redirect(url_for('login'))
+                
         except Exception as e:
-            if conn:
-                conn.rollback()
             flash('Registration failed. Please try again.', 'error')
-        finally:
-            if conn:
-                conn.close()
     
     return render_template('register_fixed.html')
 
@@ -291,34 +281,30 @@ def login():
             flash('Invalid input length!', 'error')
             return render_template('login_fixed.html')
         
-        conn = None
         try:
-            conn = get_db_connection()
-            c = conn.cursor()
-            c.execute('SELECT id, username, email, password, balance FROM users WHERE username = ? OR email = ?', 
-                     (login_input, login_input))
-            user = c.fetchone()
-            
-            if user and check_password_hash(user[3], password):
-                session.clear()
-                session.permanent = True
-                session['user_id'] = user[0]
-                session['username'] = user[1]
-                session['balance'] = user[4]
-                session['is_admin'] = user[1] == 'admin'
-                session['logged_in'] = True
+            with SecureDBConnection() as conn:
+                c = conn.cursor()
+                c.execute('SELECT id, username, email, password, balance FROM users WHERE username = ? OR email = ?', 
+                         (login_input, login_input))
+                user = c.fetchone()
                 
-                if user[1] == 'admin':
-                    return redirect(url_for('admin_dashboard'))
+                if user and check_password_hash(user[3], password):
+                    session.clear()
+                    session.permanent = True
+                    session['user_id'] = user[0]
+                    session['username'] = user[1]
+                    session['balance'] = user[4]
+                    session['is_admin'] = user[1] == 'admin'
+                    session['logged_in'] = True
+                    
+                    if user[1] == 'admin':
+                        return redirect(url_for('admin_dashboard'))
+                    else:
+                        return redirect(url_for('dashboard'))
                 else:
-                    return redirect(url_for('dashboard'))
-            else:
-                flash('Invalid username/email or password!', 'error')
+                    flash('Invalid username/email or password!', 'error')
         except Exception as e:
             flash('Login error occurred. Please try again.', 'error')
-        finally:
-            if 'conn' in locals() and conn:
-                conn.close()
     
     return render_template('login_fixed.html')
 
@@ -331,17 +317,17 @@ def admin_dashboard():
         return redirect(url_for('dashboard'))
     
     try:
-        conn = get_db_connection()
-        c = conn.cursor()
-        
-        c.execute('SELECT COUNT(*) FROM users WHERE username != "admin"')
-        total_users = c.fetchone()[0] or 0
-        
-        c.execute('SELECT COUNT(*) FROM transactions')
-        total_transactions = c.fetchone()[0] or 0
-        
-        c.execute('SELECT SUM(balance) FROM users WHERE username != "admin"')
-        total_balance = c.fetchone()[0] or 0
+        with SecureDBConnection() as conn:
+            c = conn.cursor()
+            
+            c.execute('SELECT COUNT(*) FROM users WHERE username != "admin"')
+            total_users = c.fetchone()[0] or 0
+            
+            c.execute('SELECT COUNT(*) FROM transactions')
+            total_transactions = c.fetchone()[0] or 0
+            
+            c.execute('SELECT SUM(balance) FROM users WHERE username != "admin"')
+            total_balance = c.fetchone()[0] or 0
         
         stats = {
             'total_users': total_users,
@@ -388,34 +374,30 @@ def forgot_password():
             flash('Please enter a valid email address.', 'error')
             return render_template('forgot_password.html')
         if email:
-            conn = None
             try:
-                conn = get_db_connection()
-                c = conn.cursor()
-                c.execute('SELECT id, username FROM users WHERE email = ?', (email,))
-                user = c.fetchone()
-                
-                if user:
-                    reset_code = random.randint(100000, 999999)
-                    email_body = f'''
-                    <h2>Password Reset - SkillStake</h2>
-                    <p>Your password reset code is: <strong>{reset_code}</strong></p>
-                    <p>Use this code to reset your password.</p>
-                    '''
+                with SecureDBConnection() as conn:
+                    c = conn.cursor()
+                    c.execute('SELECT id, username FROM users WHERE email = ?', (email,))
+                    user = c.fetchone()
                     
-                    if send_email(email, 'SkillStake - Password Reset Code', email_body):
-                        session['reset_code'] = reset_code
-                        session['reset_email'] = email
-                        flash('Password reset code sent to your email.', 'success')
+                    if user:
+                        reset_code = random.randint(100000, 999999)
+                        email_body = f'''
+                        <h2>Password Reset - SkillStake</h2>
+                        <p>Your password reset code is: <strong>{reset_code}</strong></p>
+                        <p>Use this code to reset your password.</p>
+                        '''
+                        
+                        if send_email(email, 'SkillStake - Password Reset Code', email_body):
+                            session['reset_code'] = reset_code
+                            session['reset_email'] = email
+                            flash('Password reset code sent to your email.', 'success')
+                        else:
+                            flash('Error sending email. Please try again.', 'error')
                     else:
-                        flash('Error sending email. Please try again.', 'error')
-                else:
-                    flash('Password reset instructions sent to your email (if account exists).', 'info')
+                        flash('Password reset instructions sent to your email (if account exists).', 'info')
             except Exception as e:
                 flash('Error processing request. Please try again.', 'error')
-            finally:
-                if conn:
-                    conn.close()
         else:
             flash('Please enter your email address.', 'error')
     return render_template('forgot_password.html')
