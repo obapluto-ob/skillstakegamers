@@ -27,10 +27,15 @@ def get_db_connection():
             return sqlite3.connect('gamebet.db', timeout=30.0)
     else:
         # Local development - SQLite with safety features
-        conn = sqlite3.connect('gamebet.db', timeout=30.0)
-        conn.execute('PRAGMA foreign_keys = ON')
-        conn.execute('PRAGMA journal_mode = WAL')
-        return conn
+        try:
+            conn = sqlite3.connect('gamebet.db', timeout=30.0)
+            conn.execute('PRAGMA foreign_keys = ON')
+            conn.execute('PRAGMA journal_mode = WAL')
+            return conn
+        except Exception:
+            if 'conn' in locals():
+                conn.close()
+            raise
 
 def init_database():
     """Initialize database tables - ENHANCED VERSION"""

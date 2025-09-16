@@ -82,8 +82,8 @@ def restore_user(username, phone, referrer_username=None, balance=0):
 
 def check_referral_system():
     """Check the current state of the referral system"""
-    conn = sqlite3.connect('gamebet.db')
-    cursor = conn.cursor()
+    with sqlite3.connect('gamebet.db') as conn:
+        cursor = conn.cursor()
     
     print("=== REFERRAL SYSTEM STATUS ===")
     

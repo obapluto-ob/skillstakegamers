@@ -7,7 +7,7 @@ import random
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from database_manager import db_manager
 from database import get_db_connection
 
@@ -41,7 +41,7 @@ def send_verification():
         # Store code with expiration (10 minutes)
         verification_codes[email] = {
             'code': code,
-            'expires': datetime.now() + timedelta(minutes=10)
+            'expires': datetime.now(timezone.utc) + timedelta(minutes=10)
         }
         
         # Send email
@@ -100,7 +100,7 @@ def register_with_verification():
             return jsonify({'success': False, 'message': 'No verification code found'})
         
         stored_data = verification_codes[email]
-        if datetime.now() > stored_data['expires']:
+        if datetime.now(timezone.utc) > stored_data['expires']:
             del verification_codes[email]
             return jsonify({'success': False, 'message': 'Verification code expired'})
         
@@ -183,7 +183,7 @@ def login():
                     
                     verification_codes[user[2]] = {
                         'code': code,
-                        'expires': datetime.now() + timedelta(minutes=10),
+                        'expires': datetime.now(timezone.utc) + timedelta(minutes=10),
                         'type': 'login'
                     }
                     
@@ -249,7 +249,7 @@ def verify_login_code():
             return jsonify({'success': False, 'message': 'No verification code found'})
         
         stored_data = verification_codes[email]
-        if datetime.now() > stored_data['expires']:
+        if datetime.now(timezone.utc) > stored_data['expires']:
             del verification_codes[email]
             return jsonify({'success': False, 'message': 'Verification code expired'})
         
