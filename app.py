@@ -520,7 +520,44 @@ def wallet():
 @app.route('/quick_matches')
 @login_required
 def quick_matches():
-    return render_template('quick_matches.html')
+    # Sample games data for the template
+    games = [
+        {
+            'id': 'fifa_mobile',
+            'name': 'FIFA Mobile',
+            'image': '/static/icons/fifa.png',
+            'min_bet': 50,
+            'max_bet': 1000,
+            'modes': [
+                {'id': 'h2h', 'name': 'Head to Head', 'description': '1v1 online match'},
+                {'id': 'vs_attack', 'name': 'VS Attack', 'description': 'Turn-based attacking'},
+                {'id': 'manager_mode', 'name': 'Manager Mode', 'description': 'Full team control'}
+            ]
+        },
+        {
+            'id': 'efootball',
+            'name': 'eFootball',
+            'image': '/static/icons/efootball.png',
+            'min_bet': 50,
+            'max_bet': 1000,
+            'modes': [
+                {'id': 'online_match', 'name': 'Online Match', 'description': '1v1 competitive'},
+                {'id': 'quick_match', 'name': 'Quick Match', 'description': 'Fast gameplay'},
+                {'id': 'ranked', 'name': 'Ranked Match', 'description': 'Competitive ranking'}
+            ]
+        }
+    ]
+    
+    # Get open matches from database
+    try:
+        with SecureDBConnection() as conn:
+            c = conn.cursor()
+            c.execute('''SELECT * FROM game_matches WHERE status = "open" ORDER BY created_at DESC LIMIT 10''')
+            open_matches = c.fetchall()
+    except:
+        open_matches = []
+    
+    return render_template('quick_matches.html', games=games, open_matches=open_matches)
 
 @app.route('/games', endpoint='games')
 @login_required
@@ -570,8 +607,13 @@ def profile():
             c = conn.cursor()
             c.execute('SELECT id, username, email, phone, balance FROM users WHERE id = ?', (session['user_id'],))
             user = c.fetchone()
-        return render_template('profile.html', user=user)
-    except:
+            if user:
+                return render_template('profile.html', user=user)
+            else:
+                flash('User not found', 'error')
+                return redirect(url_for('dashboard'))
+    except Exception as e:
+        flash('Error loading profile', 'error')
         return redirect(url_for('dashboard'))
 
 @app.route('/add_funds', methods=['POST'])
@@ -582,7 +624,15 @@ def add_funds():
 @app.route('/my_game_matches')
 @login_required
 def my_game_matches():
-    return redirect(url_for('dashboard'))
+    try:
+        with SecureDBConnection() as conn:
+            c = conn.cursor()
+            user_id = session['user_id']
+            c.execute('''SELECT * FROM game_matches WHERE creator_id = ? OR opponent_id = ? ORDER BY created_at DESC''', (user_id, user_id))
+            my_matches = c.fetchall()
+        return render_template('my_matches.html', matches=my_matches)
+    except:
+        return redirect(url_for('quick_matches'))
 
 @app.route('/smart_mpesa_deposit', methods=['POST'])
 @login_required
@@ -600,10 +650,12 @@ def paypal_checkout():
 def create_crypto_payment():
     return jsonify({'success': True, 'payment_url': url_for('wallet')})
 
-@app.route('/withdraw_funds', methods=['POST'])
+@app.route('/withdraw_funds', methods=['GET', 'POST'])
 @login_required
 def withdraw_funds():
-    flash('Withdrawal request submitted for processing', 'success')
+    if request.method == 'POST':
+        flash('Withdrawal request submitted for processing', 'success')
+        return redirect(url_for('wallet'))
     return redirect(url_for('wallet'))
 
 @app.route('/withdrawal_chat/<int:withdrawal_id>')
@@ -626,15 +678,110 @@ def support_chat():
 def fpl_battles():
     return redirect(url_for('dashboard'))
 
-@app.route('/support_chat')
+@app.route('/create_game_match', methods=['POST'])
 @login_required
-def support_chat():
-    return redirect(url_for('dashboard'))
+def create_game_match():
+    """Create a new game match"""
+    try:
+        game_type = request.form.get('game_type')
+        game_mode = request.form.get('game_mode')
+        game_username = request.form.get('game_username')
+        stake_amount = float(request.form.get('stake_amount', 0))
+        
+        if not all([game_type, game_mode, game_username]) or stake_amount < 50:
+            return jsonify({'success': False, 'message': 'Invalid input data'})
+        
+        with SecureDBConnection() as conn:
+            c = conn.cursor()
+            user_id = session['user_id']
+            
+            # Check user balance
+            c.execute('SELECT balance FROM users WHERE id = ?', (user_id,))
+            user = c.fetchone()
+            
+            if not user or user[0] < stake_amount:
+                return jsonify({'success': False, 'message': 'Insufficient balance'})
+            
+            # Create match
+            total_pot = stake_amount * 2
+            c.execute('''INSERT INTO game_matches 
+                        (game_type, game_mode, creator_id, creator_game_username, stake_amount, total_pot, status)
+                        VALUES (?, ?, ?, ?, ?, ?, "open")''',
+                     (game_type, game_mode, user_id, game_username, stake_amount, total_pot))
+            
+            # Deduct stake from user balance
+            c.execute('UPDATE users SET balance = balance - ? WHERE id = ?', (stake_amount, user_id))
+            
+            return jsonify({'success': True, 'message': 'Match created successfully!'})
+            
+    except Exception as e:
+        return jsonify({'success': False, 'message': 'Error creating match'})
 
-@app.route('/fpl_battles')
+@app.route('/join_game_match/<int:match_id>', methods=['POST'])
 @login_required
-def fpl_battles():
-    return redirect(url_for('dashboard'))
+def join_game_match(match_id):
+    """Join an existing game match"""
+    try:
+        game_username = request.form.get('game_username')
+        
+        if not game_username:
+            return jsonify({'success': False, 'message': 'Game username required'})
+        
+        with SecureDBConnection() as conn:
+            c = conn.cursor()
+            user_id = session['user_id']
+            
+            # Get match details
+            c.execute('SELECT * FROM game_matches WHERE id = ? AND status = "open"', (match_id,))
+            match = c.fetchone()
+            
+            if not match:
+                return jsonify({'success': False, 'message': 'Match not found or already joined'})
+            
+            if match[3] == user_id:  # creator_id
+                return jsonify({'success': False, 'message': 'Cannot join your own match'})
+            
+            # Check user balance
+            c.execute('SELECT balance FROM users WHERE id = ?', (user_id,))
+            user = c.fetchone()
+            
+            if not user or user[0] < match[7]:  # stake_amount
+                return jsonify({'success': False, 'message': 'Insufficient balance'})
+            
+            # Join match
+            c.execute('''UPDATE game_matches SET opponent_id = ?, opponent_game_username = ?, status = "active"
+                        WHERE id = ?''', (user_id, game_username, match_id))
+            
+            # Deduct stake from user balance
+            c.execute('UPDATE users SET balance = balance - ? WHERE id = ?', (match[7], user_id))
+            
+            return jsonify({'success': True, 'message': 'Successfully joined match!'})
+            
+    except Exception as e:
+        return jsonify({'success': False, 'message': 'Error joining match'})
+
+@app.route('/upload_match_screenshot', methods=['POST'])
+@login_required
+def upload_match_screenshot():
+    """Upload match result screenshot"""
+    try:
+        match_id = request.form.get('match_id')
+        player1_score = request.form.get('player1_score')
+        player2_score = request.form.get('player2_score')
+        
+        if not all([match_id, player1_score, player2_score]):
+            return jsonify({'success': False, 'message': 'All fields required'})
+        
+        # For now, just mark as completed - in production you'd process the screenshot
+        with SecureDBConnection() as conn:
+            c = conn.cursor()
+            c.execute('''UPDATE game_matches SET creator_score = ?, opponent_score = ?, status = "completed"
+                        WHERE id = ?''', (int(player1_score), int(player2_score), int(match_id)))
+        
+        return jsonify({'success': True, 'message': 'Result uploaded successfully!'})
+        
+    except Exception as e:
+        return jsonify({'success': False, 'message': 'Error uploading result'})
 
 @app.route('/api/user_balance')
 @login_required

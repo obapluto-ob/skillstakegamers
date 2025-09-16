@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card">
+    <h1>📊 My Game Matches</h1>
+    <p>View all your FIFA Mobile and eFootball matches</p>
+    <div style="margin-bottom: 1rem;">
+        <a href="{{ url_for('quick_matches') }}" class="btn btn-primary">🎮 Create New Match</a>
+        <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">← Dashboard</a>
+    </div>
+</div>
+
+{% if matches %}
+<div class="card">
+    <h2>Your Matches</h2>
+    <div style="display: grid; gap: 1rem;">
+        {% for match in matches %}
+        <div style="background: #2a2a2a; padding: 1.5rem; border-radius: 12px; border-left: 4px solid 
+            {% if match[10] == 'completed' %}#28a745{% elif match[10] == 'active' %}#ffc107{% else %}#17a2b8{% endif %};">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div style="flex: 1;">
+                    <h3 style="margin: 0 0 0.5rem 0; color: #fff;">{{ match[1].replace('_', ' ').title() }} - {{ match[2].replace('_', ' ').title() }}</h3>
+                    <div style="color: #ccc; font-size: 0.9rem;">
+                        <strong>Status:</strong> {{ match[10].title() }} | 
+                        <strong>Stake:</strong> KSh {{ "%.0f"|format(match[7]) }} | 
+                        <strong>Prize Pool:</strong> KSh {{ "%.0f"|format(match[8]) }}
+                    </div>
+                    {% if match[10] == 'completed' %}
+                    <div style="color: #28a745; font-size: 0.9rem; margin-top: 0.5rem;">
+                        <strong>Final Score:</strong> {{ match[11] }} - {{ match[12] }}
+                        {% if match[9] == session.user_id %}
+                        <span style="color: #28a745;">🏆 You Won!</span>
+                        {% else %}
+                        <span style="color: #dc3545;">You Lost</span>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+                <div style="text-align: right;">
+                    <div style="color: #999; font-size: 0.8rem;">
+                        {{ match[16].split(' ')[0] if match[16] else 'N/A' }}
+                    </div>
+                    {% if match[10] == 'active' %}
+                    <button onclick="uploadResult({{ match[0] }})" class="btn btn-warning btn-sm">📸 Upload Result</button>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% else %}
+<div class="card">
+    <div style="text-align: center; padding: 2rem;">
+        <h3>No matches found</h3>
+        <p>You haven't created or joined any matches yet.</p>
+        <a href="{{ url_for('quick_matches') }}" class="btn btn-primary">🎮 Create Your First Match</a>
+    </div>
+</div>
+{% endif %}
+
+<!-- Upload Result Modal -->
+<div id="uploadResultModal" class="modal">
+    <div class="modal-content" style="max-width: 500px;">
+        <span class="close" onclick="closeUploadModal()">&times;</span>
+        <h2>📸 Upload Match Result</h2>
+        <form id="uploadResultForm" enctype="multipart/form-data">
+            <input type="hidden" id="uploadMatchId" name="match_id">
+            
+            <div style="margin-bottom: 1rem;">
+                <label for="player1Score"><strong>Your Score:</strong></label>
+                <input type="number" id="player1Score" name="player1_score" min="0" max="10" required class="form-control">
+            </div>
+            
+            <div style="margin-bottom: 1rem;">
+                <label for="player2Score"><strong>Opponent Score:</strong></label>
+                <input type="number" id="player2Score" name="player2_score" min="0" max="10" required class="form-control">
+            </div>
+            
+            <div style="margin-bottom: 1rem;">
+                <label for="screenshot"><strong>Match Screenshot:</strong></label>
+                <input type="file" id="screenshot" name="screenshot" accept="image/*" required class="form-control">
+                <small style="color: #999;">Upload a clear screenshot showing the final score</small>
+            </div>
+            
+            <div style="display: flex; gap: 1rem;">
+                <button type="submit" class="btn btn-success" style="flex: 1;">Upload Result</button>
+                <button type="button" class="btn btn-secondary" onclick="closeUploadModal()">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function uploadResult(matchId) {
+    document.getElementById('uploadMatchId').value = matchId;
+    document.getElementById('uploadResultModal').style.display = 'block';
+}
+
+function closeUploadModal() {
+    document.getElementById('uploadResultModal').style.display = 'none';
+}
+
+// Upload result form submission
+document.getElementById('uploadResultForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const formData = new FormData(this);
+    
+    fetch('/upload_match_screenshot', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            closeUploadModal();
+            location.reload();
+        } else {
+            alert('Error: ' + data.message);
+        }
+    })
+    .catch(error => {
+        alert('Error uploading result');
+    });
+});
+
+// Close modal when clicking outside
+window.onclick = function(event) {
+    const uploadModal = document.getElementById('uploadResultModal');
+    if (event.target == uploadModal) {
+        uploadModal.style.display = 'none';
+    }
+};
+</script>
+{% endblock %}
