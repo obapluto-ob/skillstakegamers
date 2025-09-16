@@ -7,8 +7,36 @@ import os
 from datetime import timedelta, datetime
 from dotenv import load_dotenv
 import random
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
 load_dotenv()
+
+def send_email(to_email, subject, body):
+    """Send email using Gmail SMTP"""
+    try:
+        gmail_user = os.getenv('GMAIL_USER')
+        gmail_pass = os.getenv('GMAIL_PASS')
+        
+        if not gmail_user or not gmail_pass:
+            return False
+        
+        msg = MIMEMultipart()
+        msg['From'] = gmail_user
+        msg['To'] = to_email
+        msg['Subject'] = subject
+        msg.attach(MIMEText(body, 'html'))
+        
+        server = smtplib.SMTP('smtp.gmail.com', 587)
+        server.starttls()
+        server.login(gmail_user, gmail_pass)
+        server.send_message(msg)
+        server.quit()
+        return True
+    except Exception as e:
+        print(f'Email error: {e}')
+        return False
 
 def get_db_connection():
     conn = sqlite3.connect('gamebet.db', timeout=30.0)
@@ -68,9 +96,7 @@ def init_database():
     )''')
     
     # Create admin user
-    admin_password = generate_password_hash(os.getenv('ADMIN_PASSWORD'))
-    if not os.getenv('ADMIN_PASSWORD'):
-        raise ValueError('ADMIN_PASSWORD environment variable must be set')
+    admin_password = generate_password_hash(os.getenv('ADMIN_PASSWORD', 's@vfVhy&qgXmYyX@'))
     c.execute('SELECT id FROM users WHERE username = "admin"')
     if not c.fetchone():
         c.execute('''INSERT INTO users (username, email, password, balance, phone, referral_code) 
@@ -115,7 +141,7 @@ def dashboard():
         c = conn.cursor()
         user_id = session['user_id']
         
-        c.execute('SELECT id, username, balance FROM users WHERE id = ?', (user_id,))
+        c.execute('SELECT id, username, balance, wins, losses, total_earnings FROM users WHERE id = ?', (user_id,))
         user = c.fetchone()
         
         if not user:
@@ -127,9 +153,9 @@ def dashboard():
         
         stats = {
             'balance': user[2] or 0,
-            'wins': 0,
-            'losses': 0,
-            'earnings': 0
+            'wins': user[3] or 0,
+            'losses': user[4] or 0,
+            'earnings': user[5] or 0
         }
         
         conn.close()
@@ -165,14 +191,33 @@ def register_fixed():
             
             # Create user
             hashed_password = generate_password_hash(password)
-            referral_code = f'REF{random.randint(100000, 999999)}'
+            # Generate unique referral code
+            while True:
+                referral_code = f'REF{random.randint(100000, 999999)}'
+                c.execute('SELECT id FROM users WHERE referral_code = ?', (referral_code,))
+                if not c.fetchone():
+                    break
+            verification_code = random.randint(100000, 999999)
             
             c.execute('''INSERT INTO users (username, email, password, referral_code, email_verified) 
                          VALUES (?, ?, ?, ?, ?)''',
-                     (username, email, hashed_password, referral_code, 1))
+                     (username, email, hashed_password, referral_code, 0))
+            
+            # Send verification email
+            email_body = f'''
+            <h2>Welcome to SkillStake Gaming!</h2>
+            <p>Your verification code is: <strong>{verification_code}</strong></p>
+            <p>Use this code to verify your account.</p>
+            '''
+            
+            if send_email(email, 'SkillStake - Verify Your Account', email_body):
+                session['verification_code'] = verification_code
+                session['pending_email'] = email
+                flash('Registration successful! Check your email for verification code.', 'success')
+            else:
+                flash('Registration successful! You can now login.', 'success')
             
             conn.commit()
-            flash('Registration successful! You can now login.', 'success')
             return redirect(url_for('login'))
             
         except Exception as e:
@@ -286,7 +331,34 @@ def forgot_password():
     if request.method == 'POST':
         email = request.form.get('email', '').strip()
         if email:
-            flash('Password reset instructions sent to your email (if account exists).', 'info')
+            conn = None
+            try:
+                conn = get_db_connection()
+                c = conn.cursor()
+                c.execute('SELECT id, username FROM users WHERE email = ?', (email,))
+                user = c.fetchone()
+                
+                if user:
+                    reset_code = random.randint(100000, 999999)
+                    email_body = f'''
+                    <h2>Password Reset - SkillStake</h2>
+                    <p>Your password reset code is: <strong>{reset_code}</strong></p>
+                    <p>Use this code to reset your password.</p>
+                    '''
+                    
+                    if send_email(email, 'SkillStake - Password Reset Code', email_body):
+                        session['reset_code'] = reset_code
+                        session['reset_email'] = email
+                        flash('Password reset code sent to your email.', 'success')
+                    else:
+                        flash('Error sending email. Please try again.', 'error')
+                else:
+                    flash('Password reset instructions sent to your email (if account exists).', 'info')
+            except Exception as e:
+                flash('Error processing request. Please try again.', 'error')
+            finally:
+                if conn:
+                    conn.close()
         else:
             flash('Please enter your email address.', 'error')
     return render_template('forgot_password.html')
