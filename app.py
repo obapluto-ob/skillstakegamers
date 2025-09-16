@@ -267,6 +267,41 @@ def forgot_password():
             flash('Please enter your email address.', 'error')
     return render_template('forgot_password.html')
 
+@app.route('/admin/users')
+@login_required
+def admin_users():
+    if session.get('username') != 'admin':
+        return redirect(url_for('dashboard'))
+    return redirect(url_for('admin_dashboard'))
+
+@app.route('/admin/transactions')
+@login_required
+def admin_transactions():
+    if session.get('username') != 'admin':
+        return redirect(url_for('dashboard'))
+    return redirect(url_for('admin_dashboard'))
+
+@app.route('/admin/matches')
+@login_required
+def admin_matches():
+    if session.get('username') != 'admin':
+        return redirect(url_for('dashboard'))
+    return redirect(url_for('admin_dashboard'))
+
+@app.route('/admin/support_center')
+@login_required
+def admin_support_center():
+    if session.get('username') != 'admin':
+        return redirect(url_for('dashboard'))
+    return redirect(url_for('admin_dashboard'))
+
+@app.route('/api_test')
+@login_required
+def api_test():
+    if session.get('username') != 'admin':
+        return redirect(url_for('dashboard'))
+    return redirect(url_for('admin_dashboard'))
+
 @app.route('/logout')
 def logout():
     session.clear()
