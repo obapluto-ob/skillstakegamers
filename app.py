@@ -68,7 +68,9 @@ def init_database():
     )''')
     
     # Create admin user
-    admin_password = generate_password_hash(os.getenv('ADMIN_PASSWORD', 'admin123'))
+    admin_password = generate_password_hash(os.getenv('ADMIN_PASSWORD'))
+    if not os.getenv('ADMIN_PASSWORD'):
+        raise ValueError('ADMIN_PASSWORD environment variable must be set')
     c.execute('SELECT id FROM users WHERE username = "admin"')
     if not c.fetchone():
         c.execute('''INSERT INTO users (username, email, password, balance, phone, referral_code) 
@@ -149,6 +151,7 @@ def register_fixed():
             flash('All fields are required!', 'error')
             return render_template('register_fixed.html')
         
+        conn = None
         try:
             conn = get_db_connection()
             c = conn.cursor()
@@ -192,6 +195,7 @@ def login():
             flash('Please enter both username/email and password!', 'error')
             return render_template('login_fixed.html')
         
+        conn = None
         try:
             conn = get_db_connection()
             c = conn.cursor()
@@ -214,8 +218,6 @@ def login():
                     return redirect(url_for('dashboard'))
             else:
                 flash('Invalid username/email or password!', 'error')
-                
-            conn.close()
         except Exception as e:
             flash('Login error occurred. Please try again.', 'error')
         finally:
@@ -342,6 +344,7 @@ def quick_matches():
     return render_template('quick_matches.html')
 
 @app.route('/games', endpoint='games')
+@login_required
 def games_page():
     return redirect(url_for('home'))
 
@@ -371,6 +374,7 @@ def friends():
     return redirect(url_for('dashboard'))
 
 @app.route('/leaderboard')
+@login_required
 def leaderboard():
     return redirect(url_for('home'))
 
@@ -402,12 +406,16 @@ def logout():
 
 @app.errorhandler(404)
 def not_found(error):
+    app.logger.error(f'404 error: {error}')
     return redirect(url_for('home'))
 
 @app.errorhandler(500)
 def internal_error(error):
+    app.logger.error(f'500 error: {error}')
     return redirect(url_for('home'))
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
-    app.run(debug=False, host='0.0.0.0', port=port)
+    debug_mode = os.environ.get('DEBUG', 'False').lower() == 'true'
+    host = os.environ.get('HOST', '127.0.0.1')
+    app.run(debug=debug_mode, host=host, port=port)
