@@ -314,6 +314,11 @@ def admin_tournaments():
 def wallet():
     return redirect(url_for('dashboard'))
 
+@app.route('/quick_matches')
+@login_required
+def quick_matches():
+    return redirect(url_for('dashboard'))
+
 @app.route('/games', endpoint='games')
 def games_page():
     return redirect(url_for('home'))
