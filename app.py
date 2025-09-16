@@ -505,6 +505,28 @@ def support_chat():
 def fpl_battles():
     return redirect(url_for('dashboard'))
 
+@app.route('/api/user_balance')
+@login_required
+def api_user_balance():
+    """API endpoint for user balance"""
+    try:
+        with SecureDBConnection() as conn:
+            c = conn.cursor()
+            c.execute('SELECT balance FROM users WHERE id = ?', (session['user_id'],))
+            user = c.fetchone()
+            
+            if user:
+                return jsonify({'balance': user[0]})
+            else:
+                return jsonify({'error': 'User not found'}), 404
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/favicon.ico')
+def favicon():
+    """Serve favicon"""
+    return app.send_static_file('favicon.ico')
+
 @app.route('/logout')
 def logout():
     session.clear()
