@@ -91,15 +91,21 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Gift sending function
 window.sendGift = function(streamId, giftType, amount = 1) {
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+    
     fetch('/send_gift', {
         method: 'POST',
         headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken,
+            'X-Requested-With': 'XMLHttpRequest'
         },
+        credentials: 'same-origin',
         body: JSON.stringify({
             stream_id: streamId,
             gift_type: giftType,
-            amount: amount
+            amount: amount,
+            _token: csrfToken
         })
     })
     .then(response => response.json())

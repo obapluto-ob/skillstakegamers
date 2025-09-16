@@ -121,16 +121,19 @@ class RealStreamManager {
         // Get CSRF token from meta tag or cookie
         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || 'no-token';
         
-        // Send signaling through your Flask backend
+        // Send signaling through your Flask backend with CSRF protection
         fetch('/webrtc_signal', {
             method: 'POST',
             headers: { 
                 'Content-Type': 'application/json',
-                'X-CSRFToken': csrfToken
+                'X-CSRFToken': csrfToken,
+                'X-Requested-With': 'XMLHttpRequest'
             },
+            credentials: 'same-origin',
             body: JSON.stringify({
                 streamId: this.streamId,
-                message: message
+                message: message,
+                _token: csrfToken
             })
         }).catch(err => console.error('Signaling failed:', err));
     }

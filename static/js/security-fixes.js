@@ -61,12 +61,21 @@ class IntervalManager {
 // Global interval manager
 const intervalManager = new IntervalManager();
 
-// Input sanitization
+// Input sanitization - Fixed XSS vulnerability
 function sanitizeHTML(str) {
     if (typeof str !== 'string') return '';
+    
+    // Create a temporary element to safely escape HTML
     const div = document.createElement('div');
-    div.textContent = str;
-    return div.innerHTML;
+    div.textContent = str; // This safely escapes HTML entities
+    
+    // Additional sanitization for common XSS vectors
+    let sanitized = div.innerHTML;
+    sanitized = sanitized.replace(/javascript:/gi, '');
+    sanitized = sanitized.replace(/on\w+=/gi, '');
+    sanitized = sanitized.replace(/<script[^>]*>.*?<\/script>/gi, '');
+    
+    return sanitized;
 }
 
 function validateNumericInput(value, min = null, max = null) {

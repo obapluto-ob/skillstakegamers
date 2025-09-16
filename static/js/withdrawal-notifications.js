@@ -8,10 +8,10 @@ class WithdrawalNotifications {
     }
 
     init() {
-        // Check every 3 seconds for status updates
+        // Check every 15 seconds for status updates (reduced server load)
         this.checkInterval = setInterval(() => {
             this.checkWithdrawalStatus();
-        }, 3000);
+        }, 15000);
 
         // Check immediately
         this.checkWithdrawalStatus();

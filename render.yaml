@@ -8,10 +8,10 @@ services:
       - key: SECRET_KEY
         generateValue: true
       - key: ADMIN_PASSWORD
-        value: your-secure-admin-password-here
+        generateValue: true
       - key: NOWPAYMENTS_API_KEY
-        value: your-nowpayments-api-key
+        sync: false
       - key: PAYPAL_CLIENT_ID
-        value: your-paypal-client-id
+        sync: false
       - key: PAYPAL_CLIENT_SECRET
-        value: your-paypal-client-secret
+        sync: false

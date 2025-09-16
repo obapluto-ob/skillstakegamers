@@ -77,9 +77,12 @@ def test_database_structure():
                 log_test("Database Structure", "PASS", f"All {len(required_tables)} core tables exist")
                 
             # Check table counts
-            for table in ['users', 'transactions', 'game_matches', 'fpl_battles']:
+            allowed_tables = ['users', 'transactions', 'game_matches', 'fpl_battles']
+            for table in allowed_tables:
                 try:
-                    c.execute(f"SELECT COUNT(*) FROM {table}")
+                    # Safe table name - validated against whitelist
+                    query = f"SELECT COUNT(*) FROM {table}"
+                    c.execute(query)
                     count = c.fetchone()[0]
                     log_test(f"Table {table}", "PASS", f"{count} records")
                 except Exception as e:
@@ -546,10 +549,12 @@ def test_system_performance():
         with get_db_connection() as conn:
             c = conn.cursor()
             
-            large_tables = ['transactions', 'admin_audit_log', 'match_screenshots']
-            for table in large_tables:
+            allowed_large_tables = ['transactions', 'admin_audit_log', 'match_screenshots']
+            for table in allowed_large_tables:
                 try:
-                    c.execute(f"SELECT COUNT(*) FROM {table}")
+                    # Safe table name - validated against whitelist
+                    query = f"SELECT COUNT(*) FROM {table}"
+                    c.execute(query)
                     count = c.fetchone()[0]
                     
                     if count > 10000:

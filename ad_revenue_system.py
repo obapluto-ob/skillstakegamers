@@ -42,16 +42,15 @@ from ad_revenue_system_secure import *
 
 def record_ad_view(user_id, ad_type, ad_placement):
     """Record ad view and calculate earnings"""
-    conn = sqlite3.connect('gamebet.db')
-    c = conn.cursor()
+    with sqlite3.connect('gamebet.db') as conn:
+        c = conn.cursor()
     
     # Get ad settings
     c.execute('SELECT revenue_per_view, user_share_percent, platform_share_percent FROM ad_settings WHERE ad_type = ?', (ad_type,))
     settings = c.fetchone()
     
-    if not settings:
-        conn.close()
-        return False, 'Invalid ad type'
+        if not settings:
+            return False, 'Invalid ad type'
     
     revenue_per_view, user_share_percent, platform_share_percent = settings
     
@@ -80,15 +79,14 @@ def record_ad_view(user_id, ad_type, ad_placement):
              (1, 'ad_revenue', platform_earnings, 
               f'{ad_type.title()} ad revenue - User {user_id} - KSh {platform_earnings:.2f}'))
     
-    conn.commit()
-    conn.close()
-    
-    return True, user_earnings
+        conn.commit()
+        
+        return True, user_earnings
 
 def get_user_ad_stats(user_id):
     """Get user's ad viewing statistics"""
-    conn = sqlite3.connect('gamebet.db')
-    c = conn.cursor()
+    with sqlite3.connect('gamebet.db') as conn:
+        c = conn.cursor()
     
     # Total ad earnings
     c.execute('SELECT COALESCE(SUM(amount), 0) FROM transactions WHERE user_id = ? AND type = "ad_earnings"', (user_id,))
@@ -104,18 +102,16 @@ def get_user_ad_stats(user_id):
     c.execute('SELECT COUNT(*) FROM ad_views WHERE user_id = ?', (user_id,))
     total_views = c.fetchone()[0]
     
-    conn.close()
-    
-    return {
-        'total_earnings': total_earnings,
-        'total_views': total_views,
-        'ad_stats': ad_stats
-    }
+        return {
+            'total_earnings': total_earnings,
+            'total_views': total_views,
+            'ad_stats': ad_stats
+        }
 
 def get_admin_ad_stats():
     """Get admin's ad revenue statistics"""
-    conn = sqlite3.connect('gamebet.db')
-    c = conn.cursor()
+    with sqlite3.connect('gamebet.db') as conn:
+        c = conn.cursor()
     
     # Total platform ad revenue
     c.execute('SELECT COALESCE(SUM(amount), 0) FROM transactions WHERE user_id = 1 AND type = "ad_revenue"', ())
@@ -138,16 +134,14 @@ def get_admin_ad_stats():
     # Revenue per view average
     avg_revenue = total_revenue / total_views if total_views > 0 else 0
     
-    conn.close()
-    
-    return {
-        'total_revenue': total_revenue,
-        'total_paid_out': total_paid_out,
-        'net_profit': total_revenue - total_paid_out,
-        'total_views': total_views,
-        'avg_revenue_per_view': avg_revenue,
-        'ad_stats': ad_stats
-    }
+        return {
+            'total_revenue': total_revenue,
+            'total_paid_out': total_paid_out,
+            'net_profit': total_revenue - total_paid_out,
+            'total_views': total_views,
+            'avg_revenue_per_view': avg_revenue,
+            'ad_stats': ad_stats
+        }
 
 # Flask routes for ad system
 def register_ad_routes(app):
