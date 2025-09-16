@@ -305,21 +305,44 @@ def login():
                 user = c.fetchone()
                 
                 if user and check_password_hash(user[3], password):
-                    session.clear()
-                    session.permanent = True
-                    session['user_id'] = user[0]
-                    session['username'] = user[1]
-                    session['balance'] = user[4] or 0
-                    session['is_admin'] = user[1] == 'admin'
-                    session['logged_in'] = True
-                    
-                    # Update last login
-                    c.execute('UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = ?', (user[0],))
-                    
+                    # Admin logs in directly without 2FA
                     if user[1] == 'admin':
+                        session.clear()
+                        session.permanent = True
+                        session['user_id'] = user[0]
+                        session['username'] = user[1]
+                        session['balance'] = user[4] or 0
+                        session['is_admin'] = True
+                        session['logged_in'] = True
+                        
+                        # Update last login
+                        c.execute('UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = ?', (user[0],))
                         return redirect(url_for('admin_dashboard'))
+                    
+                    # Regular users need 2FA verification
                     else:
-                        return redirect(url_for('dashboard'))
+                        verification_code = random.randint(100000, 999999)
+                        
+                        # Send verification email
+                        email_body = f'''
+                        <h2>SkillStake Gaming - Login Verification</h2>
+                        <p>Your login verification code is: <strong>{verification_code}</strong></p>
+                        <p>This code will expire in 10 minutes.</p>
+                        '''
+                        
+                        if send_email(user[2], 'SkillStake - Login Verification Code', email_body):
+                            # Store verification data in session
+                            session['pending_login'] = {
+                                'user_id': user[0],
+                                'username': user[1],
+                                'email': user[2],
+                                'balance': user[4] or 0,
+                                'verification_code': verification_code
+                            }
+                            flash('Verification code sent to your email!', 'success')
+                            return render_template('verify_login.html')
+                        else:
+                            flash('Error sending verification code. Please try again.', 'error')
                 else:
                     flash('Invalid username/email or password!', 'error')
         except Exception as e:
@@ -1151,6 +1174,73 @@ def upload_match_screenshot():
         
     except Exception as e:
         return jsonify({'success': False, 'message': 'Error uploading result'})
+
+@app.route('/verify_login_code', methods=['POST'])
+def verify_login_code():
+    """Verify login 2FA code"""
+    try:
+        data = request.get_json()
+        code = data.get('code', '').strip()
+        
+        if not code or len(code) != 6:
+            return jsonify({'success': False, 'message': 'Invalid code format'})
+        
+        # Check if pending login exists
+        if 'pending_login' not in session:
+            return jsonify({'success': False, 'message': 'No pending login found'})
+        
+        pending = session['pending_login']
+        
+        # Verify code
+        if str(pending['verification_code']) == code:
+            # Complete login
+            session.clear()
+            session.permanent = True
+            session['user_id'] = pending['user_id']
+            session['username'] = pending['username']
+            session['balance'] = pending['balance']
+            session['is_admin'] = False
+            session['logged_in'] = True
+            
+            # Update last login
+            with SecureDBConnection() as conn:
+                c = conn.cursor()
+                c.execute('UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = ?', (pending['user_id'],))
+            
+            return jsonify({'success': True, 'message': 'Login successful!'})
+        else:
+            return jsonify({'success': False, 'message': 'Invalid verification code'})
+            
+    except Exception as e:
+        return jsonify({'success': False, 'message': 'Verification error occurred'})
+
+@app.route('/resend_login_code', methods=['POST'])
+def resend_login_code():
+    """Resend login verification code"""
+    try:
+        # Check if pending login exists
+        if 'pending_login' not in session:
+            return jsonify({'success': False, 'message': 'No pending login found'})
+        
+        pending = session['pending_login']
+        new_code = random.randint(100000, 999999)
+        
+        # Send new verification email
+        email_body = f'''
+        <h2>SkillStake Gaming - Login Verification</h2>
+        <p>Your new login verification code is: <strong>{new_code}</strong></p>
+        <p>This code will expire in 10 minutes.</p>
+        '''
+        
+        if send_email(pending['email'], 'SkillStake - New Login Verification Code', email_body):
+            # Update verification code in session
+            session['pending_login']['verification_code'] = new_code
+            return jsonify({'success': True, 'message': 'New verification code sent to your email!'})
+        else:
+            return jsonify({'success': False, 'message': 'Error sending verification code'})
+            
+    except Exception as e:
+        return jsonify({'success': False, 'message': 'Error resending code'})
 
 @app.route('/test_email')
 @login_required
