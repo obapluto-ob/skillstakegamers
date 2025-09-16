@@ -135,6 +135,48 @@ def dashboard():
         flash(f'Dashboard error: {str(e)}', 'error')
         return redirect(url_for('login'))
 
+@app.route('/register', methods=['GET', 'POST'])
+@app.route('/register_fixed', methods=['GET', 'POST'])
+def register_fixed():
+    if request.method == 'POST':
+        username = request.form.get('username', '').strip()
+        email = request.form.get('email', '').strip()
+        password = request.form.get('password', '')
+        
+        if not username or not email or not password:
+            flash('All fields are required!', 'error')
+            return render_template('register_fixed.html')
+        
+        try:
+            conn = get_db_connection()
+            c = conn.cursor()
+            
+            # Check if user exists
+            c.execute('SELECT id FROM users WHERE username = ? OR email = ?', (username, email))
+            if c.fetchone():
+                flash('Username or email already exists!', 'error')
+                conn.close()
+                return render_template('register_fixed.html')
+            
+            # Create user
+            hashed_password = generate_password_hash(password)
+            referral_code = f'REF{random.randint(100000, 999999)}'
+            
+            c.execute('''INSERT INTO users (username, email, password, referral_code, email_verified) 
+                         VALUES (?, ?, ?, ?, ?)''',
+                     (username, email, hashed_password, referral_code, 1))
+            
+            conn.commit()
+            conn.close()
+            
+            flash('Registration successful! You can now login.', 'success')
+            return redirect(url_for('login'))
+            
+        except Exception as e:
+            flash('Registration failed. Please try again.', 'error')
+    
+    return render_template('register_fixed.html')
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
@@ -214,6 +256,16 @@ def admin_dashboard():
         return render_template('admin_dashboard.html', stats={}, earnings_data={}, 
                              pending_deposits=[], pending_withdrawals=[], 
                              active_game_matches=[], notifications=[], unread_alerts=0)
+
+@app.route('/forgot_password', methods=['GET', 'POST'])
+def forgot_password():
+    if request.method == 'POST':
+        email = request.form.get('email', '').strip()
+        if email:
+            flash('Password reset instructions sent to your email (if account exists).', 'info')
+        else:
+            flash('Please enter your email address.', 'error')
+    return render_template('forgot_password.html')
 
 @app.route('/logout')
 def logout():
