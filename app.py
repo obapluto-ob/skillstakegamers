@@ -682,25 +682,34 @@ def home():
     if 'user_id' in session:
         return redirect(url_for('dashboard'))
     
-    # Check if human verification is completed
-    if not session.get('human_verified'):
+    if not check_human_verification():
         return redirect(url_for('human_verification'))
     
     return render_template('home.html')
 
+def check_human_verification():
+    """Check if user is verified via session or cookie"""
+    if session.get('human_verified'):
+        return True
+    if request.cookies.get('human_verified') == 'true':
+        session['human_verified'] = True
+        return True
+    return False
+
 @app.route('/human_verification')
 def human_verification():
-    # Skip verification if already verified or if admin
-    if session.get('human_verified') or session.get('is_admin'):
+    if check_human_verification() or session.get('is_admin'):
         return redirect(url_for('home'))
     
-    # Check if verification has expired (24 hours)
     if session.get('verification_time'):
         try:
             verification_time = datetime.fromisoformat(session['verification_time'])
-            if (datetime.now() - verification_time).total_seconds() > 86400:  # 24 hours
+            if (datetime.now() - verification_time).total_seconds() > 86400:
                 session.pop('human_verified', None)
                 session.pop('verification_time', None)
+                response = redirect(url_for('human_verification'))
+                response.set_cookie('human_verified', '', expires=0)
+                return response
         except:
             pass
     
@@ -708,12 +717,18 @@ def human_verification():
 
 @app.route('/clear_verification')
 def clear_verification():
-    """Development route to clear verification"""
+    """Admin-only route to clear verification"""
+    if not session.get('is_admin') or session.get('username') != 'admin':
+        flash('Access denied', 'error')
+        return redirect(url_for('home'))
+    
     session.pop('human_verified', None)
     session.pop('verification_time', None)
     session.pop('verification_method', None)
-    flash('Human verification cleared for testing', 'info')
-    return redirect(url_for('human_verification'))
+    response = redirect(url_for('admin_dashboard'))
+    response.set_cookie('human_verified', '', expires=0)
+    flash('Human verification cleared', 'info')
+    return response
 
 @app.route('/verify_human', methods=['POST'])
 def verify_human():
@@ -723,12 +738,10 @@ def verify_human():
         verified = data.get('verified')
         
         if verified:
-            # Mark as human verified for 24 hours
             session['human_verified'] = True
             session['verification_time'] = datetime.now().isoformat()
             session['verification_method'] = method
             
-            # Log verification attempt (optional)
             try:
                 with SecureDBConnection() as conn:
                     c = conn.cursor()
@@ -738,7 +751,9 @@ def verify_human():
             except:
                 pass
             
-            return jsonify({'success': True, 'message': 'Human verification successful'})
+            response = jsonify({'success': True, 'message': 'Human verification successful'})
+            response.set_cookie('human_verified', 'true', max_age=86400, secure=True, httponly=True, samesite='Strict')
+            return response
         else:
             return jsonify({'success': False, 'message': 'Verification failed'})
             
@@ -787,8 +802,7 @@ def dashboard():
 @app.route('/register', methods=['GET', 'POST'])
 @app.route('/register_fixed', methods=['GET', 'POST'])
 def register_fixed():
-    # Check human verification first
-    if not session.get('human_verified'):
+    if not check_human_verification():
         return redirect(url_for('human_verification'))
     if request.method == 'POST':
         username = sanitize_input(request.form.get('username', '').strip())
@@ -875,8 +889,7 @@ def register_fixed():
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    # Check human verification first
-    if not session.get('human_verified'):
+    if not check_human_verification():
         return redirect(url_for('human_verification'))
     if request.method == 'POST':
         login_input = sanitize_input(request.form.get('login_input', '').strip())
@@ -1052,8 +1065,7 @@ def admin_dashboard():
 
 @app.route('/forgot_password', methods=['GET', 'POST'])
 def forgot_password():
-    # Check human verification first
-    if not session.get('human_verified'):
+    if not check_human_verification():
         return redirect(url_for('human_verification'))
     if request.method == 'POST':
         # Check if this is a reset code submission
