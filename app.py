@@ -2157,10 +2157,17 @@ def create_match():
         bet_amount = float(request.form.get('bet_amount', 0))
         game_mode = request.form.get('game_mode')
         game_username = request.form.get('game_username', '').strip()
+        competition_mode = request.form.get('competition_mode', '')
+        selected_match = request.form.get('selected_match', '')
         
         if not all([game, game_mode, game_username]) or bet_amount < 50:
             flash('All fields are required and minimum stake is KSh 50', 'error')
             return redirect(url_for('games'))
+        
+        # For FPL battles, require competition mode and selected match
+        if game == 'fpl_battles' and game_mode in ['next_gameweek', 'current'] and not competition_mode:
+            flash('Please select a competition mode', 'error')
+            return redirect(url_for('fpl_battles'))
         
         # Validate stake amount limits
         if bet_amount > 5000:
@@ -2188,12 +2195,29 @@ def create_match():
                 flash('Insufficient balance', 'error')
                 return redirect(url_for('games'))
             
+            # Prepare match description
+            match_description = game_mode
+            if selected_match:
+                import json
+                try:
+                    match_data = json.loads(selected_match)
+                    match_description = f"{competition_mode}_{match_data['homeTeam']}_vs_{match_data['awayTeam']}"
+                except:
+                    pass
+            
             # Create match
             total_pot = bet_amount * 2
+            
+            # Add match_data column if it doesn't exist
+            try:
+                c.execute('ALTER TABLE game_matches ADD COLUMN match_data TEXT')
+            except:
+                pass
+            
             c.execute('''INSERT INTO game_matches 
-                        (game_type, game_mode, creator_id, creator_game_username, stake_amount, total_pot, status)
-                        VALUES (?, ?, ?, ?, ?, ?, "open")''',
-                     (game, game_mode, user_id, game_username, bet_amount, total_pot))
+                        (game_type, game_mode, creator_id, creator_game_username, stake_amount, total_pot, status, match_data)
+                        VALUES (?, ?, ?, ?, ?, ?, "open", ?)''',
+                     (game, match_description, user_id, game_username, bet_amount, total_pot, selected_match))
             
             match_id = c.lastrowid
             

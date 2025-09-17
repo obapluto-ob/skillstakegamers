@@ -358,9 +358,9 @@ function showBattleType(type) {
         title.textContent = 'Next Gameweek Battle';
         loadGameweekFixtures('next');
         setupCompetitionModes([
-            {value: 'prediction_battle', text: 'Prediction Battle', desc: 'Winner: Most accurate score predictions'},
-            {value: 'captain_battle', text: 'Captain Battle', desc: 'Winner: Highest captain points (doubled)'},
-            {value: 'formation_battle', text: 'Formation Battle', desc: 'Winner: Best performing formation'}
+            {value: 'match_prediction', text: 'Match Prediction', desc: 'Winner: Most accurate score prediction for selected match'},
+            {value: 'team_vs_team', text: 'Team vs Team', desc: 'Winner: Your team players vs opponent team players in selected match'},
+            {value: 'captain_battle', text: 'Captain Battle', desc: 'Winner: Highest captain points (doubled)'}
         ]);
     } else if (type === 'season') {
         title.textContent = 'Season Battle';
@@ -402,7 +402,7 @@ function loadGameweekFixtures(type) {
     .then(data => {
         if (data.success) {
             gwInput.value = data.gameweek;
-            displayFixtures(data.fixtures, data.gameweek, type);
+            displaySelectableFixtures(data.fixtures, data.gameweek, type);
         } else {
             fixturesDisplay.innerHTML = '<p style="color: #dc3545;">Could not load fixtures</p>';
         }
@@ -425,16 +425,16 @@ function loadSeasonStats() {
     `;
 }
 
-function displayFixtures(fixtures, gameweek, type) {
+function displaySelectableFixtures(fixtures, gameweek, type) {
     const fixturesDisplay = document.getElementById('fixturesDisplay');
     
     let html = `
         <div style="background: #f8f9fa; padding: 1rem; border-radius: 8px;">
-            <h6 style="margin: 0 0 1rem 0; color: #37003c;">${type === 'current' ? 'Current' : 'Next'} Gameweek ${gameweek} Fixtures</h6>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.5rem;">
+            <h6 style="margin: 0 0 1rem 0; color: #37003c;">Select Match for Battle - ${type === 'current' ? 'Current' : 'Next'} Gameweek ${gameweek}</h6>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem;">
     `;
     
-    fixtures.forEach(fixture => {
+    fixtures.forEach((fixture, index) => {
         const kickoffTime = new Date(fixture.kickoff_time).toLocaleDateString('en-GB', {
             weekday: 'short',
             day: 'numeric',
@@ -443,18 +443,128 @@ function displayFixtures(fixtures, gameweek, type) {
             minute: '2-digit'
         });
         
+        const isUpcoming = new Date(fixture.kickoff_time) > new Date();
+        const cardStyle = isUpcoming ? 'cursor: pointer; border: 2px solid #17a2b8;' : 'opacity: 0.6; border: 1px solid #ddd;';
+        
         html += `
-            <div style="background: white; padding: 0.5rem; border-radius: 4px; border: 1px solid #ddd; text-align: center;">
-                <div style="font-size: 0.8rem; font-weight: bold; color: #37003c;">
+            <div onclick="${isUpcoming ? `selectMatch('${fixture.team_h_name}', '${fixture.team_a_name}', '${fixture.kickoff_time}', ${index})` : ''}" 
+                 style="background: white; padding: 1rem; border-radius: 8px; ${cardStyle} text-align: center; transition: all 0.3s ease;" 
+                 class="fixture-card" data-fixture-id="${index}">
+                <div style="font-size: 1rem; font-weight: bold; color: #37003c; margin-bottom: 0.5rem;">
                     ${fixture.team_h_name} vs ${fixture.team_a_name}
                 </div>
-                <div style="font-size: 0.7rem; color: #666;">${kickoffTime}</div>
+                <div style="font-size: 0.8rem; color: #666; margin-bottom: 0.5rem;">${kickoffTime}</div>
+                ${isUpcoming ? 
+                    '<div style="background: #28a745; color: white; padding: 0.3rem 0.6rem; border-radius: 15px; font-size: 0.7rem; display: inline-block;">Available</div>' : 
+                    '<div style="background: #6c757d; color: white; padding: 0.3rem 0.6rem; border-radius: 15px; font-size: 0.7rem; display: inline-block;">Started/Finished</div>'
+                }
             </div>
         `;
     });
     
     html += '</div></div>';
+    
+    // Add selected match display
+    html += `
+        <div id="selectedMatchDisplay" style="display: none; background: rgba(23, 162, 184, 0.1); padding: 1rem; border-radius: 8px; margin-top: 1rem;">
+            <h6 style="margin: 0 0 0.5rem 0; color: #17a2b8;">Selected Match</h6>
+            <div id="selectedMatchInfo"></div>
+        </div>
+    `;
+    
     fixturesDisplay.innerHTML = html;
+}
+
+let selectedMatch = null;
+
+function selectMatch(homeTeam, awayTeam, kickoffTime, fixtureId) {
+    // Remove previous selection
+    document.querySelectorAll('.fixture-card').forEach(card => {
+        card.style.background = 'white';
+    });
+    
+    // Highlight selected match
+    const selectedCard = document.querySelector(`[data-fixture-id="${fixtureId}"]`);
+    if (selectedCard) {
+        selectedCard.style.background = 'rgba(23, 162, 184, 0.1)';
+    }
+    
+    // Store selected match
+    selectedMatch = {
+        homeTeam,
+        awayTeam,
+        kickoffTime,
+        fixtureId
+    };
+    
+    // Show selected match info
+    const display = document.getElementById('selectedMatchDisplay');
+    const info = document.getElementById('selectedMatchInfo');
+    
+    const kickoffFormatted = new Date(kickoffTime).toLocaleDateString('en-GB', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+    
+    info.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+                <strong>${homeTeam} vs ${awayTeam}</strong><br>
+                <small>${kickoffFormatted}</small>
+            </div>
+            <div style="background: #28a745; color: white; padding: 0.5rem 1rem; border-radius: 6px; font-size: 0.9rem;">
+                ✓ Selected
+            </div>
+        </div>
+    `;
+    
+    display.style.display = 'block';
+    
+    // Update competition modes based on selection
+    updateCompetitionModesForMatch();
+}
+
+function updateCompetitionModesForMatch() {
+    const competitionMode = document.getElementById('competitionMode');
+    const rulesDisplay = document.getElementById('battleRulesDisplay');
+    
+    if (!selectedMatch) return;
+    
+    const modes = [
+        {
+            value: 'score_prediction',
+            text: 'Score Prediction',
+            desc: `Predict exact score for ${selectedMatch.homeTeam} vs ${selectedMatch.awayTeam}. Winner: Most accurate prediction`
+        },
+        {
+            value: 'team_performance',
+            text: 'Team Performance',
+            desc: `Your FPL players from ${selectedMatch.homeTeam} vs opponent's players from ${selectedMatch.awayTeam}`
+        },
+        {
+            value: 'player_battle',
+            text: 'Player Battle',
+            desc: `Choose one player from each team. Winner: Player with most points in this match`
+        }
+    ];
+    
+    competitionMode.innerHTML = '<option value="">Choose Competition Mode</option>';
+    modes.forEach(mode => {
+        competitionMode.innerHTML += `<option value="${mode.value}">${mode.text}</option>`;
+    });
+    
+    competitionMode.onchange = function() {
+        const selectedMode = modes.find(m => m.value === this.value);
+        if (selectedMode) {
+            rulesDisplay.innerHTML = `
+                <h6 style="margin: 0 0 0.5rem 0; color: #17a2b8;">Battle Rules: ${selectedMode.text}</h6>
+                <p style="margin: 0; font-size: 0.9rem;">${selectedMode.desc}</p>
+            `;
+        }
+    };
 }
 
 // Create FPL Battle
@@ -468,6 +578,11 @@ document.getElementById('createFplBattle')?.addEventListener('submit', function(
     const submitBtn = this.querySelector('button[type="submit"]');
     submitBtn.textContent = 'Creating Battle...';
     submitBtn.disabled = true;
+    
+    // Add selected match info to form data
+    if (selectedMatch) {
+        formData.append('selected_match', JSON.stringify(selectedMatch));
+    }
     
     fetch('/create_match', {
         method: 'POST',
