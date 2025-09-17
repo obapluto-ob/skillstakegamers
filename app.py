@@ -930,7 +930,7 @@ def quick_matches():
         {
             'id': 'fifa_mobile',
             'name': 'FIFA Mobile',
-            'image': 'https://cdn2.unrealengine.com/egs-fifa-mobile-carousel-desktop-1248x702-1248x702-8c5e2e8b1f7c.jpg',
+            'image': 'https://via.placeholder.com/300x200/1e3a8a/ffffff?text=FIFA+Mobile',
             'min_bet': 50,
             'max_bet': 1000,
             'modes': [
@@ -942,7 +942,7 @@ def quick_matches():
         {
             'id': 'efootball',
             'name': 'eFootball',
-            'image': 'https://cdn.cloudflare.steamstatic.com/steam/apps/1665460/header.jpg',
+            'image': 'https://via.placeholder.com/300x200/059669/ffffff?text=eFootball',
             'min_bet': 50,
             'max_bet': 1000,
             'modes': [
@@ -954,13 +954,13 @@ def quick_matches():
         {
             'id': 'fpl_battles',
             'name': 'FPL Battles',
-            'image': 'https://fantasy.premierleague.com/static/libsass/plfpl/dist/img/badges/badge_logo_80.png',
+            'image': 'https://via.placeholder.com/300x200/7c3aed/ffffff?text=FPL+Battles',
             'min_bet': 100,
             'max_bet': 2000,
             'modes': [
                 {'id': 'h2h_fpl', 'name': 'Head to Head', 'description': 'Fantasy team vs team'},
-                {'id': 'classic_league', 'name': 'Classic League', 'description': 'Season-long competition'},
-                {'id': 'draft', 'name': 'Draft', 'description': 'Draft unique players'}
+                {'id': 'gameweek_battle', 'name': 'Gameweek Battle', 'description': 'Current gameweek points'},
+                {'id': 'season_long', 'name': 'Season Long', 'description': 'Overall points competition'}
             ]
         }
     ]
@@ -983,7 +983,7 @@ def games_page():
         {
             'id': 'fifa_mobile',
             'name': 'FIFA Mobile',
-            'image': 'https://cdn2.unrealengine.com/egs-fifa-mobile-carousel-desktop-1248x702-1248x702-8c5e2e8b1f7c.jpg',
+            'image': 'https://via.placeholder.com/300x200/1e3a8a/ffffff?text=FIFA+Mobile',
             'min_bet': 50,
             'max_bet': 1000,
             'modes': ['Head to Head', 'VS Attack', 'Manager Mode']
@@ -991,7 +991,7 @@ def games_page():
         {
             'id': 'efootball',
             'name': 'eFootball',
-            'image': 'https://cdn.cloudflare.steamstatic.com/steam/apps/1665460/header.jpg',
+            'image': 'https://via.placeholder.com/300x200/059669/ffffff?text=eFootball',
             'min_bet': 50,
             'max_bet': 1000,
             'modes': ['Online Match', 'Quick Match', 'Ranked']
@@ -999,7 +999,7 @@ def games_page():
         {
             'id': 'fpl_battles',
             'name': 'FPL Battles',
-            'image': 'https://fantasy.premierleague.com/static/libsass/plfpl/dist/img/badges/badge_logo_80.png',
+            'image': 'https://via.placeholder.com/300x200/7c3aed/ffffff?text=FPL+Battles',
             'min_bet': 100,
             'max_bet': 2000,
             'modes': ['Head to Head', 'Classic League', 'Draft']
@@ -1440,7 +1440,122 @@ def support_chat():
 @app.route('/fpl_battles')
 @login_required
 def fpl_battles():
-    return render_template('fpl_battles.html')
+    try:
+        # Get user's FPL teams if any
+        with SecureDBConnection() as conn:
+            c = conn.cursor()
+            user_id = session['user_id']
+            
+            # Check if user has FPL team registered
+            c.execute('SELECT fpl_team_id, fpl_team_name FROM users WHERE id = ?', (user_id,))
+            user_data = c.fetchone()
+            
+            fpl_team_id = None
+            fpl_team_name = None
+            
+            if user_data and len(user_data) > 5:
+                fpl_team_id = user_data[5] if len(user_data) > 5 else None
+                fpl_team_name = user_data[6] if len(user_data) > 6 else None
+            
+            # Get active FPL battles
+            c.execute('SELECT * FROM game_matches WHERE game_type = "fpl_battles" AND status = "open" ORDER BY created_at DESC LIMIT 10')
+            fpl_matches = c.fetchall()
+            
+        return render_template('fpl_battles.html', 
+                             fpl_team_id=fpl_team_id, 
+                             fpl_team_name=fpl_team_name,
+                             fpl_matches=fpl_matches)
+    except:
+        return render_template('fpl_battles.html', fpl_team_id=None, fpl_team_name=None, fpl_matches=[])
+
+@app.route('/register_fpl_team', methods=['POST'])
+@login_required
+def register_fpl_team():
+    try:
+        fpl_team_id = request.form.get('fpl_team_id', '').strip()
+        
+        if not fpl_team_id or not fpl_team_id.isdigit():
+            return jsonify({'success': False, 'message': 'Valid FPL Team ID required'})
+        
+        # Validate FPL team ID by calling FPL API
+        import requests
+        
+        try:
+            response = requests.get(f'https://fantasy.premierleague.com/api/entry/{fpl_team_id}/', timeout=10)
+            
+            if response.status_code == 200:
+                team_data = response.json()
+                team_name = f"{team_data.get('player_first_name', '')} {team_data.get('player_last_name', '')}".strip()
+                
+                # Update user with FPL team info
+                with SecureDBConnection() as conn:
+                    c = conn.cursor()
+                    
+                    # Add columns if they don't exist
+                    try:
+                        c.execute('ALTER TABLE users ADD COLUMN fpl_team_id TEXT')
+                        c.execute('ALTER TABLE users ADD COLUMN fpl_team_name TEXT')
+                    except:
+                        pass
+                    
+                    c.execute('UPDATE users SET fpl_team_id = ?, fpl_team_name = ? WHERE id = ?', 
+                             (fpl_team_id, team_name, session['user_id']))
+                
+                return jsonify({
+                    'success': True, 
+                    'message': f'FPL team registered: {team_name}',
+                    'team_name': team_name
+                })
+            else:
+                return jsonify({'success': False, 'message': 'Invalid FPL Team ID'})
+                
+        except requests.RequestException:
+            return jsonify({'success': False, 'message': 'Could not verify FPL team. Please try again.'})
+            
+    except Exception as e:
+        return jsonify({'success': False, 'message': 'Error registering FPL team'})
+
+@app.route('/get_fpl_gameweek_score/<int:team_id>')
+@login_required
+def get_fpl_gameweek_score(team_id):
+    try:
+        import requests
+        
+        # Get current gameweek
+        bootstrap_response = requests.get('https://fantasy.premierleague.com/api/bootstrap-static/', timeout=10)
+        
+        if bootstrap_response.status_code != 200:
+            return jsonify({'success': False, 'message': 'Could not fetch gameweek data'})
+        
+        bootstrap_data = bootstrap_response.json()
+        current_gw = None
+        
+        for event in bootstrap_data['events']:
+            if event['is_current']:
+                current_gw = event['id']
+                break
+        
+        if not current_gw:
+            return jsonify({'success': False, 'message': 'No active gameweek found'})
+        
+        # Get team's gameweek score
+        gw_response = requests.get(f'https://fantasy.premierleague.com/api/entry/{team_id}/event/{current_gw}/picks/', timeout=10)
+        
+        if gw_response.status_code == 200:
+            gw_data = gw_response.json()
+            points = gw_data.get('entry_history', {}).get('points', 0)
+            
+            return jsonify({
+                'success': True,
+                'gameweek': current_gw,
+                'points': points,
+                'team_id': team_id
+            })
+        else:
+            return jsonify({'success': False, 'message': 'Could not fetch team score'})
+            
+    except Exception as e:
+        return jsonify({'success': False, 'message': 'Error fetching FPL data'})
 
 @app.route('/create_match', methods=['POST'])
 @login_required
@@ -1454,12 +1569,12 @@ def create_match():
         
         if not all([game, game_mode]) or bet_amount < 50:
             flash('Invalid match data', 'error')
-            return redirect(url_for('games_page'))
+            return redirect(url_for('games'))
         
         # Validate stake amount limits
         if bet_amount > 5000:
             flash('Maximum stake is KSh 5000', 'error')
-            return redirect(url_for('games_page'))
+            return redirect(url_for('games'))
         
         with SecureDBConnection() as conn:
             c = conn.cursor()
@@ -1472,7 +1587,7 @@ def create_match():
             recent_matches = c.fetchone()[0]
             if recent_matches >= 10:
                 flash('Too many matches created recently. Please wait.', 'error')
-                return redirect(url_for('games_page'))
+                return redirect(url_for('games'))
             
             # Check user balance
             c.execute('SELECT balance FROM users WHERE id = ?', (user_id,))
@@ -1480,7 +1595,7 @@ def create_match():
             
             if not user or user[0] < bet_amount:
                 flash('Insufficient balance', 'error')
-                return redirect(url_for('games_page'))
+                return redirect(url_for('games'))
             
             # Create match
             total_pot = bet_amount * 2
@@ -1497,12 +1612,15 @@ def create_match():
                         VALUES (?, ?, ?, ?)''',
                      (user_id, 'match_stake', -bet_amount, f'Stake for creating {game} match'))
             
+            # Update session balance
+            session['balance'] = session.get('balance', 0) - bet_amount
+            
             flash('Match created successfully!', 'success')
-            return redirect(url_for('games_page'))
+            return redirect(url_for('games'))
             
     except Exception as e:
         flash('Error creating match', 'error')
-        return redirect(url_for('games_page'))
+        return redirect(url_for('games'))
 
 @app.route('/create_game_match', methods=['POST'])
 @login_required
