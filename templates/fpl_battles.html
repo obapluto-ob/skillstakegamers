@@ -154,33 +154,18 @@ function loadTeamData() {
     });
 }
 
-// Display Team Squad
+// Display Team Squad in FPL App Style
 function displayTeamSquad(teamData) {
     const squadSection = document.getElementById('teamSquadSection');
     const squadDisplay = document.getElementById('teamSquadDisplay');
     
-    let html = `
-        <div style="background: #2a2a2a; padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
-            <h5>Team: ${teamData.name}</h5>
-            <p>Overall Points: ${teamData.summary_overall_points} | Rank: ${teamData.summary_overall_rank}</p>
-            <p>Gameweek Points: ${teamData.summary_event_points} | Transfers: ${teamData.last_deadline_total_transfers}</p>
-        </div>
-        
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
-    `;
-    
-    // Group players by position
-    const positions = {
-        'GKP': [],
-        'DEF': [],
-        'MID': [],
-        'FWD': []
-    };
+    // Group players by position and sort by position order
+    const positions = { 1: [], 2: [], 3: [], 4: [] }; // 1=GKP, 2=DEF, 3=MID, 4=FWD
     
     teamData.picks.forEach(pick => {
         const player = teamData.elements.find(p => p.id === pick.element);
         if (player) {
-            positions[player.element_type_name].push({
+            positions[player.element_type].push({
                 ...player,
                 is_captain: pick.is_captain,
                 is_vice_captain: pick.is_vice_captain,
@@ -189,27 +174,97 @@ function displayTeamSquad(teamData) {
         }
     });
     
-    // Display each position
-    Object.keys(positions).forEach(pos => {
-        html += `
-            <div style="background: #333; padding: 1rem; border-radius: 8px;">
-                <h6 style="color: #17a2b8; margin-bottom: 0.5rem;">${pos}</h6>
-        `;
-        
-        positions[pos].forEach(player => {
-            const captainBadge = player.is_captain ? ' (C)' : player.is_vice_captain ? ' (VC)' : '';
-            html += `
-                <div style="background: #444; padding: 0.5rem; margin-bottom: 0.5rem; border-radius: 4px; font-size: 0.9rem;">
-                    <strong>${player.web_name}${captainBadge}</strong><br>
-                    <small>${player.team_name} - ${player.total_points} pts</small>
+    let html = `
+        <div style="background: linear-gradient(135deg, #37003c, #00ff87); padding: 1.5rem; border-radius: 12px; margin-bottom: 1rem; color: white;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <h4 style="margin: 0; font-size: 1.2rem;">${teamData.name}</h4>
+                    <p style="margin: 0.5rem 0 0 0; opacity: 0.9;">Gameweek ${teamData.current_event || 'N/A'} • ${teamData.summary_event_points} pts</p>
                 </div>
-            `;
-        });
+                <div style="text-align: right;">
+                    <div style="font-size: 1.5rem; font-weight: bold;">${teamData.summary_overall_points}</div>
+                    <div style="font-size: 0.9rem; opacity: 0.8;">Overall Points</div>
+                </div>
+            </div>
+        </div>
         
-        html += '</div>';
+        <div style="background: #00ff87; padding: 2rem; border-radius: 12px; position: relative; min-height: 400px;">
+            <!-- Football Pitch Background -->
+            <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(to bottom, #00ff87 0%, #00cc6a 100%); border-radius: 12px;"></div>
+            
+            <!-- Pitch Lines -->
+            <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 2px; height: 100%; background: rgba(255,255,255,0.3);"></div>
+            <div style="position: absolute; top: 50%; left: 0; right: 0; height: 2px; background: rgba(255,255,255,0.3);"></div>
+            
+            <!-- Players Formation -->
+            <div style="position: relative; z-index: 2;">
+    `;
+    
+    // Display formation like real FPL app
+    const formationRows = [
+        { pos: 1, name: 'GKP', top: '85%' },
+        { pos: 2, name: 'DEF', top: '65%' },
+        { pos: 3, name: 'MID', top: '40%' },
+        { pos: 4, name: 'FWD', top: '15%' }
+    ];
+    
+    formationRows.forEach(row => {
+        const players = positions[row.pos] || [];
+        if (players.length > 0) {
+            html += `
+                <div style="position: absolute; top: ${row.top}; left: 0; right: 0; display: flex; justify-content: space-around; align-items: center;">
+            `;
+            
+            players.forEach(player => {
+                const captainBadge = player.is_captain ? '(C)' : player.is_vice_captain ? '(VC)' : '';
+                const captainColor = player.is_captain ? '#ffd700' : player.is_vice_captain ? '#c0c0c0' : '#37003c';
+                
+                html += `
+                    <div style="text-align: center; margin: 0 0.5rem;">
+                        <div style="background: ${captainColor}; color: white; width: 60px; height: 60px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 0.8rem; margin-bottom: 0.5rem; box-shadow: 0 2px 8px rgba(0,0,0,0.3); border: 3px solid white;">
+                            ${player.web_name.substring(0, 3).toUpperCase()}
+                        </div>
+                        <div style="background: rgba(255,255,255,0.9); padding: 0.3rem 0.5rem; border-radius: 15px; font-size: 0.7rem; color: #37003c; font-weight: bold; min-width: 50px;">
+                            ${player.web_name} ${captainBadge}
+                        </div>
+                        <div style="font-size: 0.6rem; color: #37003c; margin-top: 0.2rem; font-weight: bold;">
+                            ${player.total_points} pts
+                        </div>
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+        }
     });
     
-    html += '</div>';
+    html += `
+            </div>
+        </div>
+        
+        <!-- Bench Players -->
+        <div style="background: #f8f9fa; padding: 1rem; border-radius: 8px; margin-top: 1rem;">
+            <h6 style="color: #37003c; margin-bottom: 0.5rem;">Bench</h6>
+            <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+    `;
+    
+    // Show bench players (picks 12-15)
+    teamData.picks.slice(11, 15).forEach(pick => {
+        const player = teamData.elements.find(p => p.id === pick.element);
+        if (player) {
+            html += `
+                <div style="background: white; padding: 0.5rem; border-radius: 6px; border: 1px solid #ddd; text-align: center; min-width: 80px;">
+                    <div style="font-size: 0.8rem; font-weight: bold; color: #37003c;">${player.web_name}</div>
+                    <div style="font-size: 0.7rem; color: #666;">${player.total_points} pts</div>
+                </div>
+            `;
+        }
+    });
+    
+    html += `
+            </div>
+        </div>
+    `;
     
     squadDisplay.innerHTML = html;
     squadSection.style.display = 'block';
@@ -257,9 +312,9 @@ document.getElementById('createFplBattle')?.addEventListener('submit', function(
         return response.text();
     })
     .then(data => {
-        if (typeof data === 'string' && data.includes('Match')) {
+        if (typeof data === 'string') {
             alert('FPL Battle created successfully!');
-            location.reload();
+            window.location.href = '/matches';
         } else {
             submitBtn.textContent = 'Create FPL Battle';
             submitBtn.disabled = false;

@@ -1559,6 +1559,7 @@ def get_fpl_team_data(team_id):
                 'summary_overall_rank': team_data.get('summary_overall_rank', 0),
                 'summary_event_points': team_data.get('summary_event_points', 0),
                 'last_deadline_total_transfers': team_data.get('last_deadline_total_transfers', 0),
+                'current_event': current_gw,
                 'picks': picks_data.get('picks', []),
                 'elements': elements
             }
