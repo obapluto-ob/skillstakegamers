@@ -613,29 +613,22 @@ def quick_matches():
 @app.route('/games', endpoint='games')
 @login_required
 def games_page():
-    # Your original games data
     games = [
         {
             'id': 'fifa_mobile',
             'name': 'FIFA Mobile',
-            'image': '/static/icons/gamepad.svg',
+            'image': 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=200&h=120&fit=crop',
             'min_bet': 50,
             'max_bet': 1000,
-            'modes': ['Head to Head', 'VS Attack', 'Manager Mode'],
-            'streaming': True,
-            'stream_bonus': 25,
-            'needs_lobby': False
+            'modes': ['Head to Head', 'VS Attack', 'Manager Mode']
         },
         {
             'id': 'efootball',
             'name': 'eFootball',
-            'image': '/static/icons/trophy.svg',
+            'image': 'https://images.unsplash.com/photo-1431324155629-1a6deb1dec8d?w=200&h=120&fit=crop',
             'min_bet': 50,
             'max_bet': 1000,
-            'modes': ['Online Match', 'Quick Match', 'Ranked'],
-            'streaming': True,
-            'stream_bonus': 20,
-            'needs_lobby': False
+            'modes': ['Online Match', 'Quick Match', 'Ranked']
         }
     ]
     return render_template('games.html', games=games)

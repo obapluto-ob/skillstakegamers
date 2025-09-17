@@ -2,37 +2,16 @@
 
 {% block content %}
 <div class="card">
-    <h1><img src="/static/icons/gamepad.svg" class="icon icon-gamepad" alt="Games"> Games & Streaming</h1>
-    <p>Select a game and create a match to compete for real money! <img src="/static/icons/video.svg" class="icon icon-video" alt="Stream"> Stream your matches for bonus rewards!</p>
-</div>
-
-<!-- Live Streams Section -->
-<div class="card">
-    <h2><img src="/static/icons/live.svg" class="icon" alt="Live"> Live Streams</h2>
-    <div style="display: flex; gap: 1rem; margin-bottom: 1rem;">
-        <a href="/live_streams" class="btn btn-primary">View All Streams</a>
-        <a href="/stream_setup/1" class="btn btn-success">Start Streaming</a>
-    </div>
-    <p style="color: #ffc107;"><img src="/static/icons/money.svg" class="icon icon-money" alt="Money"> Earn KSh 5-35 bonus per match when streaming!</p>
+    <h1>🎮 Games Hub</h1>
+    <p>Select a game and create a match to compete for real money!</p>
 </div>
 
 <div class="games-grid">
     {% for game in games %}
-    <div class="game-card" style="position: relative; {% if game.get('streaming') %}border: 2px solid #dc3545;{% endif %}">
-        {% if game.get('streaming') %}
-        <div style="position: absolute; top: 10px; right: 10px; background: #dc3545; color: white; padding: 0.3rem 0.6rem; border-radius: 12px; font-size: 0.8rem; font-weight: bold;">
-            <img src="/static/icons/video.svg" class="icon icon-sm" style="filter: brightness(0) invert(1);" alt="Stream"> STREAMABLE +KSh{{ game.get('stream_bonus', 0) }}
-        </div>
-        {% endif %}
-        <img src="{{ game.image }}" alt="{{ game.name }}" style="width: 100%; height: 120px; object-fit: contain; border-radius: 8px; margin-bottom: 1rem; background: rgba(255,255,255,0.1);">
-        <h3>{{ game.name }} {% if game.get('streaming') %}<img src="/static/icons/video.svg" class="icon icon-sm icon-video" alt="Stream">{% endif %}</h3>
+    <div class="game-card">
+        <img src="{{ game.image }}" alt="{{ game.name }}" style="width: 100%; height: 120px; object-fit: cover; border-radius: 8px; margin-bottom: 1rem;">
+        <h3>{{ game.name }}</h3>
         <p>Min: KSh {{ game.min_bet }} | Max: KSh {{ game.max_bet }}</p>
-        {% if game.get('needs_lobby') %}
-        <p style="color: #17a2b8; font-size: 0.9rem;"><img src="/static/icons/stadium.svg" class="icon icon-sm icon-stadium" alt="Stadium"> Requires Lobby Setup</p>
-        {% endif %}
-        {% if game.get('streaming') %}
-        <p style="color: #dc3545; font-size: 0.9rem; font-weight: bold;"><img src="/static/icons/video.svg" class="icon icon-sm icon-video" alt="Stream"> Stream Bonus: +KSh {{ game.get('stream_bonus', 0) }}</p>
-        {% endif %}
         <p style="color: #666; font-size: 0.9rem;">Your Balance: KSh {{ "%.0f"|format(session.balance if session.balance else 0) }}</p>
         
         <form method="POST" action="{{ url_for('create_match') }}" style="margin-top: 1rem;">
@@ -44,49 +23,11 @@
                 <option value="{{ mode }}">{{ mode }}</option>
                 {% endfor %}
             </select>
-            <div style="margin-bottom: 0.5rem;">
-                <label style="color: white; font-weight: bold; margin-bottom: 0.3rem; display: block;">Verification Method:</label>
-                <label style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.3rem; color: white;">
-                    <input type="radio" name="verification_type" value="ocr" checked>
-                    <img src="/static/icons/camera.svg" class="icon icon-sm icon-camera" alt="Camera"> Screenshot Verification (OCR)
-                </label>
-                {% if game.get('streaming') %}
-                <label style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.3rem; color: white;">
-                    <input type="radio" name="verification_type" value="streaming">
-                    <img src="/static/icons/video.svg" class="icon icon-sm icon-video" alt="Video"> Live Streaming (+KSh {{ game.get('stream_bonus', 0) }} bonus)
-                </label>
-                <label class="streaming-checkbox" style="display: none; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; color: white; margin-left: 1.5rem;">
-                    <input type="checkbox" name="enable_streaming" value="1">
-                    Enable streaming for this match
-                </label>
-                {% endif %}
-            </div>
-            <button type="submit" class="btn" style="width: 100%; margin-bottom: 0.5rem;">Create Match</button>
-            {% if game.get('streaming') %}
-            <a href="/stream_setup/1" class="btn" style="width: 100%; background: #dc3545; color: white; text-decoration: none; display: block; text-align: center;"><img src="/static/icons/live.svg" class="icon icon-sm" alt="Live"> Stream Setup</a>
-            {% endif %}
+            <button type="submit" class="btn" style="width: 100%;">Create Match</button>
         </form>
     </div>
     {% endfor %}
 </div>
 
-<script>
-// Handle verification type switching for all games
-document.addEventListener('DOMContentLoaded', function() {
-    document.querySelectorAll('input[name="verification_type"]').forEach(radio => {
-        radio.addEventListener('change', function() {
-            const form = this.closest('form');
-            const streamingLabel = form.querySelector('.streaming-checkbox');
-            
-            if (this.value === 'streaming' && streamingLabel) {
-                streamingLabel.style.display = 'flex';
-            } else if (streamingLabel) {
-                streamingLabel.style.display = 'none';
-                const checkbox = streamingLabel.querySelector('input[name="enable_streaming"]');
-                if (checkbox) checkbox.checked = false;
-            }
-        });
-    });
-});
-</script>
+
 {% endblock %}
