@@ -12,17 +12,32 @@
                 <span class="status-badge status-{{ match[10] }}">{{ match[10] }}</span>
             </div>
             <div style="margin: 1rem 0;">
-                <strong>{{ match[4] }}</strong> VS <strong>{{ match[6] or 'Waiting...' }}</strong>
+                <strong>{{ match[4] }}</strong> VS <strong>{{ match[6] or 'Waiting for opponent...' }}</strong>
             </div>
-            <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
                 <div>
                     <strong>Stake: KSh {{ "%.0f"|format(match[7]) }}</strong>
                     <strong style="margin-left: 1rem;">Pot: KSh {{ "%.0f"|format(match[8]) }}</strong>
                 </div>
-                <div style="color: #ccc; font-size: 0.9rem;">
-                    {{ match[15] }}
+                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                    {% if match[10] == 'open' and match[3] == session.user_id %}
+                        <button onclick="cancelMatch({{ match[0] }}, 'free')" class="btn btn-warning btn-sm">Cancel (Free)</button>
+                    {% elif match[10] == 'active' and (match[3] == session.user_id or match[5] == session.user_id) %}
+                        <button onclick="cancelMatch({{ match[0] }}, 'penalty')" class="btn btn-danger btn-sm">Cancel (10% Penalty)</button>
+                    {% endif %}
+                    <div style="color: #ccc; font-size: 0.9rem;">
+                        {{ match[15] }}
+                    </div>
                 </div>
             </div>
+            
+            {% if match[1] == 'fpl_battles' and match[10] == 'active' %}
+            <div style="margin-top: 1rem; padding: 1rem; background: rgba(23, 162, 184, 0.1); border-radius: 8px;">
+                <h6 style="margin: 0 0 0.5rem 0; color: #17a2b8;">FPL Battle Info</h6>
+                <p style="margin: 0; font-size: 0.9rem;">Competition Mode: {{ match[2]|title }}</p>
+                <p style="margin: 0; font-size: 0.8rem; color: #ccc;">Battle will auto-resolve when gameweek ends. No manual input required.</p>
+            </div>
+            {% endif %}
         </div>
         {% endfor %}
     {% else %}
@@ -33,4 +48,31 @@
         </div>
     {% endif %}
 </div>
+<script>
+function cancelMatch(matchId, penaltyType) {
+    const penaltyText = penaltyType === 'free' ? 'no penalty' : '10% penalty (KSh will be deducted)';
+    const confirmText = `Cancel this match? ${penaltyType === 'free' ? 'Free cancellation.' : 'You will pay a 10% penalty.'}`;
+    
+    if (confirm(confirmText)) {
+        fetch(`/cancel_match/${matchId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message);
+                location.reload();
+            } else {
+                alert('Error: ' + data.message);
+            }
+        })
+        .catch(error => {
+            alert('Error cancelling match');
+        });
+    }
+}
+</script>
 {% endblock %}

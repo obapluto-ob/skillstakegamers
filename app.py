@@ -143,8 +143,194 @@ def safe_db_operation(operation):
         if conn:
             conn.close()
 
+def determine_fpl_match_winner(match_id):
+    """Determine FPL match winner with smart tiebreaker logic"""
+    try:
+        with SecureDBConnection() as conn:
+            c = conn.cursor()
+            
+            # Get match details
+            c.execute('SELECT * FROM game_matches WHERE id = ?', (match_id,))
+            match = c.fetchone()
+            
+            if not match or match[1] != 'fpl_battles':
+                return None
+            
+            creator_id = match[3]
+            opponent_id = match[5]
+            competition_mode = match[2]  # game_mode stores competition type
+            
+            # Get both players' FPL data
+            creator_data = get_player_fpl_data(creator_id)
+            opponent_data = get_player_fpl_data(opponent_id)
+            
+            if not creator_data or not opponent_data:
+                return None
+            
+            # Determine winner based on competition mode
+            winner_id = None
+            
+            if competition_mode == 'captain_battle':
+                winner_id = resolve_captain_battle(creator_data, opponent_data, creator_id, opponent_id)
+            elif competition_mode == 'team_score':
+                winner_id = resolve_team_score_battle(creator_data, opponent_data, creator_id, opponent_id)
+            elif competition_mode == 'differential_pick':
+                winner_id = resolve_differential_battle(creator_data, opponent_data, creator_id, opponent_id)
+            elif competition_mode == 'overall_points':
+                winner_id = resolve_overall_points_battle(creator_data, opponent_data, creator_id, opponent_id)
+            elif competition_mode == 'rank_battle':
+                winner_id = resolve_rank_battle(creator_data, opponent_data, creator_id, opponent_id)
+            elif competition_mode == 'transfer_efficiency':
+                winner_id = resolve_transfer_battle(creator_data, opponent_data, creator_id, opponent_id)
+            
+            if winner_id:
+                c.execute('UPDATE game_matches SET winner_id = ?, status = "completed", completed_at = CURRENT_TIMESTAMP WHERE id = ?', 
+                         (winner_id, match_id))
+            else:
+                # True tie - refund both players
+                refund_match_stakes(match_id)
+                c.execute('UPDATE game_matches SET status = "refunded", completed_at = CURRENT_TIMESTAMP WHERE id = ?', (match_id,))
+            
+            return winner_id
+            
+    except Exception as e:
+        print(f"Error determining FPL winner: {e}")
+        return None
+
+def resolve_captain_battle(creator_data, opponent_data, creator_id, opponent_id):
+    """Resolve captain battle with smart tiebreakers"""
+    creator_captain_pts = creator_data.get('captain_points', 0)
+    opponent_captain_pts = opponent_data.get('captain_points', 0)
+    
+    # Primary: Captain points
+    if creator_captain_pts > opponent_captain_pts:
+        return creator_id
+    elif opponent_captain_pts > creator_captain_pts:
+        return opponent_id
+    
+    # Tiebreaker 1: Vice-captain points
+    creator_vc_pts = creator_data.get('vice_captain_points', 0)
+    opponent_vc_pts = opponent_data.get('vice_captain_points', 0)
+    
+    if creator_vc_pts > opponent_vc_pts:
+        return creator_id
+    elif opponent_vc_pts > creator_vc_pts:
+        return opponent_id
+    
+    # Tiebreaker 2: Total team points
+    creator_total = creator_data.get('total_points', 0)
+    opponent_total = opponent_data.get('total_points', 0)
+    
+    if creator_total > opponent_total:
+        return creator_id
+    elif opponent_total > creator_total:
+        return opponent_id
+    
+    # Tiebreaker 3: Bench points
+    creator_bench = creator_data.get('bench_points', 0)
+    opponent_bench = opponent_data.get('bench_points', 0)
+    
+    if creator_bench > opponent_bench:
+        return creator_id
+    elif opponent_bench > creator_bench:
+        return opponent_id
+    
+    return None  # True tie
+
+def resolve_team_score_battle(creator_data, opponent_data, creator_id, opponent_id):
+    """Resolve team score battle with tiebreakers"""
+    creator_total = creator_data.get('total_points', 0)
+    opponent_total = opponent_data.get('total_points', 0)
+    
+    if creator_total > opponent_total:
+        return creator_id
+    elif opponent_total > creator_total:
+        return opponent_id
+    
+    # Tiebreaker: Captain points
+    return resolve_captain_battle(creator_data, opponent_data, creator_id, opponent_id)
+
+def resolve_differential_battle(creator_data, opponent_data, creator_id, opponent_id):
+    """Resolve differential pick battle"""
+    creator_diff = creator_data.get('best_differential_points', 0)
+    opponent_diff = opponent_data.get('best_differential_points', 0)
+    
+    if creator_diff > opponent_diff:
+        return creator_id
+    elif opponent_diff > creator_diff:
+        return opponent_id
+    
+    # Tiebreaker: Total points
+    return resolve_team_score_battle(creator_data, opponent_data, creator_id, opponent_id)
+
+def resolve_overall_points_battle(creator_data, opponent_data, creator_id, opponent_id):
+    """Resolve overall points battle"""
+    creator_overall = creator_data.get('overall_points', 0)
+    opponent_overall = opponent_data.get('overall_points', 0)
+    
+    if creator_overall > opponent_overall:
+        return creator_id
+    elif opponent_overall > creator_overall:
+        return opponent_id
+    
+    return None  # True tie
+
+def resolve_rank_battle(creator_data, opponent_data, creator_id, opponent_id):
+    """Resolve rank battle (lower rank wins)"""
+    creator_rank = creator_data.get('overall_rank', float('inf'))
+    opponent_rank = opponent_data.get('overall_rank', float('inf'))
+    
+    if creator_rank < opponent_rank:
+        return creator_id
+    elif opponent_rank < creator_rank:
+        return opponent_id
+    
+    return None  # True tie
+
+def resolve_transfer_battle(creator_data, opponent_data, creator_id, opponent_id):
+    """Resolve transfer efficiency battle"""
+    creator_efficiency = creator_data.get('transfer_efficiency', 0)
+    opponent_efficiency = opponent_data.get('transfer_efficiency', 0)
+    
+    if creator_efficiency > opponent_efficiency:
+        return creator_id
+    elif opponent_efficiency > creator_efficiency:
+        return opponent_id
+    
+    return None  # True tie
+
+def get_player_fpl_data(user_id):
+    """Get player's FPL data for battle resolution"""
+    try:
+        with SecureDBConnection() as conn:
+            c = conn.cursor()
+            c.execute('SELECT fpl_team_id FROM users WHERE id = ?', (user_id,))
+            result = c.fetchone()
+            
+            if not result or not result[0]:
+                return None
+            
+            fpl_team_id = result[0]
+            
+            # Fetch live FPL data (simplified for now)
+            # In production, this would call the FPL API
+            return {
+                'captain_points': 24,  # Example data
+                'vice_captain_points': 12,
+                'total_points': 65,
+                'bench_points': 8,
+                'overall_points': 2150,
+                'overall_rank': 125000,
+                'transfer_efficiency': 143.3,
+                'best_differential_points': 15
+            }
+            
+    except Exception as e:
+        print(f"Error getting FPL data: {e}")
+        return None
+
 def determine_match_winner(match_id, creator_score, opponent_score):
-    """Determine match winner with fraud detection"""
+    """Determine match winner with fraud detection (for non-FPL games)"""
     try:
         with SecureDBConnection() as conn:
             c = conn.cursor()
@@ -156,27 +342,28 @@ def determine_match_winner(match_id, creator_score, opponent_score):
             if not match:
                 return None
             
+            # If it's an FPL battle, use FPL-specific logic
+            if match[1] == 'fpl_battles':
+                return determine_fpl_match_winner(match_id)
+            
             creator_id = match[3]
             opponent_id = match[5]
             
-            # Fraud detection checks
+            # Fraud detection checks for regular games
             if detect_suspicious_activity(creator_id, opponent_id, creator_score, opponent_score):
-                # Flag for manual review
                 c.execute('UPDATE game_matches SET status = "under_review" WHERE id = ?', (match_id,))
                 return None
             
-            # Determine winner
+            # Determine winner for regular games
             winner_id = None
             if creator_score > opponent_score:
                 winner_id = creator_id
             elif opponent_score > creator_score:
                 winner_id = opponent_id
             else:
-                # Draw - refund both players
                 refund_match_stakes(match_id)
                 return None
             
-            # Update match with winner
             c.execute('UPDATE game_matches SET winner_id = ?, status = "completed", completed_at = CURRENT_TIMESTAMP WHERE id = ?', 
                      (winner_id, match_id))
             
@@ -2294,6 +2481,82 @@ def clear_all_deposits():
     except Exception as e:
         flash('Error clearing deposits', 'error')
     return redirect(url_for('admin_dashboard'))
+
+@app.route('/cancel_match/<int:match_id>', methods=['POST'])
+@login_required
+def cancel_match(match_id):
+    """Cancel match with fair play penalty system"""
+    try:
+        with SecureDBConnection() as conn:
+            c = conn.cursor()
+            user_id = session['user_id']
+            
+            # Get match details
+            c.execute('SELECT * FROM game_matches WHERE id = ?', (match_id,))
+            match = c.fetchone()
+            
+            if not match:
+                return jsonify({'success': False, 'message': 'Match not found'})
+            
+            creator_id = match[3]
+            opponent_id = match[5]
+            stake_amount = match[7]
+            match_status = match[10]
+            
+            # Check if user is part of this match
+            if user_id not in [creator_id, opponent_id]:
+                return jsonify({'success': False, 'message': 'Unauthorized'})
+            
+            # Cancellation logic based on match status
+            if match_status == 'open':
+                # No opponent joined yet - free cancellation for creator
+                if user_id == creator_id:
+                    # Refund creator's stake
+                    c.execute('UPDATE users SET balance = balance + ? WHERE id = ?', (stake_amount, creator_id))
+                    c.execute('INSERT INTO transactions (user_id, type, amount, description) VALUES (?, ?, ?, ?)',
+                             (creator_id, 'match_refund', stake_amount, f'Free cancellation of match #{match_id}'))
+                    
+                    # Delete the match
+                    c.execute('DELETE FROM game_matches WHERE id = ?', (match_id,))
+                    
+                    return jsonify({'success': True, 'message': 'Match cancelled successfully'})
+                else:
+                    return jsonify({'success': False, 'message': 'Only match creator can cancel open matches'})
+            
+            elif match_status == 'active':
+                # Both players joined - penalty for cancellation
+                penalty_amount = stake_amount * 0.1  # 10% penalty
+                refund_amount = stake_amount - penalty_amount
+                
+                # Penalize the cancelling player
+                c.execute('UPDATE users SET balance = balance + ? WHERE id = ?', (refund_amount, user_id))
+                c.execute('INSERT INTO transactions (user_id, type, amount, description) VALUES (?, ?, ?, ?)',
+                         (user_id, 'match_refund', refund_amount, f'Cancellation refund (10% penalty) for match #{match_id}'))
+                c.execute('INSERT INTO transactions (user_id, type, amount, description) VALUES (?, ?, ?, ?)',
+                         (user_id, 'cancellation_penalty', -penalty_amount, f'Cancellation penalty for match #{match_id}'))
+                
+                # Full refund to the other player
+                other_player = opponent_id if user_id == creator_id else creator_id
+                c.execute('UPDATE users SET balance = balance + ? WHERE id = ?', (stake_amount, other_player))
+                c.execute('INSERT INTO transactions (user_id, type, amount, description) VALUES (?, ?, ?, ?)',
+                         (other_player, 'match_refund', stake_amount, f'Full refund due to opponent cancellation of match #{match_id}'))
+                
+                # Update match status
+                c.execute('UPDATE game_matches SET status = "cancelled", completed_at = CURRENT_TIMESTAMP WHERE id = ?', (match_id,))
+                
+                # Update session balance
+                session['balance'] = session.get('balance', 0) + refund_amount
+                
+                return jsonify({
+                    'success': True, 
+                    'message': f'Match cancelled. You received KSh {refund_amount} (10% penalty applied). Opponent received full refund.'
+                })
+            
+            else:
+                return jsonify({'success': False, 'message': 'Cannot cancel completed or cancelled matches'})
+                
+    except Exception as e:
+        return jsonify({'success': False, 'message': 'Error cancelling match'})
 
 @app.route('/admin/approve_match/<int:match_id>', methods=['POST'])
 @login_required
