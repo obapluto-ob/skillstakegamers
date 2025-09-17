@@ -154,15 +154,16 @@ function loadTeamData() {
     });
 }
 
-// Display Team Squad in FPL App Style
+// Display Team Squad in FPL App Style - Mobile Responsive
 function displayTeamSquad(teamData) {
     const squadSection = document.getElementById('teamSquadSection');
     const squadDisplay = document.getElementById('teamSquadDisplay');
     
-    // Group players by position and sort by position order
-    const positions = { 1: [], 2: [], 3: [], 4: [] }; // 1=GKP, 2=DEF, 3=MID, 4=FWD
+    // Group players by position - only starting XI (picks 1-11)
+    const startingXI = teamData.picks.slice(0, 11);
+    const positions = { 1: [], 2: [], 3: [], 4: [] };
     
-    teamData.picks.forEach(pick => {
+    startingXI.forEach(pick => {
         const player = teamData.elements.find(p => p.id === pick.element);
         if (player) {
             positions[player.element_type].push({
@@ -175,44 +176,40 @@ function displayTeamSquad(teamData) {
     });
     
     let html = `
-        <div style="background: linear-gradient(135deg, #37003c, #00ff87); padding: 1.5rem; border-radius: 12px; margin-bottom: 1rem; color: white;">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
+        <div style="background: linear-gradient(135deg, #37003c, #00ff87); padding: 1rem; border-radius: 8px; margin-bottom: 1rem; color: white;">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
                 <div>
-                    <h4 style="margin: 0; font-size: 1.2rem;">${teamData.name}</h4>
-                    <p style="margin: 0.5rem 0 0 0; opacity: 0.9;">Gameweek ${teamData.current_event || 'N/A'} • ${teamData.summary_event_points} pts</p>
+                    <h4 style="margin: 0; font-size: 1rem;">${teamData.name}</h4>
+                    <p style="margin: 0.3rem 0 0 0; opacity: 0.9; font-size: 0.8rem;">GW ${teamData.current_event || 'N/A'} • ${teamData.summary_event_points} pts</p>
                 </div>
                 <div style="text-align: right;">
-                    <div style="font-size: 1.5rem; font-weight: bold;">${teamData.summary_overall_points}</div>
-                    <div style="font-size: 0.9rem; opacity: 0.8;">Overall Points</div>
+                    <div style="font-size: 1.2rem; font-weight: bold;">${teamData.summary_overall_points}</div>
+                    <div style="font-size: 0.7rem; opacity: 0.8;">Overall</div>
                 </div>
             </div>
         </div>
         
-        <div style="background: #00ff87; padding: 2rem; border-radius: 12px; position: relative; min-height: 400px;">
-            <!-- Football Pitch Background -->
-            <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(to bottom, #00ff87 0%, #00cc6a 100%); border-radius: 12px;"></div>
-            
+        <div style="background: linear-gradient(to bottom, #00ff87, #00cc6a); padding: 1rem; border-radius: 8px; position: relative; height: 300px; overflow: hidden;">
             <!-- Pitch Lines -->
-            <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 2px; height: 100%; background: rgba(255,255,255,0.3);"></div>
-            <div style="position: absolute; top: 50%; left: 0; right: 0; height: 2px; background: rgba(255,255,255,0.3);"></div>
+            <div style="position: absolute; top: 50%; left: 0; right: 0; height: 1px; background: rgba(255,255,255,0.4);"></div>
+            <div style="position: absolute; top: 0; bottom: 0; left: 50%; width: 1px; background: rgba(255,255,255,0.4);"></div>
             
-            <!-- Players Formation -->
-            <div style="position: relative; z-index: 2;">
+            <!-- Formation Display -->
     `;
     
-    // Display formation like real FPL app
+    // Real FPL formation positioning
     const formationRows = [
-        { pos: 1, name: 'GKP', top: '85%' },
-        { pos: 2, name: 'DEF', top: '65%' },
-        { pos: 3, name: 'MID', top: '40%' },
-        { pos: 4, name: 'FWD', top: '15%' }
+        { pos: 4, top: '5%' },   // Forwards at top
+        { pos: 3, top: '35%' },  // Midfielders
+        { pos: 2, top: '65%' },  // Defenders
+        { pos: 1, top: '85%' }   // Goalkeeper at bottom
     ];
     
     formationRows.forEach(row => {
         const players = positions[row.pos] || [];
         if (players.length > 0) {
             html += `
-                <div style="position: absolute; top: ${row.top}; left: 0; right: 0; display: flex; justify-content: space-around; align-items: center;">
+                <div style="position: absolute; top: ${row.top}; left: 0; right: 0; display: flex; justify-content: center; gap: 0.5rem;">
             `;
             
             players.forEach(player => {
@@ -220,15 +217,15 @@ function displayTeamSquad(teamData) {
                 const captainColor = player.is_captain ? '#ffd700' : player.is_vice_captain ? '#c0c0c0' : '#37003c';
                 
                 html += `
-                    <div style="text-align: center; margin: 0 0.5rem;">
-                        <div style="background: ${captainColor}; color: white; width: 60px; height: 60px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 0.8rem; margin-bottom: 0.5rem; box-shadow: 0 2px 8px rgba(0,0,0,0.3); border: 3px solid white;">
+                    <div style="text-align: center; flex: 0 0 auto;">
+                        <div style="background: ${captainColor}; color: white; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 0.6rem; margin-bottom: 0.3rem; box-shadow: 0 2px 4px rgba(0,0,0,0.3); border: 2px solid white;">
                             ${player.web_name.substring(0, 3).toUpperCase()}
                         </div>
-                        <div style="background: rgba(255,255,255,0.9); padding: 0.3rem 0.5rem; border-radius: 15px; font-size: 0.7rem; color: #37003c; font-weight: bold; min-width: 50px;">
-                            ${player.web_name} ${captainBadge}
+                        <div style="background: rgba(255,255,255,0.95); padding: 0.2rem 0.3rem; border-radius: 10px; font-size: 0.6rem; color: #37003c; font-weight: bold; white-space: nowrap; max-width: 60px; overflow: hidden; text-overflow: ellipsis;">
+                            ${player.web_name.length > 8 ? player.web_name.substring(0, 8) + '.' : player.web_name} ${captainBadge}
                         </div>
-                        <div style="font-size: 0.6rem; color: #37003c; margin-top: 0.2rem; font-weight: bold;">
-                            ${player.total_points} pts
+                        <div style="font-size: 0.5rem; color: #37003c; margin-top: 0.1rem; font-weight: bold;">
+                            ${player.total_points}pts
                         </div>
                     </div>
                 `;
@@ -239,13 +236,12 @@ function displayTeamSquad(teamData) {
     });
     
     html += `
-            </div>
         </div>
         
         <!-- Bench Players -->
-        <div style="background: #f8f9fa; padding: 1rem; border-radius: 8px; margin-top: 1rem;">
-            <h6 style="color: #37003c; margin-bottom: 0.5rem;">Bench</h6>
-            <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+        <div style="background: #f8f9fa; padding: 0.8rem; border-radius: 8px; margin-top: 1rem;">
+            <h6 style="color: #37003c; margin: 0 0 0.5rem 0; font-size: 0.9rem;">Bench</h6>
+            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
     `;
     
     // Show bench players (picks 12-15)
@@ -253,9 +249,9 @@ function displayTeamSquad(teamData) {
         const player = teamData.elements.find(p => p.id === pick.element);
         if (player) {
             html += `
-                <div style="background: white; padding: 0.5rem; border-radius: 6px; border: 1px solid #ddd; text-align: center; min-width: 80px;">
-                    <div style="font-size: 0.8rem; font-weight: bold; color: #37003c;">${player.web_name}</div>
-                    <div style="font-size: 0.7rem; color: #666;">${player.total_points} pts</div>
+                <div style="background: white; padding: 0.4rem; border-radius: 4px; border: 1px solid #ddd; text-align: center; flex: 1; min-width: 60px;">
+                    <div style="font-size: 0.7rem; font-weight: bold; color: #37003c;">${player.web_name.length > 8 ? player.web_name.substring(0, 8) + '.' : player.web_name}</div>
+                    <div style="font-size: 0.6rem; color: #666;">${player.total_points}pts</div>
                 </div>
             `;
         }
@@ -264,6 +260,29 @@ function displayTeamSquad(teamData) {
     html += `
             </div>
         </div>
+        
+        <style>
+        @media (max-width: 768px) {
+            #teamSquadDisplay > div:first-child {
+                padding: 0.8rem !important;
+            }
+            #teamSquadDisplay > div:first-child h4 {
+                font-size: 0.9rem !important;
+            }
+            #teamSquadDisplay > div:first-child p {
+                font-size: 0.7rem !important;
+            }
+            #teamSquadDisplay .player-circle {
+                width: 35px !important;
+                height: 35px !important;
+                font-size: 0.5rem !important;
+            }
+            #teamSquadDisplay .player-name {
+                font-size: 0.5rem !important;
+                max-width: 50px !important;
+            }
+        }
+        </style>
     `;
     
     squadDisplay.innerHTML = html;
