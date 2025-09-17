@@ -1,0 +1,264 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h2>Live FPL Battle</h2>
+        <div style="background: #28a745; color: white; padding: 0.5rem 1rem; border-radius: 20px; font-size: 0.9rem;">
+            LIVE • GW {{ battle_data.gameweek }}
+        </div>
+    </div>
+    
+    <!-- Battle Header -->
+    <div style="background: linear-gradient(135deg, #37003c, #00ff87); padding: 1.5rem; border-radius: 12px; margin-bottom: 2rem; color: white;">
+        <div style="display: grid; grid-template-columns: 1fr auto 1fr; gap: 2rem; align-items: center;">
+            <!-- Player 1 -->
+            <div style="text-align: center;">
+                <h3 style="margin: 0 0 0.5rem 0;">{{ battle_data.player1_name }}</h3>
+                <div style="font-size: 2rem; font-weight: bold;" id="player1Score">{{ battle_data.player1_points }}</div>
+                <div style="font-size: 0.9rem; opacity: 0.8;">Points</div>
+            </div>
+            
+            <!-- VS & Prize Pool -->
+            <div style="text-align: center;">
+                <div style="font-size: 1.5rem; font-weight: bold; margin-bottom: 0.5rem;">VS</div>
+                <div style="background: rgba(255,255,255,0.2); padding: 0.5rem 1rem; border-radius: 8px;">
+                    <div style="font-size: 0.8rem;">Prize Pool</div>
+                    <div style="font-size: 1.2rem; font-weight: bold;">KSh {{ battle_data.prize_pool }}</div>
+                </div>
+            </div>
+            
+            <!-- Player 2 -->
+            <div style="text-align: center;">
+                <h3 style="margin: 0 0 0.5rem 0;">{{ battle_data.player2_name }}</h3>
+                <div style="font-size: 2rem; font-weight: bold;" id="player2Score">{{ battle_data.player2_points }}</div>
+                <div style="font-size: 0.9rem; opacity: 0.8;">Points</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Live Fixtures -->
+    <div class="card" style="margin-bottom: 2rem;">
+        <h4>Live Fixtures - Gameweek {{ battle_data.gameweek }}</h4>
+        <div id="liveFixtures" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem;">
+            <!-- Fixtures populated by JavaScript -->
+        </div>
+    </div>
+    
+    <!-- Player Squads Comparison -->
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem;">
+        <!-- Player 1 Squad -->
+        <div class="card">
+            <h5>{{ battle_data.player1_name }}'s Squad</h5>
+            <div id="player1Squad">
+                <!-- Squad populated by JavaScript -->
+            </div>
+        </div>
+        
+        <!-- Player 2 Squad -->
+        <div class="card">
+            <h5>{{ battle_data.player2_name }}'s Squad</h5>
+            <div id="player2Squad">
+                <!-- Squad populated by JavaScript -->
+            </div>
+        </div>
+    </div>
+    
+    <!-- Battle Progress -->
+    <div class="card">
+        <h4>Battle Progress</h4>
+        <div id="battleProgress">
+            <div style="background: #f8f9fa; padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span>Competition Mode: {{ battle_data.competition_mode|title }}</span>
+                    <span id="battleStatus" style="color: #28a745; font-weight: bold;">IN PROGRESS</span>
+                </div>
+            </div>
+            
+            <div id="liveUpdates" style="max-height: 300px; overflow-y: auto;">
+                <!-- Live updates populated by JavaScript -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const battleId = {{ battle_data.battle_id }};
+const gameweek = {{ battle_data.gameweek }};
+const player1TeamId = {{ battle_data.player1_fpl_id }};
+const player2TeamId = {{ battle_data.player2_fpl_id }};
+
+// Auto-refresh every 30 seconds
+setInterval(updateBattleData, 30000);
+
+// Initial load
+updateBattleData();
+loadLiveFixtures();
+
+function updateBattleData() {
+    fetch(`/api/live_battle_data/${battleId}`)
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Update scores
+            document.getElementById('player1Score').textContent = data.player1_points;
+            document.getElementById('player2Score').textContent = data.player2_points;
+            
+            // Update battle status
+            const statusElement = document.getElementById('battleStatus');
+            if (data.battle_completed) {
+                statusElement.textContent = 'COMPLETED';
+                statusElement.style.color = '#dc3545';
+                showBattleResult(data.winner, data.final_scores);
+            }
+            
+            // Update live updates
+            updateLiveUpdates(data.live_updates);
+            
+            // Update player squads with live points
+            updatePlayerSquads(data.player1_squad, data.player2_squad);
+        }
+    })
+    .catch(error => {
+        console.error('Error updating battle data:', error);
+    });
+}
+
+function loadLiveFixtures() {
+    fetch(`/api/live_fixtures/${gameweek}`)
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            displayLiveFixtures(data.fixtures);
+        }
+    })
+    .catch(error => {
+        console.error('Error loading fixtures:', error);
+    });
+}
+
+function displayLiveFixtures(fixtures) {
+    const container = document.getElementById('liveFixtures');
+    let html = '';
+    
+    fixtures.forEach(fixture => {
+        const status = fixture.started ? (fixture.finished ? 'FT' : `${fixture.minutes}'`) : 'Not Started';
+        const statusColor = fixture.started ? (fixture.finished ? '#28a745' : '#ffc107') : '#6c757d';
+        
+        html += `
+            <div style="background: white; padding: 1rem; border-radius: 8px; border: 1px solid #ddd;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                    <span style="font-weight: bold;">${fixture.team_h_name} vs ${fixture.team_a_name}</span>
+                    <span style="color: ${statusColor}; font-size: 0.8rem; font-weight: bold;">${status}</span>
+                </div>
+                <div style="text-align: center; font-size: 1.2rem; font-weight: bold;">
+                    ${fixture.team_h_score !== null ? fixture.team_h_score : '-'} - ${fixture.team_a_score !== null ? fixture.team_a_score : '-'}
+                </div>
+            </div>
+        `;
+    });
+    
+    container.innerHTML = html;
+}
+
+function updatePlayerSquads(player1Squad, player2Squad) {
+    displaySquad('player1Squad', player1Squad);
+    displaySquad('player2Squad', player2Squad);
+}
+
+function displaySquad(containerId, squadData) {
+    const container = document.getElementById(containerId);
+    let html = '';
+    
+    squadData.picks.slice(0, 11).forEach(pick => {
+        const player = squadData.elements.find(p => p.id === pick.element);
+        if (player) {
+            const captainBadge = pick.is_captain ? '(C)' : pick.is_vice_captain ? '(VC)' : '';
+            const livePoints = player.live_points || player.total_points;
+            const pointsColor = player.live_points > player.total_points ? '#28a745' : '#333';
+            
+            html += `
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem; border-bottom: 1px solid #eee;">
+                    <div>
+                        <span style="font-weight: bold;">${player.web_name} ${captainBadge}</span>
+                        <div style="font-size: 0.8rem; color: #666;">${player.team_name}</div>
+                    </div>
+                    <div style="text-align: right;">
+                        <div style="font-weight: bold; color: ${pointsColor};">${livePoints} pts</div>
+                        ${player.live_points ? `<div style="font-size: 0.7rem; color: #28a745;">+${player.live_points - player.total_points}</div>` : ''}
+                    </div>
+                </div>
+            `;
+        }
+    });
+    
+    container.innerHTML = html;
+}
+
+function updateLiveUpdates(updates) {
+    const container = document.getElementById('liveUpdates');
+    let html = '';
+    
+    updates.forEach(update => {
+        const timeAgo = new Date(update.timestamp).toLocaleTimeString();
+        html += `
+            <div style="padding: 0.5rem; border-bottom: 1px solid #eee;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span>${update.message}</span>
+                    <span style="font-size: 0.8rem; color: #666;">${timeAgo}</span>
+                </div>
+            </div>
+        `;
+    });
+    
+    container.innerHTML = html;
+}
+
+function showBattleResult(winner, finalScores) {
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0,0,0,0.8); z-index: 10000; display: flex;
+        align-items: center; justify-content: center;
+    `;
+    
+    modal.innerHTML = `
+        <div style="background: white; padding: 2rem; border-radius: 12px; text-align: center; max-width: 400px;">
+            <h3 style="color: #28a745; margin-bottom: 1rem;">Battle Completed!</h3>
+            <div style="font-size: 1.5rem; font-weight: bold; margin-bottom: 1rem;">
+                ${winner.name} Wins!
+            </div>
+            <div style="margin-bottom: 1rem;">
+                Final Score: ${finalScores.player1} - ${finalScores.player2}
+            </div>
+            <div style="background: #f8f9fa; padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+                Prize: KSh ${winner.prize_amount}
+            </div>
+            <button onclick="this.closest('div').parentElement.remove(); window.location.href='/matches';" 
+                    style="background: #28a745; color: white; border: none; padding: 0.75rem 2rem; border-radius: 6px; cursor: pointer;">
+                View My Matches
+            </button>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+}
+</script>
+
+<style>
+.card {
+    background: #1a1a1a;
+    border: 1px solid #333;
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+}
+
+@media (max-width: 768px) {
+    .card > div:first-child {
+        grid-template-columns: 1fr !important;
+        gap: 1rem !important;
+    }
+}
+</style>
+{% endblock %}
