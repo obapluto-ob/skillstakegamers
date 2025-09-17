@@ -31,41 +31,20 @@
 <div class="card" style="background: linear-gradient(135deg, rgba(255,193,7,0.1), rgba(255,140,0,0.1)); border-left: 4px solid #ffc107;">
     <h3 style="color: #ffc107; margin-bottom: 1rem;">🔥 Live Platform Activity</h3>
     <div id="liveActivity" style="max-height: 200px; overflow-y: auto;">
-        <div class="activity-item" style="padding: 0.8rem; margin: 0.5rem 0; background: rgba(255,255,255,0.05); border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
-            <span>🎮 <strong>Player123</strong> won KSh 500 in FIFA Mobile</span>
-            <span style="color: #28a745; font-size: 0.9rem;">2 min ago</span>
-        </div>
-        <div class="activity-item" style="padding: 0.8rem; margin: 0.5rem 0; background: rgba(255,255,255,0.05); border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
-            <span>💰 <strong>GamerPro</strong> deposited KSh 1000</span>
-            <span style="color: #17a2b8; font-size: 0.9rem;">5 min ago</span>
-        </div>
-        <div class="activity-item" style="padding: 0.8rem; margin: 0.5rem 0; background: rgba(255,255,255,0.05); border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
-            <span>🏆 <strong>SkillMaster</strong> completed FPL battle</span>
-            <span style="color: #ffc107; font-size: 0.9rem;">8 min ago</span>
+        <div style="padding: 2rem; text-align: center; color: #ccc;">
+            <p>Loading live activity...</p>
         </div>
     </div>
 </div>
 
-<!-- Daily Challenges -->
+<!-- Daily Bonus -->
 <div class="card" style="background: linear-gradient(135deg, rgba(220,53,69,0.1), rgba(253,126,20,0.1)); border-left: 4px solid #dc3545;">
-    <h3 style="color: #dc3545; margin-bottom: 1rem;">⚡ Daily Challenges</h3>
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem;">
-        <div style="background: rgba(40,167,69,0.1); padding: 1rem; border-radius: 8px; border-left: 3px solid #28a745;">
-            <h4 style="color: #28a745; margin-bottom: 0.5rem;">Win 3 Matches</h4>
-            <p style="font-size: 0.9rem; margin-bottom: 0.5rem;">Progress: 1/3</p>
-            <div style="background: rgba(255,255,255,0.1); height: 8px; border-radius: 4px; overflow: hidden;">
-                <div style="background: #28a745; height: 100%; width: 33%; border-radius: 4px;"></div>
-            </div>
-            <p style="color: #28a745; font-size: 0.8rem; margin-top: 0.5rem;">Reward: KSh 100 bonus</p>
-        </div>
-        <div style="background: rgba(23,162,184,0.1); padding: 1rem; border-radius: 8px; border-left: 3px solid #17a2b8;">
-            <h4 style="color: #17a2b8; margin-bottom: 0.5rem;">Deposit KSh 500+</h4>
-            <p style="font-size: 0.9rem; margin-bottom: 0.5rem;">Status: Pending</p>
-            <div style="background: rgba(255,255,255,0.1); height: 8px; border-radius: 4px; overflow: hidden;">
-                <div style="background: #17a2b8; height: 100%; width: 0%; border-radius: 4px;"></div>
-            </div>
-            <p style="color: #17a2b8; font-size: 0.8rem; margin-top: 0.5rem;">Reward: 10% bonus funds</p>
-        </div>
+    <h3 style="color: #dc3545; margin-bottom: 1rem;">⚡ Daily Bonus</h3>
+    <div style="text-align: center; padding: 1rem;">
+        <button onclick="claimDailyBonus()" class="btn" style="background: #dc3545; color: white; font-size: 1.1rem; padding: 1rem 2rem;">
+            🎁 Claim KSh 50 Daily Bonus
+        </button>
+        <p style="color: #ccc; font-size: 0.9rem; margin-top: 0.5rem;">Available once per day</p>
     </div>
 </div>
 
@@ -258,7 +237,8 @@ function updateLiveActivity() {
     .catch(e => console.log('Live activity update failed'));
 }
 
-// Update every 30 seconds
+// Load activity on page load and update every 30 seconds
+updateLiveActivity();
 setInterval(updateLiveActivity, 30000);
 
 // Real-time balance updates
