@@ -2,19 +2,19 @@
 
 {% block content %}
 <div class="card">
-    <h2>🏆 FPL Battles</h2>
-    <p>Fantasy Premier League competitions with real money prizes!</p>
+    <h2>FPL Battles</h2>
+    <p>Fantasy Premier League competitions with real money prizes</p>
     
     {% if not fpl_team_id %}
     <!-- FPL Team Registration -->
-    <div class="alert alert-info">
+    <div style="background: rgba(23, 162, 184, 0.1); padding: 1.5rem; border-radius: 8px; border-left: 4px solid #17a2b8;">
         <h4>Register Your FPL Team</h4>
-        <p>Connect your Fantasy Premier League team to start competing!</p>
-        <form id="fplRegistrationForm" class="mt-3">
-            <div class="form-group">
-                <label>FPL Team ID:</label>
-                <input type="number" id="fplTeamId" class="form-control" placeholder="Enter your FPL Team ID" required>
-                <small class="form-text text-muted">
+        <p>Connect your Fantasy Premier League team to start competing</p>
+        <form id="fplRegistrationForm" style="margin-top: 1rem;">
+            <div style="margin-bottom: 1rem;">
+                <label style="display: block; margin-bottom: 0.5rem; font-weight: bold;">FPL Team ID:</label>
+                <input type="number" id="fplTeamId" placeholder="Enter your FPL Team ID" required style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; background: #333; color: white;">
+                <small style="color: #ccc; font-size: 0.9rem;">
                     Find your Team ID in your FPL URL: fantasy.premierleague.com/entry/<strong>YOUR_ID</strong>/event/
                 </small>
             </div>
@@ -23,61 +23,70 @@
     </div>
     {% else %}
     <!-- FPL Team Connected -->
-    <div class="alert alert-success">
-        <h4>✅ FPL Team Connected</h4>
+    <div style="background: rgba(40, 167, 69, 0.1); padding: 1.5rem; border-radius: 8px; border-left: 4px solid #28a745; margin-bottom: 2rem;">
+        <h4 style="color: #28a745; margin-top: 0;">FPL Team Connected</h4>
         <p><strong>{{ fpl_team_name }}</strong> (ID: {{ fpl_team_id }})</p>
-        <button onclick="checkCurrentScore()" class="btn btn-sm btn-info">Check Current Gameweek Score</button>
+        <button onclick="loadTeamData()" class="btn btn-info">Load Team Squad</button>
+        <button onclick="checkCurrentScore()" class="btn btn-secondary">Check Current Score</button>
+    </div>
+    
+    <!-- Team Squad Display -->
+    <div id="teamSquadSection" style="display: none; margin-bottom: 2rem;">
+        <div class="card">
+            <h4>Your FPL Squad</h4>
+            <div id="teamSquadDisplay"></div>
+        </div>
     </div>
     
     <!-- Create FPL Battle -->
-    <div class="card mt-4">
+    <div class="card" style="margin-bottom: 2rem;">
         <h4>Create FPL Battle</h4>
         <form id="createFplBattle">
-            <div class="row">
-                <div class="col-md-6">
-                    <label>Battle Type:</label>
-                    <select class="form-control" name="battle_type" required>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                <div>
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: bold;">Battle Type:</label>
+                    <select name="game_mode" required style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; background: #333; color: white;">
                         <option value="gameweek">Current Gameweek</option>
                         <option value="next_gameweek">Next Gameweek</option>
                         <option value="season_total">Season Total Points</option>
                     </select>
                 </div>
-                <div class="col-md-6">
-                    <label>Stake Amount (KSh):</label>
-                    <input type="number" class="form-control" name="stake_amount" min="100" max="5000" value="500" required>
+                <div>
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: bold;">Stake Amount (KSh):</label>
+                    <input type="number" name="bet_amount" min="100" max="5000" value="500" required style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; background: #333; color: white;">
                 </div>
             </div>
-            <button type="submit" class="btn btn-success mt-3">Create FPL Battle</button>
+            <button type="submit" class="btn btn-success">Create FPL Battle</button>
         </form>
     </div>
     
     <!-- Active FPL Battles -->
-    <div class="card mt-4">
+    <div class="card">
         <h4>Available FPL Battles</h4>
         {% if fpl_matches %}
-            <div class="table-responsive">
-                <table class="table">
+            <div style="overflow-x: auto;">
+                <table style="width: 100%; border-collapse: collapse;">
                     <thead>
-                        <tr>
-                            <th>Creator</th>
-                            <th>Battle Type</th>
-                            <th>Stake</th>
-                            <th>Prize Pool</th>
-                            <th>Action</th>
+                        <tr style="background: #333;">
+                            <th style="padding: 0.75rem; text-align: left; border-bottom: 1px solid #555;">Creator</th>
+                            <th style="padding: 0.75rem; text-align: left; border-bottom: 1px solid #555;">Battle Type</th>
+                            <th style="padding: 0.75rem; text-align: left; border-bottom: 1px solid #555;">Stake</th>
+                            <th style="padding: 0.75rem; text-align: left; border-bottom: 1px solid #555;">Prize Pool</th>
+                            <th style="padding: 0.75rem; text-align: left; border-bottom: 1px solid #555;">Action</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for match in fpl_matches %}
-                        <tr>
-                            <td>{{ match[4] }}</td>
-                            <td>{{ match[2] }}</td>
-                            <td>KSh {{ match[7] }}</td>
-                            <td>KSh {{ match[8] }}</td>
-                            <td>
+                        <tr style="border-bottom: 1px solid #333;">
+                            <td style="padding: 0.75rem;">{{ match[4] }}</td>
+                            <td style="padding: 0.75rem;">{{ match[2] }}</td>
+                            <td style="padding: 0.75rem;">KSh {{ match[7] }}</td>
+                            <td style="padding: 0.75rem;">KSh {{ match[8] }}</td>
+                            <td style="padding: 0.75rem;">
                                 {% if match[3] != session.user_id %}
-                                <button onclick="joinFplBattle({{ match[0] }})" class="btn btn-sm btn-primary">Join Battle</button>
+                                <button onclick="joinFplBattle({{ match[0] }})" class="btn btn-primary btn-sm">Join Battle</button>
                                 {% else %}
-                                <span class="badge badge-secondary">Your Battle</span>
+                                <span style="background: #6c757d; color: white; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.8rem;">Your Battle</span>
                                 {% endif %}
                             </td>
                         </tr>
@@ -86,7 +95,7 @@
                 </table>
             </div>
         {% else %}
-            <p class="text-center text-muted">No active FPL battles. Create one to get started!</p>
+            <p style="text-align: center; color: #666; margin: 2rem 0;">No active FPL battles. Create one to get started!</p>
         {% endif %}
     </div>
     {% endif %}
@@ -98,6 +107,9 @@ document.getElementById('fplRegistrationForm')?.addEventListener('submit', funct
     e.preventDefault();
     
     const teamId = document.getElementById('fplTeamId').value;
+    const submitBtn = this.querySelector('button[type="submit"]');
+    submitBtn.textContent = 'Registering...';
+    submitBtn.disabled = true;
     
     fetch('/register_fpl_team', {
         method: 'POST',
@@ -110,16 +122,98 @@ document.getElementById('fplRegistrationForm')?.addEventListener('submit', funct
     .then(data => {
         if (data.success) {
             alert(data.message);
-            // Always reload the page to show the registered team
             window.location.reload();
+        } else {
+            alert(data.message);
+            submitBtn.textContent = 'Register FPL Team';
+            submitBtn.disabled = false;
+        }
+    })
+    .catch(error => {
+        alert('Error registering FPL team');
+        submitBtn.textContent = 'Register FPL Team';
+        submitBtn.disabled = false;
+    });
+});
+
+// Load Team Data
+function loadTeamData() {
+    const teamId = {{ fpl_team_id or 0 }};
+    
+    fetch(`/get_fpl_team_data/${teamId}`)
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            displayTeamSquad(data.team_data);
         } else {
             alert(data.message);
         }
     })
     .catch(error => {
-        alert('Error registering FPL team');
+        alert('Error loading team data');
     });
-});
+}
+
+// Display Team Squad
+function displayTeamSquad(teamData) {
+    const squadSection = document.getElementById('teamSquadSection');
+    const squadDisplay = document.getElementById('teamSquadDisplay');
+    
+    let html = `
+        <div style="background: #2a2a2a; padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+            <h5>Team: ${teamData.name}</h5>
+            <p>Overall Points: ${teamData.summary_overall_points} | Rank: ${teamData.summary_overall_rank}</p>
+            <p>Gameweek Points: ${teamData.summary_event_points} | Transfers: ${teamData.last_deadline_total_transfers}</p>
+        </div>
+        
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+    `;
+    
+    // Group players by position
+    const positions = {
+        'GKP': [],
+        'DEF': [],
+        'MID': [],
+        'FWD': []
+    };
+    
+    teamData.picks.forEach(pick => {
+        const player = teamData.elements.find(p => p.id === pick.element);
+        if (player) {
+            positions[player.element_type_name].push({
+                ...player,
+                is_captain: pick.is_captain,
+                is_vice_captain: pick.is_vice_captain,
+                multiplier: pick.multiplier
+            });
+        }
+    });
+    
+    // Display each position
+    Object.keys(positions).forEach(pos => {
+        html += `
+            <div style="background: #333; padding: 1rem; border-radius: 8px;">
+                <h6 style="color: #17a2b8; margin-bottom: 0.5rem;">${pos}</h6>
+        `;
+        
+        positions[pos].forEach(player => {
+            const captainBadge = player.is_captain ? ' (C)' : player.is_vice_captain ? ' (VC)' : '';
+            html += `
+                <div style="background: #444; padding: 0.5rem; margin-bottom: 0.5rem; border-radius: 4px; font-size: 0.9rem;">
+                    <strong>${player.web_name}${captainBadge}</strong><br>
+                    <small>${player.team_name} - ${player.total_points} pts</small>
+                </div>
+            `;
+        });
+        
+        html += '</div>';
+    });
+    
+    html += '</div>';
+    
+    squadDisplay.innerHTML = html;
+    squadSection.style.display = 'block';
+}
 
 // Check Current Gameweek Score
 function checkCurrentScore() {
@@ -144,24 +238,37 @@ document.getElementById('createFplBattle')?.addEventListener('submit', function(
     e.preventDefault();
     
     const formData = new FormData(this);
-    formData.append('game_type', 'fpl_battles');
+    formData.append('game', 'fpl_battles');
     formData.append('game_username', '{{ fpl_team_name }}');
     
-    fetch('/create_game_match', {
+    const submitBtn = this.querySelector('button[type="submit"]');
+    submitBtn.textContent = 'Creating Battle...';
+    submitBtn.disabled = true;
+    
+    fetch('/create_match', {
         method: 'POST',
         body: formData
     })
-    .then(response => response.json())
+    .then(response => {
+        if (response.redirected) {
+            window.location.href = response.url;
+            return;
+        }
+        return response.text();
+    })
     .then(data => {
-        if (data.success) {
-            alert(data.message);
+        if (typeof data === 'string' && data.includes('Match')) {
+            alert('FPL Battle created successfully!');
             location.reload();
         } else {
-            alert(data.message);
+            submitBtn.textContent = 'Create FPL Battle';
+            submitBtn.disabled = false;
         }
     })
     .catch(error => {
         alert('Error creating FPL battle');
+        submitBtn.textContent = 'Create FPL Battle';
+        submitBtn.disabled = false;
     });
 });
 

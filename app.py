@@ -1501,6 +1501,72 @@ def register_fpl_team():
     except Exception as e:
         return jsonify({'success': False, 'message': 'Error registering FPL team'})
 
+@app.route('/get_fpl_team_data/<int:team_id>')
+@login_required
+def get_fpl_team_data(team_id):
+    try:
+        import requests
+        
+        # Get bootstrap data for player info
+        bootstrap_response = requests.get('https://fantasy.premierleague.com/api/bootstrap-static/', timeout=10)
+        
+        if bootstrap_response.status_code != 200:
+            return jsonify({'success': False, 'message': 'Could not fetch FPL data'})
+        
+        bootstrap_data = bootstrap_response.json()
+        
+        # Get current gameweek
+        current_gw = None
+        for event in bootstrap_data['events']:
+            if event['is_current']:
+                current_gw = event['id']
+                break
+        
+        if not current_gw:
+            return jsonify({'success': False, 'message': 'No active gameweek found'})
+        
+        # Get team data
+        team_response = requests.get(f'https://fantasy.premierleague.com/api/entry/{team_id}/', timeout=10)
+        
+        if team_response.status_code != 200:
+            return jsonify({'success': False, 'message': 'Could not fetch team data'})
+        
+        team_data = team_response.json()
+        
+        # Get team picks for current gameweek
+        picks_response = requests.get(f'https://fantasy.premierleague.com/api/entry/{team_id}/event/{current_gw}/picks/', timeout=10)
+        
+        if picks_response.status_code != 200:
+            return jsonify({'success': False, 'message': 'Could not fetch team picks'})
+        
+        picks_data = picks_response.json()
+        
+        # Process player data
+        elements = bootstrap_data['elements']
+        teams = {team['id']: team['name'] for team in bootstrap_data['teams']}
+        element_types = {et['id']: et['singular_name_short'] for et in bootstrap_data['element_types']}
+        
+        # Add team names and positions to elements
+        for element in elements:
+            element['team_name'] = teams.get(element['team'], 'Unknown')
+            element['element_type_name'] = element_types.get(element['element_type'], 'Unknown')
+        
+        return jsonify({
+            'success': True,
+            'team_data': {
+                'name': f"{team_data.get('player_first_name', '')} {team_data.get('player_last_name', '')}".strip(),
+                'summary_overall_points': team_data.get('summary_overall_points', 0),
+                'summary_overall_rank': team_data.get('summary_overall_rank', 0),
+                'summary_event_points': team_data.get('summary_event_points', 0),
+                'last_deadline_total_transfers': team_data.get('last_deadline_total_transfers', 0),
+                'picks': picks_data.get('picks', []),
+                'elements': elements
+            }
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'message': 'Error fetching FPL data'})
+
 @app.route('/get_fpl_gameweek_score/<int:team_id>')
 @login_required
 def get_fpl_gameweek_score(team_id):
