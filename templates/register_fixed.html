@@ -61,7 +61,14 @@
                         <input type="text" id="verificationCode" class="form-control" placeholder="Enter 6-digit code" maxlength="6" required>
                     </div>
                     <button type="button" onclick="completeRegistration()" class="btn auth-btn">Complete Registration</button>
-                    <button type="button" onclick="sendVerificationCode()" class="btn btn-secondary">Resend Code</button>
+                    
+                    <div class="resend-section" style="margin-top: 1rem; text-align: center;">
+                        <p style="color: #666; margin-bottom: 0.5rem;">Didn't receive the code?</p>
+                        <button id="resend-register-btn" type="button" onclick="resendRegisterCode()" class="btn btn-secondary">Resend Code</button>
+                        <div id="register-cooldown-timer" class="cooldown-timer" style="display: none; margin-top: 0.5rem; color: #ff6b6b; font-size: 0.9rem;">
+                            <p>Please wait <span id="register-countdown">60</span> seconds before requesting another code</p>
+                        </div>
+                    </div>
                 </form>
             </div>
         </div>
@@ -144,6 +151,67 @@ function sendVerificationCode() {
     .catch(e => alert('Error sending code'));
 }
 
+let registerCooldown = 0;
+let registerCooldownInterval;
+
+function resendRegisterCode() {
+    const resendBtn = document.getElementById('resend-register-btn');
+    
+    if (registerCooldown > 0) {
+        return;
+    }
+    
+    resendBtn.disabled = true;
+    resendBtn.textContent = 'Sending...';
+    
+    fetch('/resend_register_code', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ code_type: 'register' })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            startRegisterCooldown(60);
+        } else {
+            alert(data.message || 'Failed to resend code');
+            resendBtn.disabled = false;
+            resendBtn.textContent = 'Resend Code';
+        }
+    })
+    .catch(error => {
+        alert('Error resending code. Please try again.');
+        resendBtn.disabled = false;
+        resendBtn.textContent = 'Resend Code';
+    });
+}
+
+function startRegisterCooldown(seconds) {
+    const resendBtn = document.getElementById('resend-register-btn');
+    const cooldownTimer = document.getElementById('register-cooldown-timer');
+    const countdown = document.getElementById('register-countdown');
+    
+    registerCooldown = seconds;
+    resendBtn.style.display = 'none';
+    cooldownTimer.style.display = 'block';
+    
+    registerCooldownInterval = setInterval(() => {
+        registerCooldown--;
+        countdown.textContent = registerCooldown;
+        
+        if (registerCooldown <= 0) {
+            clearInterval(registerCooldownInterval);
+            resendBtn.style.display = 'inline-block';
+            resendBtn.disabled = false;
+            resendBtn.textContent = 'Resend Code';
+            cooldownTimer.style.display = 'none';
+        }
+    }, 1000);
+}
+
 function completeRegistration() {
     const username = document.getElementById('username').value;
     const email = document.getElementById('email').value;
@@ -210,6 +278,26 @@ function completeRegistration() {
     border-left: 3px solid #00ff88;
     padding-left: 1rem;
     margin: 0.5rem 0;
+}
+
+.btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    background-color: #ccc !important;
+}
+
+.btn-secondary {
+    background-color: #6c757d;
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9rem;
+}
+
+.btn-secondary:hover:not(:disabled) {
+    background-color: #5a6268;
 }
 </style>
 {% endblock %}

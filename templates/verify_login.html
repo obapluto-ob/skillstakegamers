@@ -17,7 +17,10 @@
             
             <div class="resend-section">
                 <p>Didn't receive the code?</p>
-                <button onclick="resendCode()" class="btn btn-secondary">Resend Code</button>
+                <button id="resend-btn" onclick="resendCode()" class="btn btn-secondary">Resend Code</button>
+                <div id="cooldown-timer" class="cooldown-timer" style="display: none;">
+                    <p>Please wait <span id="countdown">60</span> seconds before requesting another code</p>
+                </div>
             </div>
         </div>
         
@@ -42,6 +45,24 @@
 
 .resend-section p {
     margin-bottom: 0.5rem;
+    color: #666;
+}
+
+.cooldown-timer {
+    margin-top: 0.5rem;
+    color: #ff6b6b;
+    font-size: 0.9rem;
+}
+
+.btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    background-color: #ccc;
+}
+
+.resend-attempts {
+    margin-top: 0.5rem;
+    font-size: 0.8rem;
     color: #666;
 }
 </style>
@@ -76,24 +97,76 @@ function verifyCode() {
     });
 }
 
+let resendCooldown = 0;
+let cooldownInterval;
+
 function resendCode() {
+    const resendBtn = document.getElementById('resend-btn');
+    
+    if (resendCooldown > 0) {
+        return;
+    }
+    
+    resendBtn.disabled = true;
+    resendBtn.textContent = 'Sending...';
+    
     fetch('/resend_login_code', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
-        }
+        },
+        body: JSON.stringify({ code_type: 'login' })
     })
     .then(response => response.json())
     .then(data => {
-        alert(data.message || 'Code resent');
+        if (data.success) {
+            alert(data.message);
+            startCooldown(60); // 60 second cooldown
+        } else {
+            alert(data.message || 'Failed to resend code');
+            resendBtn.disabled = false;
+            resendBtn.textContent = 'Resend Code';
+        }
     })
     .catch(error => {
         alert('Error resending code. Please try again.');
+        resendBtn.disabled = false;
+        resendBtn.textContent = 'Resend Code';
     });
 }
 
-// Auto-focus on code input
-document.getElementById('verification-code').focus();
+function startCooldown(seconds) {
+    const resendBtn = document.getElementById('resend-btn');
+    const cooldownTimer = document.getElementById('cooldown-timer');
+    const countdown = document.getElementById('countdown');
+    
+    resendCooldown = seconds;
+    resendBtn.style.display = 'none';
+    cooldownTimer.style.display = 'block';
+    
+    cooldownInterval = setInterval(() => {
+        resendCooldown--;
+        countdown.textContent = resendCooldown;
+        
+        if (resendCooldown <= 0) {
+            clearInterval(cooldownInterval);
+            resendBtn.style.display = 'inline-block';
+            resendBtn.disabled = false;
+            resendBtn.textContent = 'Resend Code';
+            cooldownTimer.style.display = 'none';
+        }
+    }, 1000);
+}
+
+// Start initial cooldown when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    startCooldown(60); // Initial 60 second wait
+});
+
+// Auto-focus on code input after a short delay
+setTimeout(() => {
+    document.getElementById('verification-code').focus();
+}, 500);
 
 // Allow Enter key to verify
 document.getElementById('verification-code').addEventListener('keypress', function(e) {

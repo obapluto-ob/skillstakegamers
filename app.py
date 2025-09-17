@@ -12,6 +12,7 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import re
 import math
+import time
 # Try to import security config, fallback if not available
 try:
     from security_config import SecurityConfig, admin_required, secure_headers, SecureDBConnection
@@ -582,6 +583,17 @@ def init_database():
         skill_tokens INTEGER DEFAULT 0,
         email_verified INTEGER DEFAULT 0,
         last_login TIMESTAMP
+    )''')
+    
+    # Create code attempts tracking table
+    c.execute('''CREATE TABLE IF NOT EXISTS code_attempts (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        email TEXT NOT NULL,
+        code_type TEXT NOT NULL,
+        attempts INTEGER DEFAULT 0,
+        last_attempt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        blocked_until TIMESTAMP,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )''')
     
     c.execute('''CREATE TABLE IF NOT EXISTS transactions (
@@ -2436,15 +2448,112 @@ def verify_login_code():
     except Exception as e:
         return jsonify({'success': False, 'message': 'Verification error occurred'})
 
+def check_code_rate_limit(email, code_type):
+    """Check if user can request another code"""
+    try:
+        with SecureDBConnection() as conn:
+            c = conn.cursor()
+            
+            # Get current attempt record
+            c.execute('SELECT attempts, last_attempt, blocked_until FROM code_attempts WHERE email = ? AND code_type = ?', 
+                     (email, code_type))
+            record = c.fetchone()
+            
+            current_time = datetime.now()
+            
+            if record:
+                attempts = record[0]
+                last_attempt = datetime.fromisoformat(record[1]) if record[1] else None
+                blocked_until = datetime.fromisoformat(record[2]) if record[2] else None
+                
+                # Check if still blocked
+                if blocked_until and current_time < blocked_until:
+                    remaining_seconds = int((blocked_until - current_time).total_seconds())
+                    return False, f'Too many attempts. Try again in {remaining_seconds} seconds.'
+                
+                # Reset attempts if more than 1 hour passed
+                if last_attempt and (current_time - last_attempt).total_seconds() > 3600:
+                    c.execute('UPDATE code_attempts SET attempts = 0, blocked_until = NULL WHERE email = ? AND code_type = ?', 
+                             (email, code_type))
+                    return True, None
+                
+                # Check attempt limits
+                if attempts >= 5:  # 5 attempts per hour
+                    # Block for 30 minutes
+                    block_until = current_time + timedelta(minutes=30)
+                    c.execute('UPDATE code_attempts SET blocked_until = ? WHERE email = ? AND code_type = ?', 
+                             (block_until.isoformat(), email, code_type))
+                    return False, 'Too many attempts. Please wait 30 minutes before trying again.'
+                
+                # Check if last attempt was less than 60 seconds ago
+                if last_attempt and (current_time - last_attempt).total_seconds() < 60:
+                    return False, 'Please wait 60 seconds before requesting another code.'
+            
+            return True, None
+            
+    except Exception as e:
+        return True, None  # Allow on error
+
+def record_code_attempt(email, code_type):
+    """Record a code request attempt"""
+    try:
+        with SecureDBConnection() as conn:
+            c = conn.cursor()
+            
+            # Check if record exists
+            c.execute('SELECT id, attempts FROM code_attempts WHERE email = ? AND code_type = ?', (email, code_type))
+            record = c.fetchone()
+            
+            if record:
+                # Update existing record
+                c.execute('UPDATE code_attempts SET attempts = attempts + 1, last_attempt = CURRENT_TIMESTAMP WHERE email = ? AND code_type = ?', 
+                         (email, code_type))
+            else:
+                # Create new record
+                c.execute('INSERT INTO code_attempts (email, code_type, attempts) VALUES (?, ?, 1)', 
+                         (email, code_type))
+                
+    except Exception as e:
+        pass  # Fail silently
+
+@app.route('/resend_code', methods=['POST'])
+def resend_code():
+    """Universal code resend endpoint with rate limiting"""
+    try:
+        data = request.get_json() or request.form
+        code_type = data.get('code_type')  # 'login', 'register', 'forgot_password'
+        
+        if code_type == 'login':
+            return resend_login_code()
+        elif code_type == 'register':
+            return resend_register_code()
+        elif code_type == 'forgot_password':
+            return resend_forgot_password_code()
+        else:
+            return jsonify({'success': False, 'message': 'Invalid code type'})
+            
+    except Exception as e:
+        return jsonify({'success': False, 'message': 'Error processing request'})
+
 @app.route('/resend_login_code', methods=['POST'])
 def resend_login_code():
-    """Resend login verification code"""
+    """Resend login verification code with rate limiting"""
     try:
         # Check if pending login exists
         if 'pending_login' not in session:
             return jsonify({'success': False, 'message': 'No pending login found'})
         
         pending = session['pending_login']
+        email = pending['email']
+        
+        # Check rate limit
+        can_send, error_msg = check_code_rate_limit(email, 'login')
+        if not can_send:
+            return jsonify({'success': False, 'message': error_msg})
+        
+        # Record attempt
+        record_code_attempt(email, 'login')
+        
         new_code = random.randint(100000, 999999)
         
         # Send new verification email
@@ -2452,14 +2561,91 @@ def resend_login_code():
         <h2>SkillStake Gaming - Login Verification</h2>
         <p>Your new login verification code is: <strong>{new_code}</strong></p>
         <p>This code will expire in 10 minutes.</p>
+        <p>If you didn't request this code, please ignore this email.</p>
         '''
         
-        if send_email(pending['email'], 'SkillStake - New Login Verification Code', email_body):
+        if send_email(email, 'SkillStake - New Login Verification Code', email_body):
             # Update verification code in session
             session['pending_login']['verification_code'] = new_code
             return jsonify({'success': True, 'message': 'New verification code sent to your email!'})
         else:
             return jsonify({'success': False, 'message': 'Error sending verification code'})
+            
+    except Exception as e:
+        return jsonify({'success': False, 'message': 'Error resending code'})
+
+@app.route('/resend_register_code', methods=['POST'])
+def resend_register_code():
+    """Resend registration verification code with rate limiting"""
+    try:
+        # Check if pending registration exists
+        if 'verification_code' not in session or 'pending_email' not in session:
+            return jsonify({'success': False, 'message': 'No pending registration found'})
+        
+        email = session['pending_email']
+        
+        # Check rate limit
+        can_send, error_msg = check_code_rate_limit(email, 'register')
+        if not can_send:
+            return jsonify({'success': False, 'message': error_msg})
+        
+        # Record attempt
+        record_code_attempt(email, 'register')
+        
+        new_code = random.randint(100000, 999999)
+        
+        # Send new verification email
+        email_body = f'''
+        <h2>Welcome to SkillStake Gaming!</h2>
+        <p>Your new verification code is: <strong>{new_code}</strong></p>
+        <p>Use this code to verify your account.</p>
+        <p>If you didn't create an account, please ignore this email.</p>
+        '''
+        
+        if send_email(email, 'SkillStake - New Verification Code', email_body):
+            # Update verification code in session
+            session['verification_code'] = new_code
+            return jsonify({'success': True, 'message': 'New verification code sent to your email!'})
+        else:
+            return jsonify({'success': False, 'message': 'Error sending verification code'})
+            
+    except Exception as e:
+        return jsonify({'success': False, 'message': 'Error resending code'})
+
+@app.route('/resend_forgot_password_code', methods=['POST'])
+def resend_forgot_password_code():
+    """Resend forgot password code with rate limiting"""
+    try:
+        # Check if pending reset exists
+        if 'reset_code' not in session or 'reset_email' not in session:
+            return jsonify({'success': False, 'message': 'No pending password reset found'})
+        
+        email = session['reset_email']
+        
+        # Check rate limit
+        can_send, error_msg = check_code_rate_limit(email, 'forgot_password')
+        if not can_send:
+            return jsonify({'success': False, 'message': error_msg})
+        
+        # Record attempt
+        record_code_attempt(email, 'forgot_password')
+        
+        new_code = random.randint(100000, 999999)
+        
+        # Send new reset email
+        email_body = f'''
+        <h2>Password Reset - SkillStake</h2>
+        <p>Your new password reset code is: <strong>{new_code}</strong></p>
+        <p>Use this code to reset your password.</p>
+        <p>If you didn't request this reset, please ignore this email.</p>
+        '''
+        
+        if send_email(email, 'SkillStake - New Password Reset Code', email_body):
+            # Update reset code in session
+            session['reset_code'] = new_code
+            return jsonify({'success': True, 'message': 'New password reset code sent to your email!'})
+        else:
+            return jsonify({'success': False, 'message': 'Error sending reset code'})
             
     except Exception as e:
         return jsonify({'success': False, 'message': 'Error resending code'})
