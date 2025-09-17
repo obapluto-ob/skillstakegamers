@@ -1,0 +1,520 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="verification-container">
+    <div class="verification-card">
+        <div class="verification-header">
+            <h2>🛡️ Human Verification Required</h2>
+            <p>Please complete the verification to continue to SkillStake Gaming</p>
+        </div>
+
+        <div class="verification-methods">
+            <!-- Method 1: Math Challenge -->
+            <div id="math-challenge" class="verification-method active">
+                <h3>🧮 Solve the Math Problem</h3>
+                <div class="math-problem">
+                    <span id="math-question">Loading...</span>
+                    <input type="number" id="math-answer" placeholder="Your answer" class="verification-input">
+                </div>
+            </div>
+
+            <!-- Method 2: Image Selection -->
+            <div id="image-challenge" class="verification-method">
+                <h3>🖼️ Select All Gaming Images</h3>
+                <div class="image-grid">
+                    <div class="image-item" data-type="gaming" onclick="toggleImage(this)">
+                        <img src="https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=100&h=100&fit=crop" alt="Gaming">
+                    </div>
+                    <div class="image-item" data-type="other" onclick="toggleImage(this)">
+                        <img src="https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=100&h=100&fit=crop" alt="Nature">
+                    </div>
+                    <div class="image-item" data-type="gaming" onclick="toggleImage(this)">
+                        <img src="https://images.unsplash.com/photo-1542751371-adc38448a05e?w=100&h=100&fit=crop" alt="Gaming">
+                    </div>
+                    <div class="image-item" data-type="other" onclick="toggleImage(this)">
+                        <img src="https://images.unsplash.com/photo-1449824913935-59a10b8d2000?w=100&h=100&fit=crop" alt="Food">
+                    </div>
+                    <div class="image-item" data-type="gaming" onclick="toggleImage(this)">
+                        <img src="https://images.unsplash.com/photo-1511512578047-dfb367046420?w=100&h=100&fit=crop" alt="Gaming">
+                    </div>
+                    <div class="image-item" data-type="other" onclick="toggleImage(this)">
+                        <img src="https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=100&h=100&fit=crop" alt="Nature">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Method 3: Pattern Recognition -->
+            <div id="pattern-challenge" class="verification-method">
+                <h3>🎯 Complete the Pattern</h3>
+                <div class="pattern-grid">
+                    <div class="pattern-row">
+                        <span class="pattern-item">🎮</span>
+                        <span class="pattern-item">⚽</span>
+                        <span class="pattern-item">🎮</span>
+                        <span class="pattern-item">⚽</span>
+                        <span class="pattern-item missing" onclick="selectPattern(this, '🎮')">?</span>
+                    </div>
+                    <div class="pattern-options">
+                        <span class="pattern-option" onclick="selectPattern(document.querySelector('.missing'), '🎮')">🎮</span>
+                        <span class="pattern-option" onclick="selectPattern(document.querySelector('.missing'), '⚽')">⚽</span>
+                        <span class="pattern-option" onclick="selectPattern(document.querySelector('.missing'), '🏀')">🏀</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="verification-controls">
+            <div class="method-switcher">
+                <button onclick="switchMethod('math')" class="method-btn active">Math</button>
+                <button onclick="switchMethod('image')" class="method-btn">Images</button>
+                <button onclick="switchMethod('pattern')" class="method-btn">Pattern</button>
+            </div>
+            
+            <button id="verify-btn" onclick="verifyHuman()" class="verify-button">
+                Verify I'm Human
+            </button>
+            
+            <div class="verification-progress">
+                <div class="progress-bar">
+                    <div id="progress-fill" class="progress-fill"></div>
+                </div>
+                <p class="progress-text">Complete verification to continue</p>
+            </div>
+        </div>
+
+        <div class="security-info">
+            <p>🔒 This verification protects our platform from automated attacks</p>
+            <p>✅ Your data is secure and never shared</p>
+        </div>
+    </div>
+</div>
+
+<style>
+.verification-container {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    padding: 2rem;
+}
+
+.verification-card {
+    background: white;
+    border-radius: 16px;
+    padding: 2rem;
+    max-width: 500px;
+    width: 100%;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+    animation: slideUp 0.5s ease-out;
+}
+
+@keyframes slideUp {
+    from { opacity: 0; transform: translateY(30px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.verification-header {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.verification-header h2 {
+    color: #333;
+    margin-bottom: 0.5rem;
+    font-size: 1.5rem;
+}
+
+.verification-header p {
+    color: #666;
+    font-size: 0.9rem;
+}
+
+.verification-method {
+    display: none;
+    margin-bottom: 2rem;
+}
+
+.verification-method.active {
+    display: block;
+}
+
+.verification-method h3 {
+    color: #333;
+    margin-bottom: 1rem;
+    font-size: 1.1rem;
+}
+
+.math-problem {
+    text-align: center;
+    padding: 1rem;
+    background: #f8f9fa;
+    border-radius: 8px;
+}
+
+#math-question {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #333;
+    display: block;
+    margin-bottom: 1rem;
+}
+
+.verification-input {
+    width: 100px;
+    padding: 0.5rem;
+    border: 2px solid #ddd;
+    border-radius: 4px;
+    text-align: center;
+    font-size: 1.2rem;
+}
+
+.image-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.5rem;
+}
+
+.image-item {
+    position: relative;
+    cursor: pointer;
+    border: 3px solid transparent;
+    border-radius: 8px;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.image-item:hover {
+    border-color: #667eea;
+}
+
+.image-item.selected {
+    border-color: #00ff88;
+    transform: scale(0.95);
+}
+
+.image-item img {
+    width: 100%;
+    height: 100px;
+    object-fit: cover;
+}
+
+.pattern-grid {
+    text-align: center;
+}
+
+.pattern-row {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.pattern-item {
+    font-size: 2rem;
+    padding: 0.5rem;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    background: #f8f9fa;
+    min-width: 60px;
+    text-align: center;
+}
+
+.pattern-item.missing {
+    background: #fff3cd;
+    border-color: #ffc107;
+    cursor: pointer;
+}
+
+.pattern-options {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+}
+
+.pattern-option {
+    font-size: 2rem;
+    padding: 0.5rem;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    background: white;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.pattern-option:hover {
+    border-color: #667eea;
+    transform: scale(1.1);
+}
+
+.method-switcher {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+    justify-content: center;
+}
+
+.method-btn {
+    padding: 0.5rem 1rem;
+    border: 2px solid #ddd;
+    background: white;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.method-btn.active {
+    background: #667eea;
+    color: white;
+    border-color: #667eea;
+}
+
+.verify-button {
+    width: 100%;
+    padding: 1rem;
+    background: linear-gradient(135deg, #00ff88, #00cc6a);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 1.1rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-bottom: 1rem;
+}
+
+.verify-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0,255,136,0.3);
+}
+
+.verify-button:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.verification-progress {
+    margin-bottom: 1rem;
+}
+
+.progress-bar {
+    width: 100%;
+    height: 8px;
+    background: #f0f0f0;
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 0.5rem;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #667eea, #764ba2);
+    width: 0%;
+    transition: width 0.5s ease;
+}
+
+.progress-text {
+    text-align: center;
+    color: #666;
+    font-size: 0.9rem;
+    margin: 0;
+}
+
+.security-info {
+    text-align: center;
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid #eee;
+}
+
+.security-info p {
+    color: #666;
+    font-size: 0.8rem;
+    margin: 0.25rem 0;
+}
+
+@media (max-width: 768px) {
+    .verification-container {
+        padding: 1rem;
+    }
+    
+    .verification-card {
+        padding: 1.5rem;
+    }
+    
+    .image-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+</style>
+
+<script>
+let currentMethod = 'math';
+let mathAnswer = 0;
+let selectedImages = [];
+let patternAnswer = '🎮';
+let verificationProgress = 0;
+
+// Initialize verification
+document.addEventListener('DOMContentLoaded', function() {
+    generateMathProblem();
+    updateProgress();
+});
+
+function generateMathProblem() {
+    const num1 = Math.floor(Math.random() * 20) + 1;
+    const num2 = Math.floor(Math.random() * 20) + 1;
+    const operations = ['+', '-', '×'];
+    const operation = operations[Math.floor(Math.random() * operations.length)];
+    
+    let question, answer;
+    
+    switch(operation) {
+        case '+':
+            question = `${num1} + ${num2} = ?`;
+            answer = num1 + num2;
+            break;
+        case '-':
+            question = `${Math.max(num1, num2)} - ${Math.min(num1, num2)} = ?`;
+            answer = Math.max(num1, num2) - Math.min(num1, num2);
+            break;
+        case '×':
+            const small1 = Math.floor(Math.random() * 10) + 1;
+            const small2 = Math.floor(Math.random() * 10) + 1;
+            question = `${small1} × ${small2} = ?`;
+            answer = small1 * small2;
+            break;
+    }
+    
+    document.getElementById('math-question').textContent = question;
+    mathAnswer = answer;
+}
+
+function switchMethod(method) {
+    // Update active method
+    document.querySelectorAll('.verification-method').forEach(m => m.classList.remove('active'));
+    document.querySelectorAll('.method-btn').forEach(b => b.classList.remove('active'));
+    
+    document.getElementById(`${method}-challenge`).classList.add('active');
+    event.target.classList.add('active');
+    
+    currentMethod = method;
+    updateProgress();
+}
+
+function toggleImage(element) {
+    element.classList.toggle('selected');
+    updateProgress();
+}
+
+function selectPattern(element, value) {
+    element.textContent = value;
+    element.classList.add('selected');
+    updateProgress();
+}
+
+function updateProgress() {
+    let progress = 0;
+    
+    switch(currentMethod) {
+        case 'math':
+            const mathInput = document.getElementById('math-answer').value;
+            if (mathInput && parseInt(mathInput) === mathAnswer) {
+                progress = 100;
+            } else if (mathInput) {
+                progress = 50;
+            }
+            break;
+            
+        case 'image':
+            const selected = document.querySelectorAll('.image-item.selected');
+            const gaming = Array.from(selected).filter(img => img.dataset.type === 'gaming');
+            const nonGaming = Array.from(selected).filter(img => img.dataset.type === 'other');
+            
+            if (gaming.length === 3 && nonGaming.length === 0) {
+                progress = 100;
+            } else if (selected.length > 0) {
+                progress = Math.min(80, (gaming.length / 3) * 100);
+            }
+            break;
+            
+        case 'pattern':
+            const missing = document.querySelector('.pattern-item.missing');
+            if (missing && missing.textContent === patternAnswer) {
+                progress = 100;
+            } else if (missing && missing.textContent !== '?') {
+                progress = 50;
+            }
+            break;
+    }
+    
+    document.getElementById('progress-fill').style.width = progress + '%';
+    verificationProgress = progress;
+    
+    // Update button state
+    const verifyBtn = document.getElementById('verify-btn');
+    if (progress === 100) {
+        verifyBtn.disabled = false;
+        verifyBtn.textContent = '✅ Verification Complete';
+        verifyBtn.style.background = 'linear-gradient(135deg, #00ff88, #00cc6a)';
+    } else {
+        verifyBtn.disabled = true;
+        verifyBtn.textContent = 'Complete Challenge First';
+        verifyBtn.style.background = '#ccc';
+    }
+}
+
+function verifyHuman() {
+    if (verificationProgress !== 100) {
+        alert('Please complete the verification challenge first!');
+        return;
+    }
+    
+    // Show success animation
+    const verifyBtn = document.getElementById('verify-btn');
+    verifyBtn.textContent = '🎉 Verified! Redirecting...';
+    verifyBtn.style.background = 'linear-gradient(135deg, #00ff88, #00cc6a)';
+    
+    // Store verification in session
+    fetch('/verify_human', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            method: currentMethod,
+            verified: true
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            setTimeout(() => {
+                window.location.href = '/';
+            }, 1500);
+        } else {
+            alert('Verification failed. Please try again.');
+            location.reload();
+        }
+    })
+    .catch(error => {
+        alert('Error during verification. Please try again.');
+        location.reload();
+    });
+}
+
+// Auto-check math input
+document.getElementById('math-answer').addEventListener('input', updateProgress);
+
+// Prevent form submission on Enter
+document.addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        if (verificationProgress === 100) {
+            verifyHuman();
+        }
+    }
+});
+</script>
+{% endblock %}

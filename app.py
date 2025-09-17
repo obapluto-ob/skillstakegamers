@@ -681,7 +681,69 @@ init_database()
 def home():
     if 'user_id' in session:
         return redirect(url_for('dashboard'))
+    
+    # Check if human verification is completed
+    if not session.get('human_verified'):
+        return redirect(url_for('human_verification'))
+    
     return render_template('home.html')
+
+@app.route('/human_verification')
+def human_verification():
+    # Skip verification if already verified or if admin
+    if session.get('human_verified') or session.get('is_admin'):
+        return redirect(url_for('home'))
+    
+    # Check if verification has expired (24 hours)
+    if session.get('verification_time'):
+        try:
+            verification_time = datetime.fromisoformat(session['verification_time'])
+            if (datetime.now() - verification_time).total_seconds() > 86400:  # 24 hours
+                session.pop('human_verified', None)
+                session.pop('verification_time', None)
+        except:
+            pass
+    
+    return render_template('human_verification.html')
+
+@app.route('/clear_verification')
+def clear_verification():
+    """Development route to clear verification"""
+    session.pop('human_verified', None)
+    session.pop('verification_time', None)
+    session.pop('verification_method', None)
+    flash('Human verification cleared for testing', 'info')
+    return redirect(url_for('human_verification'))
+
+@app.route('/verify_human', methods=['POST'])
+def verify_human():
+    try:
+        data = request.get_json()
+        method = data.get('method')
+        verified = data.get('verified')
+        
+        if verified:
+            # Mark as human verified for 24 hours
+            session['human_verified'] = True
+            session['verification_time'] = datetime.now().isoformat()
+            session['verification_method'] = method
+            
+            # Log verification attempt (optional)
+            try:
+                with SecureDBConnection() as conn:
+                    c = conn.cursor()
+                    c.execute('''INSERT INTO fraud_alerts (user_id, alert_type, description, severity) 
+                                VALUES (?, ?, ?, ?)''',
+                             (0, 'human_verification', f'Human verified using {method} method', 'info'))
+            except:
+                pass
+            
+            return jsonify({'success': True, 'message': 'Human verification successful'})
+        else:
+            return jsonify({'success': False, 'message': 'Verification failed'})
+            
+    except Exception as e:
+        return jsonify({'success': False, 'message': 'Verification error'})
 
 @app.route('/dashboard')
 @login_required
@@ -725,6 +787,9 @@ def dashboard():
 @app.route('/register', methods=['GET', 'POST'])
 @app.route('/register_fixed', methods=['GET', 'POST'])
 def register_fixed():
+    # Check human verification first
+    if not session.get('human_verified'):
+        return redirect(url_for('human_verification'))
     if request.method == 'POST':
         username = sanitize_input(request.form.get('username', '').strip())
         email = sanitize_input(request.form.get('email', '').strip())
@@ -810,6 +875,9 @@ def register_fixed():
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
+    # Check human verification first
+    if not session.get('human_verified'):
+        return redirect(url_for('human_verification'))
     if request.method == 'POST':
         login_input = sanitize_input(request.form.get('login_input', '').strip())
         password = request.form.get('password', '')
@@ -984,6 +1052,9 @@ def admin_dashboard():
 
 @app.route('/forgot_password', methods=['GET', 'POST'])
 def forgot_password():
+    # Check human verification first
+    if not session.get('human_verified'):
+        return redirect(url_for('human_verification'))
     if request.method == 'POST':
         # Check if this is a reset code submission
         if 'reset_code' in request.form:
