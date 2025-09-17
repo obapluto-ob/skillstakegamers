@@ -38,26 +38,53 @@
         </div>
     </div>
     
-    <!-- Create FPL Battle -->
+    <!-- Battle Type Selection -->
     <div class="card" style="margin-bottom: 2rem;">
-        <h4>Create FPL Battle</h4>
-        <form id="createFplBattle">
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
-                <div>
-                    <label style="display: block; margin-bottom: 0.5rem; font-weight: bold;">Battle Type:</label>
-                    <select name="game_mode" required style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; background: #333; color: white;">
-                        <option value="gameweek">Current Gameweek</option>
-                        <option value="next_gameweek">Next Gameweek</option>
-                        <option value="season_total">Season Total Points</option>
-                    </select>
+        <h4>Choose Battle Type</h4>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
+            <button onclick="showBattleType('current')" class="battle-type-btn" style="padding: 1rem; background: #17a2b8; color: white; border: none; border-radius: 8px; cursor: pointer;">
+                <h5 style="margin: 0 0 0.5rem 0;">Current Gameweek</h5>
+                <p style="margin: 0; font-size: 0.8rem; opacity: 0.9;">Battle on live gameweek fixtures</p>
+            </button>
+            <button onclick="showBattleType('next')" class="battle-type-btn" style="padding: 1rem; background: #28a745; color: white; border: none; border-radius: 8px; cursor: pointer;">
+                <h5 style="margin: 0 0 0.5rem 0;">Next Gameweek</h5>
+                <p style="margin: 0; font-size: 0.8rem; opacity: 0.9;">Battle on upcoming fixtures</p>
+            </button>
+            <button onclick="showBattleType('season')" class="battle-type-btn" style="padding: 1rem; background: #7c3aed; color: white; border: none; border-radius: 8px; cursor: pointer;">
+                <h5 style="margin: 0 0 0.5rem 0;">Season Battle</h5>
+                <p style="margin: 0; font-size: 0.8rem; opacity: 0.9;">Overall points competition</p>
+            </button>
+        </div>
+    </div>
+    
+    <!-- Battle Setup Section -->
+    <div id="battleSetupSection" style="display: none;">
+        <div class="card" style="margin-bottom: 2rem;">
+            <h4 id="battleTypeTitle">Battle Setup</h4>
+            <div id="fixturesDisplay" style="margin-bottom: 1rem;"></div>
+            
+            <form id="createFplBattle">
+                <input type="hidden" id="selectedBattleType" name="game_mode">
+                <input type="hidden" id="selectedGameweek" name="gameweek">
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                    <div>
+                        <label style="display: block; margin-bottom: 0.5rem; font-weight: bold;">Competition Mode:</label>
+                        <select id="competitionMode" name="competition_mode" required style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; background: #333; color: white;">
+                            <!-- Options populated by JavaScript -->
+                        </select>
+                    </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 0.5rem; font-weight: bold;">Stake Amount (KSh):</label>
+                        <input type="number" name="bet_amount" min="100" max="5000" value="500" required style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; background: #333; color: white;">
+                    </div>
                 </div>
-                <div>
-                    <label style="display: block; margin-bottom: 0.5rem; font-weight: bold;">Stake Amount (KSh):</label>
-                    <input type="number" name="bet_amount" min="100" max="5000" value="500" required style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; background: #333; color: white;">
-                </div>
-            </div>
-            <button type="submit" class="btn btn-success">Create FPL Battle</button>
-        </form>
+                
+                <div id="battleRulesDisplay" style="background: rgba(23, 162, 184, 0.1); padding: 1rem; border-radius: 8px; margin-bottom: 1rem;"></div>
+                
+                <button type="submit" class="btn btn-success">Create Battle</button>
+            </form>
+        </div>
     </div>
     
     <!-- Active FPL Battles -->
@@ -307,6 +334,129 @@ function checkCurrentScore() {
     });
 }
 
+// Battle Type Selection
+function showBattleType(type) {
+    const section = document.getElementById('battleSetupSection');
+    const title = document.getElementById('battleTypeTitle');
+    const typeInput = document.getElementById('selectedBattleType');
+    const competitionMode = document.getElementById('competitionMode');
+    const rulesDisplay = document.getElementById('battleRulesDisplay');
+    
+    section.style.display = 'block';
+    typeInput.value = type;
+    
+    // Load fixtures and setup competition modes
+    if (type === 'current') {
+        title.textContent = 'Current Gameweek Battle';
+        loadGameweekFixtures('current');
+        setupCompetitionModes([
+            {value: 'captain_battle', text: 'Captain Battle', desc: 'Winner: Highest captain points (doubled)'},
+            {value: 'team_score', text: 'Team Score Battle', desc: 'Winner: Highest total team points'},
+            {value: 'differential_pick', text: 'Differential Battle', desc: 'Winner: Best performing differential player'}
+        ]);
+    } else if (type === 'next') {
+        title.textContent = 'Next Gameweek Battle';
+        loadGameweekFixtures('next');
+        setupCompetitionModes([
+            {value: 'prediction_battle', text: 'Prediction Battle', desc: 'Winner: Most accurate score predictions'},
+            {value: 'captain_battle', text: 'Captain Battle', desc: 'Winner: Highest captain points (doubled)'},
+            {value: 'formation_battle', text: 'Formation Battle', desc: 'Winner: Best performing formation'}
+        ]);
+    } else if (type === 'season') {
+        title.textContent = 'Season Battle';
+        loadSeasonStats();
+        setupCompetitionModes([
+            {value: 'overall_points', text: 'Overall Points', desc: 'Winner: Higher total season points'},
+            {value: 'rank_battle', text: 'Rank Battle', desc: 'Winner: Better overall rank'},
+            {value: 'transfer_efficiency', text: 'Transfer Battle', desc: 'Winner: Better points per transfer ratio'}
+        ]);
+    }
+}
+
+function setupCompetitionModes(modes) {
+    const select = document.getElementById('competitionMode');
+    const rulesDisplay = document.getElementById('battleRulesDisplay');
+    
+    select.innerHTML = '<option value="">Choose Competition Mode</option>';
+    modes.forEach(mode => {
+        select.innerHTML += `<option value="${mode.value}">${mode.text}</option>`;
+    });
+    
+    select.onchange = function() {
+        const selectedMode = modes.find(m => m.value === this.value);
+        if (selectedMode) {
+            rulesDisplay.innerHTML = `
+                <h6 style="margin: 0 0 0.5rem 0; color: #17a2b8;">Battle Rules: ${selectedMode.text}</h6>
+                <p style="margin: 0; font-size: 0.9rem;">${selectedMode.desc}</p>
+            `;
+        }
+    };
+}
+
+function loadGameweekFixtures(type) {
+    const fixturesDisplay = document.getElementById('fixturesDisplay');
+    const gwInput = document.getElementById('selectedGameweek');
+    
+    fetch('/get_fpl_fixtures/' + type)
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            gwInput.value = data.gameweek;
+            displayFixtures(data.fixtures, data.gameweek, type);
+        } else {
+            fixturesDisplay.innerHTML = '<p style="color: #dc3545;">Could not load fixtures</p>';
+        }
+    })
+    .catch(error => {
+        fixturesDisplay.innerHTML = '<p style="color: #dc3545;">Error loading fixtures</p>';
+    });
+}
+
+function loadSeasonStats() {
+    const fixturesDisplay = document.getElementById('fixturesDisplay');
+    const gwInput = document.getElementById('selectedGameweek');
+    
+    gwInput.value = 'season';
+    fixturesDisplay.innerHTML = `
+        <div style="background: #f8f9fa; padding: 1rem; border-radius: 8px;">
+            <h6 style="margin: 0 0 0.5rem 0; color: #37003c;">Season 2024/25 Competition</h6>
+            <p style="margin: 0; font-size: 0.9rem; color: #666;">Battle based on current season statistics and overall performance</p>
+        </div>
+    `;
+}
+
+function displayFixtures(fixtures, gameweek, type) {
+    const fixturesDisplay = document.getElementById('fixturesDisplay');
+    
+    let html = `
+        <div style="background: #f8f9fa; padding: 1rem; border-radius: 8px;">
+            <h6 style="margin: 0 0 1rem 0; color: #37003c;">${type === 'current' ? 'Current' : 'Next'} Gameweek ${gameweek} Fixtures</h6>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.5rem;">
+    `;
+    
+    fixtures.forEach(fixture => {
+        const kickoffTime = new Date(fixture.kickoff_time).toLocaleDateString('en-GB', {
+            weekday: 'short',
+            day: 'numeric',
+            month: 'short',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+        
+        html += `
+            <div style="background: white; padding: 0.5rem; border-radius: 4px; border: 1px solid #ddd; text-align: center;">
+                <div style="font-size: 0.8rem; font-weight: bold; color: #37003c;">
+                    ${fixture.team_h_name} vs ${fixture.team_a_name}
+                </div>
+                <div style="font-size: 0.7rem; color: #666;">${kickoffTime}</div>
+            </div>
+        `;
+    });
+    
+    html += '</div></div>';
+    fixturesDisplay.innerHTML = html;
+}
+
 // Create FPL Battle
 document.getElementById('createFplBattle')?.addEventListener('submit', function(e) {
     e.preventDefault();
@@ -335,13 +485,13 @@ document.getElementById('createFplBattle')?.addEventListener('submit', function(
             alert('FPL Battle created successfully!');
             window.location.href = '/matches';
         } else {
-            submitBtn.textContent = 'Create FPL Battle';
+            submitBtn.textContent = 'Create Battle';
             submitBtn.disabled = false;
         }
     })
     .catch(error => {
         alert('Error creating FPL battle');
-        submitBtn.textContent = 'Create FPL Battle';
+        submitBtn.textContent = 'Create Battle';
         submitBtn.disabled = false;
     });
 });

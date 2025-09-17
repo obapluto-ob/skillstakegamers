@@ -1568,6 +1568,68 @@ def get_fpl_team_data(team_id):
     except Exception as e:
         return jsonify({'success': False, 'message': 'Error fetching FPL data'})
 
+@app.route('/get_fpl_fixtures/<fixture_type>')
+@login_required
+def get_fpl_fixtures(fixture_type):
+    try:
+        import requests
+        
+        # Get bootstrap data for fixtures
+        bootstrap_response = requests.get('https://fantasy.premierleague.com/api/bootstrap-static/', timeout=10)
+        
+        if bootstrap_response.status_code != 200:
+            return jsonify({'success': False, 'message': 'Could not fetch FPL data'})
+        
+        bootstrap_data = bootstrap_response.json()
+        
+        # Get current and next gameweek
+        current_gw = None
+        next_gw = None
+        
+        for event in bootstrap_data['events']:
+            if event['is_current']:
+                current_gw = event['id']
+                next_gw = event['id'] + 1 if event['id'] < 38 else None
+                break
+        
+        target_gw = current_gw if fixture_type == 'current' else next_gw
+        
+        if not target_gw:
+            return jsonify({'success': False, 'message': 'No gameweek available'})
+        
+        # Get fixtures for the gameweek
+        fixtures_response = requests.get('https://fantasy.premierleague.com/api/fixtures/', timeout=10)
+        
+        if fixtures_response.status_code != 200:
+            return jsonify({'success': False, 'message': 'Could not fetch fixtures'})
+        
+        all_fixtures = fixtures_response.json()
+        
+        # Filter fixtures for target gameweek
+        gw_fixtures = [f for f in all_fixtures if f['event'] == target_gw]
+        
+        # Get team names
+        teams = {team['id']: team['name'] for team in bootstrap_data['teams']}
+        
+        # Format fixtures
+        formatted_fixtures = []
+        for fixture in gw_fixtures[:10]:  # Limit to 10 fixtures for display
+            formatted_fixtures.append({
+                'team_h_name': teams.get(fixture['team_h'], 'Unknown'),
+                'team_a_name': teams.get(fixture['team_a'], 'Unknown'),
+                'kickoff_time': fixture['kickoff_time'],
+                'finished': fixture['finished']
+            })
+        
+        return jsonify({
+            'success': True,
+            'gameweek': target_gw,
+            'fixtures': formatted_fixtures
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'message': 'Error fetching fixtures'})
+
 @app.route('/get_fpl_gameweek_score/<int:team_id>')
 @login_required
 def get_fpl_gameweek_score(team_id):
