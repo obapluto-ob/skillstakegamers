@@ -1,113 +1,14 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="card" style="background: linear-gradient(135deg, #ff6b6b, #ee5a24); color: white; border: none;">
-    <h1>🏆 Tournaments</h1>
-    <p>Join WhatsApp-organized tournaments and win big prizes!</p>
-</div>
-
 <div class="card">
-    <h2>🔥 Active Tournaments</h2>
-    {% if active_tournaments %}
-        <div style="display: grid; gap: 1rem;">
-            {% for tournament in active_tournaments %}
-            <div style="border: 1px solid #ddd; padding: 1rem; border-radius: 8px; background: #f8f9fa;">
-                <div style="display: flex; justify-content: between; align-items: center;">
-                    <div>
-                        <h3>{{ tournament[1] }}</h3>
-                        <p><strong>Game:</strong> {{ tournament[2] }}</p>
-                        <p><strong>Entry Fee:</strong> KSh {{ tournament[3] }}</p>
-                        <p><strong>Prize Pool:</strong> KSh {{ tournament[5] }}</p>
-                        <p><strong>Players:</strong> {{ tournament[7] }}/{{ tournament[4] }}</p>
-                    </div>
-                    <div>
-                        {% if tournament[6] == 'open' %}
-                            <button onclick="joinTournament({{ tournament[0] }})" class="btn" style="background: #28a745; color: white;">
-                                Join Tournament
-                            </button>
-                        {% else %}
-                            <span style="color: #ffc107; font-weight: bold;">{{ tournament[6].upper() }}</span>
-                        {% endif %}
-                    </div>
-                </div>
-            </div>
-            {% endfor %}
-        </div>
-    {% else %}
-        <div style="text-align: center; padding: 2rem; color: #666;">
-            <h3>📢 No Active Tournaments</h3>
-            <p>Tournaments are announced in our WhatsApp group!</p>
-            <p>Make sure you're added to get notifications.</p>
-        </div>
-    {% endif %}
-</div>
-
-<div class="card">
-    <h2>📱 How Tournaments Work</h2>
-    <div style="background: #e3f2fd; padding: 1rem; border-radius: 8px; margin: 1rem 0;">
-        <h4>🔄 Tournament Process:</h4>
-        <ol>
-            <li><strong>WhatsApp Announcement:</strong> Admin announces tournament in group</li>
-            <li><strong>Registration:</strong> Join here on the platform</li>
-            <li><strong>WhatsApp Coordination:</strong> Match schedules posted in group</li>
-            <li><strong>Play Matches:</strong> Follow bracket shared in WhatsApp</li>
-            <li><strong>Win Prizes:</strong> Top players share 85% of prize pool</li>
-        </ol>
-    </div>
+    <h2>🏆 Tournaments</h2>
+    <p>Compete in organized tournaments for bigger prizes!</p>
     
-    <div style="background: #fff3e0; padding: 1rem; border-radius: 8px; margin: 1rem 0;">
-        <h4>💰 Prize Distribution:</h4>
-        <ul>
-            <li><strong>1st Place:</strong> 40% of prize pool</li>
-            <li><strong>2nd Place:</strong> 25% of prize pool</li>
-            <li><strong>3rd Place:</strong> 15% of prize pool</li>
-            <li><strong>4th Place:</strong> 5% of prize pool</li>
-        </ul>
+    <div style="text-align: center; padding: 3rem; background: rgba(255,255,255,0.05); border-radius: 10px;">
+        <h3 style="color: #ffc107;">Coming Soon!</h3>
+        <p>Tournament system is under development. Stay tuned for epic competitions!</p>
+        <a href="{{ url_for('dashboard') }}" class="btn">Back to Dashboard</a>
     </div>
 </div>
-
-{% if user_tournaments %}
-<div class="card">
-    <h2>📊 Your Tournament History</h2>
-    <table style="width: 100%; border-collapse: collapse; background: white;">
-        <tr style="background: #343a40; color: white;">
-            <th style="padding: 0.8rem; border: 1px solid #ddd; text-align: left; font-weight: bold;">Tournament</th>
-            <th style="padding: 0.8rem; border: 1px solid #ddd; text-align: left; font-weight: bold;">Game</th>
-            <th style="padding: 0.8rem; border: 1px solid #ddd; text-align: left; font-weight: bold;">Entry Fee</th>
-            <th style="padding: 0.8rem; border: 1px solid #ddd; text-align: left; font-weight: bold;">Joined</th>
-        </tr>
-        {% for tournament in user_tournaments %}
-        <tr style="{% if loop.index % 2 == 0 %}background: #f8f9fa;{% else %}background: white;{% endif %}">
-            <td style="padding: 0.8rem; border: 1px solid #ddd; color: #333;">{{ tournament[0] }}</td>
-            <td style="padding: 0.8rem; border: 1px solid #ddd; color: #333;">{{ tournament[1] }}</td>
-            <td style="padding: 0.8rem; border: 1px solid #ddd; color: #333; font-weight: bold;">KSh {{ tournament[2] }}</td>
-            <td style="padding: 0.8rem; border: 1px solid #ddd; color: #666;">{{ tournament[3][:10] }}</td>
-        </tr>
-        {% endfor %}
-    </table>
-</div>
-{% endif %}
-
-<script>
-function joinTournament(tournamentId) {
-    if (!confirm('Join this tournament? Entry fee will be deducted from your balance.')) return;
-    
-    fetch(`/join_tournament/${tournamentId}`, {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'}
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            alert('✅ ' + data.message);
-            location.reload();
-        } else {
-            alert('❌ ' + data.message);
-        }
-    })
-    .catch(error => {
-        alert('Error joining tournament');
-    });
-}
-</script>
 {% endblock %}

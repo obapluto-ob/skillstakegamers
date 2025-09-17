@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card">
+    <h2>❓ Help & Support</h2>
+    
+    <div class="card" style="background: linear-gradient(135deg, rgba(23,162,184,0.1), rgba(23,162,184,0.05)); border-left: 4px solid #17a2b8;">
+        <h3 style="color: #17a2b8;">Contact Support</h3>
+        <p>Need help? Contact our support team:</p>
+        <div style="margin: 1rem 0;">
+            <p><strong>Email:</strong> support@skillstake.com</p>
+            <p><strong>WhatsApp:</strong> <a href="{{ url_for('home') }}" style="color: #00ff88;">Join Support Group</a></p>
+            <p><strong>Response Time:</strong> Within 24 hours</p>
+        </div>
+    </div>
+    
+    <div class="card">
+        <h3>Frequently Asked Questions</h3>
+        
+        <div style="margin: 1rem 0; padding: 1rem; background: rgba(255,255,255,0.05); border-radius: 8px;">
+            <h4 style="color: #ffc107;">How do I deposit money?</h4>
+            <p>Go to Wallet → Choose M-Pesa, PayPal, or Crypto → Follow the instructions.</p>
+        </div>
+        
+        <div style="margin: 1rem 0; padding: 1rem; background: rgba(255,255,255,0.05); border-radius: 8px;">
+            <h4 style="color: #ffc107;">How do matches work?</h4>
+            <p>Create or join a match → Play the game → Upload screenshot → Winner gets the pot!</p>
+        </div>
+        
+        <div style="margin: 1rem 0; padding: 1rem; background: rgba(255,255,255,0.05); border-radius: 8px;">
+            <h4 style="color: #ffc107;">How do I withdraw winnings?</h4>
+            <p>Go to Wallet → Withdraw → Choose your method → Request withdrawal.</p>
+        </div>
+    </div>
+</div>
+{% endblock %}

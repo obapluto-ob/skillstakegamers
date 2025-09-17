@@ -2,84 +2,30 @@
 
 {% block content %}
 <div class="card">
-    <h1>Friends</h1>
-    <p>Connect with other players and challenge them directly</p>
-</div>
-
-<div class="card">
-    <h2>Add Friend</h2>
-    <form method="POST" action="{{ url_for('add_friend') }}">
-        <div class="form-group">
-            <input type="text" name="username" class="form-control" placeholder="Enter username" required>
-        </div>
-        <button type="submit" class="btn">Send Friend Request</button>
-    </form>
-</div>
-
-<div class="card">
-    <h2>All Players ({{ all_users|length }})</h2>
-    {% if all_users %}
-        <div class="users-grid">
-            {% for user in all_users %}
-            <div class="user-card">
-                <div class="user-info">
-                    <strong>{{ user[1] }}</strong>
-                    {% if user[2] %}
-                        <br><small class="contact-info">{{ user[2] }}</small>
-                    {% endif %}
-                </div>
-                <div class="user-actions">
-                    {% if user[3] == 0 %}
-                        <form method="POST" action="{{ url_for('add_friend') }}" style="display: inline;">
-                            <input type="hidden" name="username" value="{{ user[1] }}">
-                            <button type="submit" class="btn btn-success" style="padding: 0.5rem 1rem; font-size: 0.9rem;">Add Friend</button>
-                        </form>
-                    {% else %}
-                        <span class="status-badge" style="background: #28a745; color: white; padding: 0.3rem 0.8rem; border-radius: 15px; font-size: 0.8rem;">Connected</span>
-                    {% endif %}
-                </div>
-            </div>
-            {% endfor %}
-        </div>
-    {% else %}
-        <p>No other players found.</p>
-    {% endif %}
-</div>
-
-{% if requests %}
-<div class="card">
-    <h2>Friend Requests</h2>
-    {% for request in requests %}
-    <div class="match-card">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-            <div><strong>{{ request[1] }}</strong> wants to be your friend</div>
-            <a href="{{ url_for('accept_friend', request_id=request[2]) }}" class="btn btn-success">Accept</a>
-        </div>
-    </div>
-    {% endfor %}
-</div>
-{% endif %}
-
-<div class="card">
-    <h2>My Friends ({{ friends|length }})</h2>
+    <h2>👥 Friends & Referrals</h2>
+    
     {% if friends %}
+        <h3>Your Referred Friends</h3>
         {% for friend in friends %}
         <div class="match-card">
             <div style="display: flex; justify-content: space-between; align-items: center;">
                 <div>
-                    <strong>{{ friend[1] }}</strong>
-                    {% if friend[2] %}
-                        <br><small>📞 {{ friend[2] }}</small>
-                    {% endif %}
+                    <strong>{{ friend[0] }}</strong>
+                    <div style="color: #ccc; font-size: 0.9rem;">Joined: {{ friend[1] }}</div>
                 </div>
-                <div>
-                    <a href="{{ url_for('games') }}?challenge={{ friend[0] }}" class="btn">Challenge</a>
+                <div style="text-align: right;">
+                    <div style="color: #00ff88; font-weight: bold;">KSh {{ "%.0f"|format(friend[2]) }}</div>
+                    <div style="color: #ccc; font-size: 0.9rem;">Balance</div>
                 </div>
             </div>
         </div>
         {% endfor %}
     {% else %}
-        <p>No friends yet. Add some friends to challenge them!</p>
+        <div style="text-align: center; padding: 2rem; background: rgba(255,255,255,0.05); border-radius: 10px;">
+            <h4 style="color: #00ff88;">No friends referred yet!</h4>
+            <p>Invite friends to earn bonuses and commissions.</p>
+            <a href="{{ url_for('referrals') }}" class="btn btn-success">Start Referring</a>
+        </div>
     {% endif %}
 </div>
 {% endblock %}

@@ -2,239 +2,35 @@
 
 {% block content %}
 <div class="card">
-    <h1>Matches</h1>
-    <p>Join available matches or manage your ongoing games</p>
-</div>
-
-<div class="card">
-    <h2>Available Matches</h2>
-    {% if available_matches %}
-        {% for match in available_matches %}
+    <h2>⚔️ My Matches</h2>
+    
+    {% if matches %}
+        {% for match in matches %}
         <div class="match-card">
             <div class="match-header">
-                <div><strong>{{ match[1].upper() }}</strong> - {{ match[8] or 'Standard' }}</div>
-                <span class="status-badge status-{{ match[6] }}">{{ match[6] }}</span>
+                <div><strong>{{ match[1]|title }}</strong> - {{ match[2] }}</div>
+                <span class="status-badge status-{{ match[10] }}">{{ match[10] }}</span>
             </div>
             <div style="margin: 1rem 0;">
-                <strong>{{ match[9] }}</strong> VS <strong>You</strong>
-                <br><small style="color: #00ff88;">📞 Contact: Available after joining</small>
+                <strong>{{ match[4] }}</strong> VS <strong>{{ match[6] or 'Waiting...' }}</strong>
             </div>
             <div style="display: flex; justify-content: space-between; align-items: center;">
                 <div>
-                    <strong>Bet: KSh {{ "%.0f"|format(match[3] or 0) }}</strong>
-                    <span style="margin-left: 1rem;">Total Pot: KSh {{ "%.0f"|format(match[4] or 0) }}</span>
+                    <strong>Stake: KSh {{ "%.0f"|format(match[7]) }}</strong>
+                    <strong style="margin-left: 1rem;">Pot: KSh {{ "%.0f"|format(match[8]) }}</strong>
                 </div>
-                {% if (match[3] or 0) <= (session.balance or 0) %}
-                    <a href="{{ url_for('join_match', match_id=match[0]) }}" class="btn btn-success" 
-                       onclick="this.style.display='none'; this.innerHTML='Joining...'; return true;">Join Match</a>
-                {% else %}
-                    <span style="color: #dc3545; font-weight: bold;">Insufficient Balance</span>
-                {% endif %}
+                <div style="color: #ccc; font-size: 0.9rem;">
+                    {{ match[15] }}
+                </div>
             </div>
         </div>
         {% endfor %}
     {% else %}
-        <p>No available matches. <a href="{{ url_for('games') }}">Create one!</a></p>
+        <div style="text-align: center; padding: 2rem; background: rgba(255,255,255,0.05); border-radius: 10px;">
+            <h4 style="color: #00ff88;">No matches yet!</h4>
+            <p>Create your first match to start earning.</p>
+            <a href="{{ url_for('quick_matches') }}" class="btn btn-success">Create Match</a>
+        </div>
     {% endif %}
 </div>
-
-<div class="card">
-    <h2>My Matches</h2>
-    <div style="display: flex; gap: 1rem; margin-bottom: 1rem;">
-        <button onclick="showActiveMatches()" class="btn btn-success">Active Matches</button>
-        <button onclick="showMatchHistory()" class="btn btn-secondary">Match History</button>
-        <button onclick="showAvailableMatches()" class="btn btn-info">Join Matches</button>
-    </div>
-    
-    <div id="activeMatches" style="display: block;">
-        <h3>🔥 Active Matches</h3>
-        {% set active_found = false %}
-        {% for match in my_matches %}
-            {% if match[7] in ['active', 'pending'] %}
-                {% set active_found = true %}
-                <div class="match-card" style="border-left: 4px solid #28a745;">
-        <div class="match-card">
-            <div class="match-header">
-                <div>
-                    <strong>{{ match[1].upper() }}</strong> - {{ match[8] or 'Standard' }}
-                    {% if match[14] == 'ocr' %}
-                        <span style="background: #17a2b8; color: white; padding: 0.2rem 0.5rem; border-radius: 12px; font-size: 0.8rem; margin-left: 0.5rem;">INSTANT</span>
-                    {% else %}
-                        <span style="background: #dc3545; color: white; padding: 0.2rem 0.5rem; border-radius: 12px; font-size: 0.8rem; margin-left: 0.5rem;">BROADCAST</span>
-                    {% endif %}
-                    {% if match[15] == 'friends_only' %}
-                        <span style="background: #ffc107; color: black; padding: 0.2rem 0.5rem; border-radius: 12px; font-size: 0.8rem; margin-left: 0.5rem;">FRIENDS</span>
-                    {% endif %}
-                </div>
-                <span class="status-badge status-{{ match[7] }}">{{ match[7] }}</span>
-            </div>
-            <div style="margin: 1rem 0;">
-                {% if match[2] == session.user_id %}
-                    <strong>You</strong> VS <strong>{{ match[11] or 'Waiting...' }}</strong>
-                    {% if match[11] and match[13] %}
-                        <br><small style="color: #00ff88;">📞 {{ match[13] }}</small>
-                    {% elif match[11] %}
-                        <br><small style="color: #ffc107;">📞 No phone number</small>
-                    {% endif %}
-                {% else %}
-                    <strong>{{ match[10] }}</strong> VS <strong>You</strong>
-                    {% if match[10] and match[12] %}
-                        <br><small style="color: #00ff88;">📞 {{ match[12] }}</small>
-                    {% elif match[10] %}
-                        <br><small style="color: #ffc107;">📞 No phone number</small>
-                    {% endif %}
-                {% endif %}
-            </div>
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <div>
-                    <strong>Bet: KSh {{ "%.0f"|format(match[4] or 0) }}</strong>
-                    <span style="margin-left: 1rem;">Total Pot: KSh {{ "%.0f"|format(match[5] or 0) }}</span>
-                </div>
-                
-                <div style="display: flex; gap: 0.5rem;">
-                    {% if match[7] == 'pending' and not match[3] %}
-                        <form method="POST" action="{{ url_for('cancel_match', match_id=match[0]) }}" style="display: inline;">
-                            <button type="submit" class="btn btn-danger" 
-                                    onclick="return confirm('Cancel match? No penalty since no opponent joined.')">Cancel</button>
-                        </form>
-                    {% elif match[7] == 'pending' and match[3] %}
-                        <a href="{{ url_for('match_lobby', match_id=match[0]) }}" class="btn btn-primary">🏟️ Enter Lobby</a>
-                        <form method="POST" action="{{ url_for('cancel_match', match_id=match[0]) }}" style="display: inline;">
-                            <button type="submit" class="btn btn-warning" 
-                                    onclick="return confirm('Cancel match? 20% PENALTY will be applied!')">Cancel (20% penalty)</button>
-                        </form>
-                    {% elif match[7] == 'active' %}
-                        <a href="{{ url_for('match_lobby', match_id=match[0]) }}" class="btn btn-primary">LOBBY</a>
-                        {% if match[14] == 'ocr' %}
-                            <a href="{{ url_for('submit_screenshot_page', match_id=match[0]) }}" class="btn btn-success">SUBMIT SCREENSHOT</a>
-                        {% else %}
-                            <a href="{{ url_for('match_chat', match_id=match[0]) }}" class="btn btn-secondary">Chat</a>
-                            <a href="{{ url_for('match_result', match_id=match[0]) }}" class="btn btn-success">Submit Result</a>
-                        {% endif %}
-                        <form method="POST" action="{{ url_for('cancel_match', match_id=match[0]) }}" style="display: inline;">
-                            <button type="submit" class="btn btn-danger" 
-                                    onclick="return confirm('FORFEIT MATCH? 50% PENALTY + Opponent wins automatically!')">Forfeit (50% penalty)</button>
-                        </form>
-                    {% elif match[7] == 'disputed' %}
-                        <a href="{{ url_for('match_result', match_id=match[0]) }}" class="btn btn-warning">Resubmit Result</a>
-                        <span style="color: #dc3545; font-weight: bold;">⚠️ Disputed - Resubmit with screenshot</span>
-                    {% elif match[7] == 'completed' %}
-                        {% if match[6] == session.user_id %}
-                            <span class="btn btn-success" style="cursor: default;">You Won!</span>
-                        {% else %}
-                            <span class="btn btn-danger" style="cursor: default;">You Lost</span>
-                        {% endif %}
-                    {% elif match[7] == 'refunded' %}
-                        <span class="btn btn-secondary" style="cursor: default;">Refunded</span>
-                    {% endif %}
-                </div>
-            </div>
-            <small style="color: #ccc;">Created: {{ match[9] }}</small>
-        </div>
-                </div>
-            {% endif %}
-        {% endfor %}
-        {% if not active_found %}
-            <p style="text-align: center; color: #666; padding: 2rem;">No active matches. <a href="{{ url_for('games') }}">Create a match!</a></p>
-        {% endif %}
-    </div>
-    
-    <div id="matchHistory" style="display: none;">
-        <h3>📊 Match History</h3>
-        {% set history_found = false %}
-        {% for match in my_matches %}
-            {% if match[7] in ['completed', 'refunded', 'cancelled'] %}
-                {% set history_found = true %}
-                <div class="match-card" style="border-left: 4px solid #6c757d;">
-                    <div class="match-header">
-                        <div>
-                            <strong>{{ match[1].upper() }}</strong> - {{ match[8] or 'Standard' }}
-                            {% if match[14] == 'ocr' %}
-                                <span style="background: #17a2b8; color: white; padding: 0.2rem 0.5rem; border-radius: 12px; font-size: 0.8rem; margin-left: 0.5rem;">INSTANT</span>
-                            {% endif %}
-                        </div>
-                        <span class="status-badge status-{{ match[7] }}">{{ match[7] }}</span>
-                    </div>
-                    <div style="margin: 1rem 0;">
-                        {% if match[2] == session.user_id %}
-                            <strong>You</strong> VS <strong>{{ match[11] or 'No opponent' }}</strong>
-                        {% else %}
-                            <strong>{{ match[10] }}</strong> VS <strong>You</strong>
-                        {% endif %}
-                    </div>
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <div>
-                            <strong>Stake: KSh {{ "%.0f"|format(match[4] or 0) }}</strong>
-                            {% if match[7] == 'completed' %}
-                                {% if match[6] == session.user_id %}
-                                    <span style="color: #28a745; margin-left: 1rem;">✅ You Won!</span>
-                                {% else %}
-                                    <span style="color: #dc3545; margin-left: 1rem;">❌ You Lost</span>
-                                {% endif %}
-                            {% elif match[7] == 'refunded' %}
-                                <span style="color: #ffc107; margin-left: 1rem;">🔄 Refunded</span>
-                            {% endif %}
-                        </div>
-                        <small style="color: #ccc;">{{ match[9][:16] }}</small>
-                    </div>
-                </div>
-            {% endif %}
-        {% endfor %}
-        {% if not history_found %}
-            <p style="text-align: center; color: #666; padding: 2rem;">No match history yet.</p>
-        {% endif %}
-    </div>
-    
-    <div id="availableMatches" style="display: none;">
-        <h3>🎮 Available Matches from Other Players</h3>
-        {% if available_matches %}
-            {% for match in available_matches %}
-            <div class="match-card" style="border-left: 4px solid #17a2b8;">
-                <div class="match-header">
-                    <div><strong>{{ match[1].upper() }}</strong> - {{ match[8] or 'Standard' }}</div>
-                    <span class="status-badge status-{{ match[6] }}">{{ match[6] }}</span>
-                </div>
-                <div style="margin: 1rem 0;">
-                    <strong>{{ match[9] }}</strong> VS <strong>You</strong>
-                    <br><small style="color: #00ff88;">📞 Contact: Available after joining</small>
-                </div>
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <div>
-                        <strong>Bet: KSh {{ "%.0f"|format(match[3] or 0) }}</strong>
-                        <span style="margin-left: 1rem;">Total Pot: KSh {{ "%.0f"|format(match[4] or 0) }}</span>
-                    </div>
-                    {% if (match[3] or 0) <= (session.balance or 0) %}
-                        <a href="{{ url_for('join_match', match_id=match[0]) }}" class="btn btn-success" 
-                           onclick="this.style.display='none'; this.innerHTML='Joining...'; return true;">Join Match</a>
-                    {% else %}
-                        <span style="color: #dc3545; font-weight: bold;">Insufficient Balance</span>
-                    {% endif %}
-                </div>
-            </div>
-            {% endfor %}
-        {% else %}
-            <p style="text-align: center; color: #666; padding: 2rem;">No available matches. <a href="{{ url_for('games') }}">Create one!</a></p>
-        {% endif %}
-    </div>
-</div>
-
-<script>
-function showActiveMatches() {
-    document.getElementById('activeMatches').style.display = 'block';
-    document.getElementById('matchHistory').style.display = 'none';
-    document.getElementById('availableMatches').style.display = 'none';
-}
-
-function showMatchHistory() {
-    document.getElementById('activeMatches').style.display = 'none';
-    document.getElementById('matchHistory').style.display = 'block';
-    document.getElementById('availableMatches').style.display = 'none';
-}
-
-function showAvailableMatches() {
-    document.getElementById('activeMatches').style.display = 'none';
-    document.getElementById('matchHistory').style.display = 'none';
-    document.getElementById('availableMatches').style.display = 'block';
-}
-</script>
 {% endblock %}

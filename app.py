@@ -643,17 +643,25 @@ def games_page():
 @app.route('/tournaments')
 @login_required
 def tournaments():
-    return redirect(url_for('dashboard'))
+    return render_template('tournaments.html')
 
 @app.route('/matches')
 @login_required
 def matches():
-    return redirect(url_for('dashboard'))
+    try:
+        with SecureDBConnection() as conn:
+            c = conn.cursor()
+            user_id = session['user_id']
+            c.execute('SELECT * FROM game_matches WHERE creator_id = ? OR opponent_id = ? ORDER BY created_at DESC', (user_id, user_id))
+            my_matches = c.fetchall()
+        return render_template('matches.html', matches=my_matches)
+    except:
+        return render_template('matches.html', matches=[])
 
 @app.route('/user_bonuses_page')
 @login_required
 def user_bonuses_page():
-    return redirect(url_for('dashboard'))
+    return render_template('bonuses.html')
 
 @app.route('/referrals')
 @login_required
@@ -708,17 +716,48 @@ def referrals():
 @app.route('/friends')
 @login_required
 def friends():
-    return redirect(url_for('dashboard'))
+    try:
+        with SecureDBConnection() as conn:
+            c = conn.cursor()
+            user_id = session['user_id']
+            # Get users referred by current user
+            c.execute('SELECT username, created_at, balance FROM users WHERE referred_by = ?', (user_id,))
+            friends_list = c.fetchall()
+        return render_template('friends.html', friends=friends_list)
+    except:
+        return render_template('friends.html', friends=[])
 
 @app.route('/leaderboard')
 @login_required
 def leaderboard():
-    return redirect(url_for('home'))
+    try:
+        with SecureDBConnection() as conn:
+            c = conn.cursor()
+            # Top earners
+            c.execute('SELECT username, total_earnings, wins, losses FROM users WHERE username != "admin" ORDER BY total_earnings DESC LIMIT 10')
+            top_earners = c.fetchall()
+            # Top winners
+            c.execute('SELECT username, wins, losses, total_earnings FROM users WHERE username != "admin" ORDER BY wins DESC LIMIT 10')
+            top_winners = c.fetchall()
+        return render_template('leaderboard.html', top_earners=top_earners, top_winners=top_winners)
+    except:
+        return render_template('leaderboard.html', top_earners=[], top_winners=[])
 
 @app.route('/match_history')
 @login_required
 def match_history():
-    return redirect(url_for('dashboard'))
+    try:
+        with SecureDBConnection() as conn:
+            c = conn.cursor()
+            user_id = session['user_id']
+            # Get all user transactions and matches
+            c.execute('SELECT * FROM transactions WHERE user_id = ? ORDER BY created_at DESC LIMIT 50', (user_id,))
+            transactions = c.fetchall()
+            c.execute('SELECT * FROM game_matches WHERE creator_id = ? OR opponent_id = ? ORDER BY created_at DESC LIMIT 20', (user_id, user_id))
+            matches = c.fetchall()
+        return render_template('match_history.html', transactions=transactions, matches=matches)
+    except:
+        return render_template('match_history.html', transactions=[], matches=[])
 
 @app.route('/profile')
 @login_required
@@ -1029,12 +1068,12 @@ def alert_admin_deposit():
 @app.route('/support_chat')
 @login_required
 def support_chat():
-    return redirect(url_for('dashboard'))
+    return render_template('support.html')
 
 @app.route('/fpl_battles')
 @login_required
 def fpl_battles():
-    return redirect(url_for('dashboard'))
+    return render_template('fpl_battles.html')
 
 @app.route('/create_match', methods=['POST'])
 @login_required

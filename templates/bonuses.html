@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card">
+    <h2>🎁 Bonuses & Rewards</h2>
+    
+    <div class="card" style="background: linear-gradient(135deg, rgba(40,167,69,0.1), rgba(40,167,69,0.05)); border-left: 4px solid #28a745;">
+        <h3 style="color: #28a745;">Daily Login Bonus</h3>
+        <p>Claim KSh 50 every day just for logging in!</p>
+        <button onclick="claimDailyBonus()" class="btn" style="background: #28a745; color: white;">
+            🎁 Claim Daily Bonus
+        </button>
+    </div>
+    
+    <div class="card" style="background: linear-gradient(135deg, rgba(255,193,7,0.1), rgba(255,193,7,0.05)); border-left: 4px solid #ffc107;">
+        <h3 style="color: #ffc107;">Referral Bonuses</h3>
+        <p>Earn KSh 50 for each friend you refer + 4% of their losses!</p>
+        <a href="{{ url_for('referrals') }}" class="btn" style="background: #ffc107; color: #000;">
+            👥 View Referrals
+        </a>
+    </div>
+    
+    <div class="card" style="background: linear-gradient(135deg, rgba(23,162,184,0.1), rgba(23,162,184,0.05)); border-left: 4px solid #17a2b8;">
+        <h3 style="color: #17a2b8;">Deposit Bonuses</h3>
+        <p>Get bonus funds on your first deposit!</p>
+        <a href="{{ url_for('wallet') }}" class="btn" style="background: #17a2b8; color: white;">
+            💰 Make Deposit
+        </a>
+    </div>
+</div>
+
+<script>
+function claimDailyBonus() {
+    fetch('/claim_daily_bonus', {method: 'POST'})
+    .then(r => r.json())
+    .then(d => {
+        alert(d.message);
+        if (d.success) {
+            location.reload();
+        }
+    })
+    .catch(e => alert('Error claiming bonus'));
+}
+</script>
+{% endblock %}
