@@ -1421,16 +1421,25 @@ def fpl_battles():
             c = conn.cursor()
             user_id = session['user_id']
             
-            # Check if user has FPL team registered
-            c.execute('SELECT fpl_team_id, fpl_team_name FROM users WHERE id = ?', (user_id,))
+            # Check if user has FPL team registered - get all user data
+            c.execute('SELECT * FROM users WHERE id = ?', (user_id,))
             user_data = c.fetchone()
             
             fpl_team_id = None
             fpl_team_name = None
             
-            if user_data and len(user_data) > 5:
-                fpl_team_id = user_data[5] if len(user_data) > 5 else None
-                fpl_team_name = user_data[6] if len(user_data) > 6 else None
+            if user_data:
+                # Try to get FPL data from the user record
+                try:
+                    # Check if columns exist and get data
+                    c.execute('SELECT fpl_team_id, fpl_team_name FROM users WHERE id = ?', (user_id,))
+                    fpl_data = c.fetchone()
+                    if fpl_data:
+                        fpl_team_id = fpl_data[0]
+                        fpl_team_name = fpl_data[1]
+                except:
+                    # Columns might not exist yet
+                    pass
             
             # Get active FPL battles
             c.execute('SELECT * FROM game_matches WHERE game_type = "fpl_battles" AND status = "open" ORDER BY created_at DESC LIMIT 10')
@@ -1440,7 +1449,8 @@ def fpl_battles():
                              fpl_team_id=fpl_team_id, 
                              fpl_team_name=fpl_team_name,
                              fpl_matches=fpl_matches)
-    except:
+    except Exception as e:
+        print(f"FPL battles error: {e}")
         return render_template('fpl_battles.html', fpl_team_id=None, fpl_team_name=None, fpl_matches=[])
 
 @app.route('/register_fpl_team', methods=['POST'])
