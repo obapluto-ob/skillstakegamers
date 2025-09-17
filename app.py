@@ -571,12 +571,11 @@ def wallet():
 @app.route('/quick_matches')
 @login_required
 def quick_matches():
-    # Fixed games data with correct icon paths
     games = [
         {
             'id': 'fifa_mobile',
             'name': 'FIFA Mobile',
-            'image': '/static/icons/gamepad.svg',
+            'image': 'https://cdn2.unrealengine.com/egs-fifa-mobile-carousel-desktop-1248x702-1248x702-8c5e2e8b1f7c.jpg',
             'min_bet': 50,
             'max_bet': 1000,
             'modes': [
@@ -588,13 +587,25 @@ def quick_matches():
         {
             'id': 'efootball',
             'name': 'eFootball',
-            'image': '/static/icons/trophy.svg',
+            'image': 'https://cdn.cloudflare.steamstatic.com/steam/apps/1665460/header.jpg',
             'min_bet': 50,
             'max_bet': 1000,
             'modes': [
                 {'id': 'online_match', 'name': 'Online Match', 'description': '1v1 competitive'},
                 {'id': 'quick_match', 'name': 'Quick Match', 'description': 'Fast gameplay'},
                 {'id': 'ranked', 'name': 'Ranked Match', 'description': 'Competitive ranking'}
+            ]
+        },
+        {
+            'id': 'fpl_battles',
+            'name': 'FPL Battles',
+            'image': 'https://fantasy.premierleague.com/static/libsass/plfpl/dist/img/badges/badge_logo_80.png',
+            'min_bet': 100,
+            'max_bet': 2000,
+            'modes': [
+                {'id': 'h2h_fpl', 'name': 'Head to Head', 'description': 'Fantasy team vs team'},
+                {'id': 'classic_league', 'name': 'Classic League', 'description': 'Season-long competition'},
+                {'id': 'draft', 'name': 'Draft', 'description': 'Draft unique players'}
             ]
         }
     ]
@@ -617,7 +628,7 @@ def games_page():
         {
             'id': 'fifa_mobile',
             'name': 'FIFA Mobile',
-            'image': 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=200&h=120&fit=crop',
+            'image': 'https://cdn2.unrealengine.com/egs-fifa-mobile-carousel-desktop-1248x702-1248x702-8c5e2e8b1f7c.jpg',
             'min_bet': 50,
             'max_bet': 1000,
             'modes': ['Head to Head', 'VS Attack', 'Manager Mode']
@@ -625,10 +636,18 @@ def games_page():
         {
             'id': 'efootball',
             'name': 'eFootball',
-            'image': 'https://images.unsplash.com/photo-1431324155629-1a6deb1dec8d?w=200&h=120&fit=crop',
+            'image': 'https://cdn.cloudflare.steamstatic.com/steam/apps/1665460/header.jpg',
             'min_bet': 50,
             'max_bet': 1000,
             'modes': ['Online Match', 'Quick Match', 'Ranked']
+        },
+        {
+            'id': 'fpl_battles',
+            'name': 'FPL Battles',
+            'image': 'https://fantasy.premierleague.com/static/libsass/plfpl/dist/img/badges/badge_logo_80.png',
+            'min_bet': 100,
+            'max_bet': 2000,
+            'modes': ['Head to Head', 'Classic League', 'Draft']
         }
     ]
     return render_template('games.html', games=games)
