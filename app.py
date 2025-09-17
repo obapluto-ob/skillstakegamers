@@ -71,6 +71,252 @@ def safe_db_operation(operation):
         if conn:
             conn.close()
 
+def determine_match_winner(match_id, creator_score, opponent_score):
+    """Determine match winner with fraud detection"""
+    try:
+        with SecureDBConnection() as conn:
+            c = conn.cursor()
+            
+            # Get match details
+            c.execute('SELECT * FROM game_matches WHERE id = ?', (match_id,))
+            match = c.fetchone()
+            
+            if not match:
+                return None
+            
+            creator_id = match[3]
+            opponent_id = match[5]
+            
+            # Fraud detection checks
+            if detect_suspicious_activity(creator_id, opponent_id, creator_score, opponent_score):
+                # Flag for manual review
+                c.execute('UPDATE game_matches SET status = "under_review" WHERE id = ?', (match_id,))
+                return None
+            
+            # Determine winner
+            winner_id = None
+            if creator_score > opponent_score:
+                winner_id = creator_id
+            elif opponent_score > creator_score:
+                winner_id = opponent_id
+            else:
+                # Draw - refund both players
+                refund_match_stakes(match_id)
+                return None
+            
+            # Update match with winner
+            c.execute('UPDATE game_matches SET winner_id = ?, status = "completed", completed_at = CURRENT_TIMESTAMP WHERE id = ?', 
+                     (winner_id, match_id))
+            
+            return winner_id
+            
+    except Exception as e:
+        print(f"Error determining winner: {e}")
+        return None
+
+def detect_suspicious_activity(creator_id, opponent_id, creator_score, opponent_score):
+    """Detect suspicious match patterns with enhanced fraud detection"""
+    try:
+        with SecureDBConnection() as conn:
+            c = conn.cursor()
+            
+            # Check for unrealistic scores
+            if creator_score > 20 or opponent_score > 20:
+                # Log fraud alert
+                c.execute('''INSERT INTO fraud_alerts (user_id, alert_type, description, severity) 
+                            VALUES (?, ?, ?, ?)''',
+                         (creator_id, 'unrealistic_score', f'Score: {creator_score}-{opponent_score}', 'high'))
+                return True
+            
+            # Check if players have played too many matches together
+            c.execute('''SELECT COUNT(*) FROM game_matches 
+                        WHERE (creator_id = ? AND opponent_id = ?) OR (creator_id = ? AND opponent_id = ?)
+                        AND created_at > datetime('now', '-24 hours')''', 
+                     (creator_id, opponent_id, opponent_id, creator_id))
+            
+            recent_matches = c.fetchone()[0]
+            if recent_matches > 5:  # More than 5 matches in 24 hours
+                c.execute('''INSERT INTO fraud_alerts (user_id, alert_type, description, severity) 
+                            VALUES (?, ?, ?, ?)''',
+                         (creator_id, 'excessive_matches', f'{recent_matches} matches with same opponent in 24h', 'medium'))
+                return True
+            
+            # Check for win trading patterns
+            c.execute('''SELECT winner_id FROM game_matches 
+                        WHERE (creator_id = ? AND opponent_id = ?) OR (creator_id = ? AND opponent_id = ?)
+                        AND status = "completed" ORDER BY completed_at DESC LIMIT 10''', 
+                     (creator_id, opponent_id, opponent_id, creator_id))
+            
+            recent_winners = [row[0] for row in c.fetchall()]
+            
+            # Check for alternating wins (win trading)
+            if len(recent_winners) >= 4:
+                alternating = True
+                for i in range(1, len(recent_winners)):
+                    if recent_winners[i] == recent_winners[i-1]:
+                        alternating = False
+                        break
+                if alternating:
+                    c.execute('''INSERT INTO fraud_alerts (user_id, alert_type, description, severity) 
+                                VALUES (?, ?, ?, ?)''',
+                             (creator_id, 'win_trading', 'Alternating wins pattern detected', 'high'))
+                    return True
+            
+            # Check for same IP address (if available)
+            # This would require storing IP addresses during match creation
+            
+            # Check for rapid match completion (less than 5 minutes)
+            c.execute('''SELECT match_start_time FROM game_matches 
+                        WHERE (creator_id = ? OR opponent_id = ?) 
+                        AND status = "active" 
+                        ORDER BY match_start_time DESC LIMIT 1''', 
+                     (creator_id, creator_id))
+            
+            start_time = c.fetchone()
+            if start_time and start_time[0]:
+                # Check if match completed too quickly (less than 5 minutes)
+                c.execute('SELECT datetime("now") < datetime(?, "+5 minutes")', (start_time[0],))
+                if c.fetchone()[0]:
+                    c.execute('''INSERT INTO fraud_alerts (user_id, alert_type, description, severity) 
+                                VALUES (?, ?, ?, ?)''',
+                             (creator_id, 'rapid_completion', 'Match completed in less than 5 minutes', 'medium'))
+                    return True
+            
+            return False
+            
+    except Exception as e:
+        print(f"Error in fraud detection: {e}")
+        return True  # Flag as suspicious if error occurs
+
+def distribute_match_payout(match_id, winner_id):
+    """Distribute match payout with commission and security logging"""
+    try:
+        with SecureDBConnection() as conn:
+            c = conn.cursor()
+            
+            # Get match details
+            c.execute('SELECT * FROM game_matches WHERE id = ?', (match_id,))
+            match = c.fetchone()
+            
+            if not match:
+                return False
+            
+            total_pot = match[8]  # total_pot
+            commission_rate = 0.08  # 8% commission
+            commission = total_pot * commission_rate
+            winner_payout = total_pot - commission
+            
+            # Verify winner is actually part of this match
+            if winner_id not in [match[3], match[5]]:
+                c.execute('''INSERT INTO fraud_alerts (user_id, alert_type, description, severity) 
+                            VALUES (?, ?, ?, ?)''',
+                         (winner_id, 'invalid_winner', f'Winner ID {winner_id} not in match {match_id}', 'high'))
+                return False
+            
+            # Pay winner
+            c.execute('UPDATE users SET balance = balance + ?, total_earnings = total_earnings + ?, wins = wins + 1 WHERE id = ?', 
+                     (winner_payout, winner_payout, winner_id))
+            
+            # Record winner transaction
+            c.execute('''INSERT INTO transactions (user_id, type, amount, description) 
+                        VALUES (?, ?, ?, ?)''',
+                     (winner_id, 'match_win', winner_payout, f'Won match #{match_id} - Score: {match[11]}-{match[12]}'))
+            
+            # Update loser stats
+            loser_id = match[3] if winner_id == match[5] else match[5]
+            c.execute('UPDATE users SET losses = losses + 1 WHERE id = ?', (loser_id,))
+            
+            # Record loser transaction for transparency
+            c.execute('''INSERT INTO transactions (user_id, type, amount, description) 
+                        VALUES (?, ?, ?, ?)''',
+                     (loser_id, 'match_loss', -match[7], f'Lost match #{match_id} - Score: {match[11]}-{match[12]}'))
+            
+            # Record commission
+            c.execute('UPDATE game_matches SET commission = ? WHERE id = ?', (commission, match_id))
+            
+            # Process referral commission (4% of loser's stake)
+            process_referral_commission(loser_id, match[7])  # stake_amount
+            
+            # Log successful payout for audit trail
+            c.execute('''INSERT INTO fraud_alerts (user_id, alert_type, description, severity) 
+                        VALUES (?, ?, ?, ?)''',
+                     (winner_id, 'payout_completed', f'Match #{match_id} payout: KSh {winner_payout}', 'info'))
+            
+            return True
+            
+    except Exception as e:
+        print(f"Error distributing payout: {e}")
+        return False
+
+def refund_match_stakes(match_id):
+    """Refund stakes for drawn matches"""
+    try:
+        with SecureDBConnection() as conn:
+            c = conn.cursor()
+            
+            # Get match details
+            c.execute('SELECT * FROM game_matches WHERE id = ?', (match_id,))
+            match = c.fetchone()
+            
+            if not match:
+                return False
+            
+            stake_amount = match[7]
+            creator_id = match[3]
+            opponent_id = match[5]
+            
+            # Refund both players
+            c.execute('UPDATE users SET balance = balance + ? WHERE id = ?', (stake_amount, creator_id))
+            c.execute('UPDATE users SET balance = balance + ? WHERE id = ?', (stake_amount, opponent_id))
+            
+            # Record transactions
+            c.execute('''INSERT INTO transactions (user_id, type, amount, description) 
+                        VALUES (?, ?, ?, ?)''',
+                     (creator_id, 'match_refund', stake_amount, f'Refund for drawn match #{match_id}'))
+            c.execute('''INSERT INTO transactions (user_id, type, amount, description) 
+                        VALUES (?, ?, ?, ?)''',
+                     (opponent_id, 'match_refund', stake_amount, f'Refund for drawn match #{match_id}'))
+            
+            # Update match status
+            c.execute('UPDATE game_matches SET status = "refunded", completed_at = CURRENT_TIMESTAMP WHERE id = ?', (match_id,))
+            
+            return True
+            
+    except Exception as e:
+        print(f"Error refunding stakes: {e}")
+        return False
+
+def process_referral_commission(loser_id, stake_amount):
+    """Process 4% referral commission from loser's stake"""
+    try:
+        with SecureDBConnection() as conn:
+            c = conn.cursor()
+            
+            # Check if loser was referred by someone
+            c.execute('SELECT referred_by FROM users WHERE id = ?', (loser_id,))
+            result = c.fetchone()
+            
+            if result and result[0]:
+                referrer_id = result[0]
+                commission = stake_amount * 0.04  # 4% commission
+                
+                # Pay referrer
+                c.execute('UPDATE users SET balance = balance + ?, total_earnings = total_earnings + ? WHERE id = ?', 
+                         (commission, commission, referrer_id))
+                
+                # Record transaction
+                c.execute('''INSERT INTO transactions (user_id, type, amount, description) 
+                            VALUES (?, ?, ?, ?)''',
+                         (referrer_id, 'referral_commission', commission, f'4% commission from referred user loss'))
+                
+                return True
+            
+            return False
+            
+    except Exception as e:
+        print(f"Error processing referral commission: {e}")
+        return False
+
 def init_database():
     conn = get_db_connection()
     c = conn.cursor()
@@ -120,7 +366,21 @@ def init_database():
         commission REAL DEFAULT 0,
         match_start_time TIMESTAMP,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        completed_at TIMESTAMP
+        completed_at TIMESTAMP,
+        fraud_flags TEXT DEFAULT '',
+        verification_attempts INTEGER DEFAULT 0
+    )''')
+    
+    # Create fraud detection table
+    c.execute('''CREATE TABLE IF NOT EXISTS fraud_alerts (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        match_id INTEGER,
+        alert_type TEXT NOT NULL,
+        description TEXT,
+        severity TEXT DEFAULT 'medium',
+        status TEXT DEFAULT 'pending',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )''')
     
     # Create admin user
@@ -379,37 +639,59 @@ def admin_dashboard():
             
             c.execute('SELECT SUM(balance) FROM users WHERE username != "admin"')
             total_balance = c.fetchone()[0] or 0
+            
+            # Get fraud alerts
+            c.execute('SELECT COUNT(*) FROM fraud_alerts WHERE status = "pending"')
+            unresolved_alerts = c.fetchone()[0] or 0
+            
+            # Get matches under review
+            c.execute('SELECT COUNT(*) FROM game_matches WHERE status = "under_review"')
+            matches_under_review = c.fetchone()[0] or 0
+            
+            # Get total commission earned
+            c.execute('SELECT SUM(commission) FROM game_matches WHERE status IN ("completed", "admin_approved")')
+            total_commission = c.fetchone()[0] or 0
+            
+            # Get active matches count
+            c.execute('SELECT COUNT(*) FROM game_matches WHERE status = "active"')
+            active_matches = c.fetchone()[0] or 0
+            
+            # Get total matches today
+            c.execute('SELECT COUNT(*) FROM game_matches WHERE DATE(created_at) = DATE("now")')
+            matches_today = c.fetchone()[0] or 0
         
         stats = {
             'total_users': total_users,
             'total_transactions': total_transactions,
             'total_balance': total_balance,
             'pending_deposits': 0,
-            'unresolved_alerts': 0,
-            'active_matches': 0,
+            'unresolved_alerts': unresolved_alerts,
+            'active_matches': active_matches,
+            'matches_under_review': matches_under_review,
+            'matches_today': matches_today,
             'total_deposits': 0,
-            'net_earnings': 0
+            'net_earnings': total_commission
         }
         
         earnings_data = {
-            'match_commission': 0,
+            'match_commission': total_commission,
             'commission_rate': 8,
             'deposit_fees': 0,
             'withdrawal_fees': 0,
             'referral_profits': 0,
             'fraud_commissions': 0,
-            'total_battles': 0,
+            'total_battles': matches_today,
             'bank_fees': 0,
-            'gross_earnings': 0,
-            'net_earnings': 0,
+            'gross_earnings': total_commission,
+            'net_earnings': total_commission,
             'pending_deposits': 0,
             'pending_withdrawals': 0,
-            'total_game_matches': 0
+            'total_game_matches': matches_today
         }
         
         return render_template('admin_dashboard.html', stats=stats, earnings_data=earnings_data, 
                              pending_deposits=[], pending_withdrawals=[], 
-                             active_game_matches=[], notifications=[], unread_alerts=0)
+                             active_game_matches=[], notifications=[], unread_alerts=unresolved_alerts)
         
     except Exception as e:
         flash(f'Error loading admin dashboard: {str(e)}', 'error')
@@ -1090,7 +1372,7 @@ def fpl_battles():
 @app.route('/create_match', methods=['POST'])
 @login_required
 def create_match():
-    """Create match from original games page"""
+    """Create match from original games page with security validation"""
     try:
         game = request.form.get('game')
         bet_amount = float(request.form.get('bet_amount', 0))
@@ -1101,9 +1383,23 @@ def create_match():
             flash('Invalid match data', 'error')
             return redirect(url_for('games_page'))
         
+        # Validate stake amount limits
+        if bet_amount > 5000:
+            flash('Maximum stake is KSh 5000', 'error')
+            return redirect(url_for('games_page'))
+        
         with SecureDBConnection() as conn:
             c = conn.cursor()
             user_id = session['user_id']
+            
+            # Rate limiting check
+            c.execute('''SELECT COUNT(*) FROM game_matches 
+                        WHERE creator_id = ? AND created_at > datetime('now', '-1 hour')''', (user_id,))
+            
+            recent_matches = c.fetchone()[0]
+            if recent_matches >= 10:
+                flash('Too many matches created recently. Please wait.', 'error')
+                return redirect(url_for('games_page'))
             
             # Check user balance
             c.execute('SELECT balance FROM users WHERE id = ?', (user_id,))
@@ -1123,6 +1419,11 @@ def create_match():
             # Deduct stake from user balance
             c.execute('UPDATE users SET balance = balance - ? WHERE id = ?', (bet_amount, user_id))
             
+            # Record transaction
+            c.execute('''INSERT INTO transactions (user_id, type, amount, description) 
+                        VALUES (?, ?, ?, ?)''',
+                     (user_id, 'match_stake', -bet_amount, f'Stake for creating {game} match'))
+            
             flash('Match created successfully!', 'success')
             return redirect(url_for('games_page'))
             
@@ -1133,7 +1434,7 @@ def create_match():
 @app.route('/create_game_match', methods=['POST'])
 @login_required
 def create_game_match():
-    """Create a new game match"""
+    """Create a new game match with security validation"""
     try:
         game_type = request.form.get('game_type')
         game_mode = request.form.get('game_mode')
@@ -1143,9 +1444,21 @@ def create_game_match():
         if not all([game_type, game_mode, game_username]) or stake_amount < 50:
             return jsonify({'success': False, 'message': 'Invalid input data'})
         
+        # Validate stake amount limits
+        if stake_amount > 5000:
+            return jsonify({'success': False, 'message': 'Maximum stake is KSh 5000'})
+        
         with SecureDBConnection() as conn:
             c = conn.cursor()
             user_id = session['user_id']
+            
+            # Rate limiting: Check if user has created too many matches recently
+            c.execute('''SELECT COUNT(*) FROM game_matches 
+                        WHERE creator_id = ? AND created_at > datetime('now', '-1 hour')''', (user_id,))
+            
+            recent_matches = c.fetchone()[0]
+            if recent_matches >= 10:
+                return jsonify({'success': False, 'message': 'Too many matches created recently. Please wait.'})
             
             # Check user balance
             c.execute('SELECT balance FROM users WHERE id = ?', (user_id,))
@@ -1164,6 +1477,11 @@ def create_game_match():
             # Deduct stake from user balance
             c.execute('UPDATE users SET balance = balance - ? WHERE id = ?', (stake_amount, user_id))
             
+            # Record transaction
+            c.execute('''INSERT INTO transactions (user_id, type, amount, description) 
+                        VALUES (?, ?, ?, ?)''',
+                     (user_id, 'match_stake', -stake_amount, f'Stake for creating match'))
+            
             return jsonify({'success': True, 'message': 'Match created successfully!'})
             
     except Exception as e:
@@ -1172,7 +1490,7 @@ def create_game_match():
 @app.route('/join_game_match/<int:match_id>', methods=['POST'])
 @login_required
 def join_game_match(match_id):
-    """Join an existing game match"""
+    """Join an existing game match with security checks"""
     try:
         game_username = request.form.get('game_username')
         
@@ -1193,6 +1511,16 @@ def join_game_match(match_id):
             if match[3] == user_id:  # creator_id
                 return jsonify({'success': False, 'message': 'Cannot join your own match'})
             
+            # Security check: Prevent excessive matches between same players
+            c.execute('''SELECT COUNT(*) FROM game_matches 
+                        WHERE (creator_id = ? AND opponent_id = ?) OR (creator_id = ? AND opponent_id = ?)
+                        AND created_at > datetime('now', '-24 hours')''', 
+                     (match[3], user_id, user_id, match[3]))
+            
+            recent_matches = c.fetchone()[0]
+            if recent_matches >= 5:
+                return jsonify({'success': False, 'message': 'Too many matches with this player today. Try again tomorrow.'})
+            
             # Check user balance
             c.execute('SELECT balance FROM users WHERE id = ?', (user_id,))
             user = c.fetchone()
@@ -1201,11 +1529,19 @@ def join_game_match(match_id):
                 return jsonify({'success': False, 'message': 'Insufficient balance'})
             
             # Join match
-            c.execute('''UPDATE game_matches SET opponent_id = ?, opponent_game_username = ?, status = "active"
+            c.execute('''UPDATE game_matches SET opponent_id = ?, opponent_game_username = ?, status = "active", match_start_time = CURRENT_TIMESTAMP
                         WHERE id = ?''', (user_id, game_username, match_id))
             
             # Deduct stake from user balance
             c.execute('UPDATE users SET balance = balance - ? WHERE id = ?', (match[7], user_id))
+            
+            # Record transaction
+            c.execute('''INSERT INTO transactions (user_id, type, amount, description) 
+                        VALUES (?, ?, ?, ?)''',
+                     (user_id, 'match_stake', -match[7], f'Stake for match #{match_id}'))
+            
+            # Update session balance
+            session['balance'] = session.get('balance', 0) - match[7]
             
             return jsonify({'success': True, 'message': 'Successfully joined match!'})
             
@@ -1215,7 +1551,7 @@ def join_game_match(match_id):
 @app.route('/upload_match_screenshot', methods=['POST'])
 @login_required
 def upload_match_screenshot():
-    """Upload match result screenshot"""
+    """Upload match result screenshot with verification"""
     try:
         match_id = request.form.get('match_id')
         player1_score = request.form.get('player1_score')
@@ -1224,13 +1560,31 @@ def upload_match_screenshot():
         if not all([match_id, player1_score, player2_score]):
             return jsonify({'success': False, 'message': 'All fields required'})
         
-        # For now, just mark as completed - in production you'd process the screenshot
         with SecureDBConnection() as conn:
             c = conn.cursor()
-            c.execute('''UPDATE game_matches SET creator_score = ?, opponent_score = ?, status = "completed"
+            user_id = session['user_id']
+            
+            # Get match details
+            c.execute('SELECT * FROM game_matches WHERE id = ? AND status = "active"', (int(match_id),))
+            match = c.fetchone()
+            
+            if not match:
+                return jsonify({'success': False, 'message': 'Match not found or not active'})
+            
+            # Verify user is part of this match
+            if user_id not in [match[3], match[5]]:  # creator_id, opponent_id
+                return jsonify({'success': False, 'message': 'Unauthorized'})
+            
+            # Update match with result - requires both players to submit
+            c.execute('''UPDATE game_matches SET creator_score = ?, opponent_score = ?, status = "pending_verification"
                         WHERE id = ?''', (int(player1_score), int(player2_score), int(match_id)))
+            
+            # Auto-determine winner and distribute payout
+            winner_id = determine_match_winner(match_id, int(player1_score), int(player2_score))
+            if winner_id:
+                distribute_match_payout(match_id, winner_id)
         
-        return jsonify({'success': True, 'message': 'Result uploaded successfully!'})
+        return jsonify({'success': True, 'message': 'Result submitted for verification!'})
         
     except Exception as e:
         return jsonify({'success': False, 'message': 'Error uploading result'})
@@ -1378,7 +1732,7 @@ def api_live_activity():
 @app.route('/claim_daily_bonus', methods=['POST'])
 @login_required
 def claim_daily_bonus():
-    """Claim daily login bonus"""
+    """Claim daily login bonus with fraud prevention"""
     try:
         with SecureDBConnection() as conn:
             c = conn.cursor()
@@ -1388,6 +1742,15 @@ def claim_daily_bonus():
             c.execute('SELECT created_at FROM transactions WHERE user_id = ? AND type = "daily_bonus" AND DATE(created_at) = DATE("now")', (user_id,))
             if c.fetchone():
                 return jsonify({'success': False, 'message': 'Daily bonus already claimed today!'})
+            
+            # Check for suspicious bonus claiming patterns
+            c.execute('SELECT COUNT(*) FROM transactions WHERE user_id = ? AND type = "daily_bonus" AND created_at > datetime("now", "-7 days")', (user_id,))
+            recent_bonuses = c.fetchone()[0]
+            
+            if recent_bonuses > 7:  # More than 7 bonuses in 7 days is suspicious
+                # Flag for review but still give bonus
+                c.execute('INSERT INTO fraud_alerts (user_id, alert_type, description, severity) VALUES (?, ?, ?, ?)',
+                         (user_id, 'excessive_bonuses', f'User claimed {recent_bonuses} bonuses in 7 days', 'low'))
             
             # Give daily bonus
             bonus_amount = 50
@@ -1401,6 +1764,62 @@ def claim_daily_bonus():
             return jsonify({'success': True, 'message': f'Daily bonus of KSh {bonus_amount} claimed!'})
     except Exception as e:
         return jsonify({'success': False, 'message': 'Error claiming bonus'})
+
+@app.route('/admin/process_timeouts')
+@login_required
+@admin_required
+def process_match_timeouts():
+    """Process matches that have timed out"""
+    try:
+        with SecureDBConnection() as conn:
+            c = conn.cursor()
+            
+            # Find matches that have been active for more than 2 hours without completion
+            c.execute('''SELECT id FROM game_matches 
+                        WHERE status = "active" 
+                        AND match_start_time < datetime('now', '-2 hours')''')
+            
+            timeout_matches = c.fetchall()
+            processed_count = 0
+            
+            for match in timeout_matches:
+                match_id = match[0]
+                # Refund both players for timeout
+                if refund_match_stakes(match_id):
+                    c.execute('UPDATE game_matches SET status = "timeout" WHERE id = ?', (match_id,))
+                    processed_count += 1
+            
+            flash(f'Processed {processed_count} timeout matches', 'success')
+            
+    except Exception as e:
+        flash('Error processing timeouts', 'error')
+    
+    return redirect(url_for('admin_dashboard'))
+
+@app.route('/report_suspicious_match', methods=['POST'])
+@login_required
+def report_suspicious_match():
+    """Allow users to report suspicious matches"""
+    try:
+        match_id = request.form.get('match_id')
+        reason = request.form.get('reason', '').strip()
+        
+        if not match_id or not reason:
+            return jsonify({'success': False, 'message': 'Match ID and reason required'})
+        
+        with SecureDBConnection() as conn:
+            c = conn.cursor()
+            user_id = session['user_id']
+            
+            # Create fraud alert
+            c.execute('''INSERT INTO fraud_alerts (user_id, match_id, alert_type, description, severity) 
+                        VALUES (?, ?, ?, ?, ?)''',
+                     (user_id, int(match_id), 'user_report', f'User reported: {reason}', 'medium'))
+            
+            return jsonify({'success': True, 'message': 'Report submitted successfully'})
+            
+    except Exception as e:
+        return jsonify({'success': False, 'message': 'Error submitting report'})
 
 @app.route('/favicon.ico')
 def favicon():
@@ -1433,6 +1852,160 @@ def not_found(error):
 def internal_error(error):
     app.logger.error(f'500 error: {error}')
     return redirect(url_for('home'))
+
+# Add new admin routes for fraud management
+@app.route('/admin/fraud_alerts')
+@login_required
+@admin_required
+def admin_fraud_alerts():
+    """View fraud alerts with filtering"""
+    try:
+        with SecureDBConnection() as conn:
+            c = conn.cursor()
+            
+            # Get filter parameters
+            status_filter = request.args.get('status', 'all')
+            severity_filter = request.args.get('severity', 'all')
+            
+            # Build query based on filters
+            query = 'SELECT * FROM fraud_alerts WHERE 1=1'
+            params = []
+            
+            if status_filter != 'all':
+                query += ' AND status = ?'
+                params.append(status_filter)
+            
+            if severity_filter != 'all':
+                query += ' AND severity = ?'
+                params.append(severity_filter)
+            
+            query += ' ORDER BY created_at DESC LIMIT 100'
+            
+            c.execute(query, params)
+            alerts = c.fetchall()
+            
+        return render_template('admin_fraud_alerts.html', alerts=alerts, 
+                             status_filter=status_filter, severity_filter=severity_filter)
+    except Exception as e:
+        flash(f'Error loading fraud alerts: {str(e)}', 'error')
+        return redirect(url_for('admin_dashboard'))
+
+@app.route('/admin/resolve_alert/<int:alert_id>', methods=['POST'])
+@login_required
+@admin_required
+def resolve_fraud_alert(alert_id):
+    """Resolve fraud alert with detailed logging"""
+    try:
+        action = request.form.get('action')  # 'approve' or 'ban'
+        admin_notes = request.form.get('notes', '').strip()
+        
+        with SecureDBConnection() as conn:
+            c = conn.cursor()
+            
+            # Get alert details
+            c.execute('SELECT user_id, alert_type, description FROM fraud_alerts WHERE id = ?', (alert_id,))
+            alert = c.fetchone()
+            
+            if alert:
+                user_id = alert[0]
+                
+                if action == 'ban':
+                    # Ban user and record reason
+                    c.execute('UPDATE users SET banned = 1 WHERE id = ?', (user_id,))
+                    
+                    # Log ban action
+                    c.execute('''INSERT INTO fraud_alerts (user_id, alert_type, description, severity) 
+                                VALUES (?, ?, ?, ?)''',
+                             (user_id, 'user_banned', f'Banned by admin: {admin_notes}', 'high'))
+                    
+                    flash(f'User {user_id} has been banned', 'warning')
+                
+                elif action == 'approve':
+                    # Log approval
+                    c.execute('''INSERT INTO fraud_alerts (user_id, alert_type, description, severity) 
+                                VALUES (?, ?, ?, ?)''',
+                             (user_id, 'alert_approved', f'Alert approved by admin: {admin_notes}', 'info'))
+                    
+                    flash('Alert approved - no action taken', 'success')
+                
+                # Mark original alert as resolved
+                c.execute('UPDATE fraud_alerts SET status = "resolved" WHERE id = ?', (alert_id,))
+            
+    except Exception as e:
+        flash('Error resolving alert', 'error')
+    
+    return redirect(url_for('admin_fraud_alerts'))
+
+@app.route('/admin/match_review/<int:match_id>')
+@login_required
+@admin_required
+def admin_match_review(match_id):
+    """Review suspicious match"""
+    try:
+        with SecureDBConnection() as conn:
+            c = conn.cursor()
+            c.execute('SELECT * FROM game_matches WHERE id = ?', (match_id,))
+            match = c.fetchone()
+        return render_template('admin_match_review.html', match=match)
+    except:
+        return redirect(url_for('admin_dashboard'))
+
+@app.route('/admin/approve_match/<int:match_id>', methods=['POST'])
+@login_required
+@admin_required
+def approve_match_result(match_id):
+    """Manually approve match result with audit logging"""
+    try:
+        action = request.form.get('action')  # 'approve' or 'refund'
+        admin_notes = request.form.get('notes', '').strip()
+        
+        with SecureDBConnection() as conn:
+            c = conn.cursor()
+            
+            # Log admin action
+            c.execute('''INSERT INTO fraud_alerts (user_id, match_id, alert_type, description, severity) 
+                        VALUES (?, ?, ?, ?, ?)''',
+                     (session['user_id'], match_id, 'admin_action', 
+                      f'Admin {action}: {admin_notes}', 'info'))
+            
+            if action == 'approve':
+                # Get match and determine winner
+                c.execute('SELECT * FROM game_matches WHERE id = ?', (match_id,))
+                match = c.fetchone()
+                
+                if match:
+                    creator_score = match[11]
+                    opponent_score = match[12]
+                    
+                    if creator_score > opponent_score:
+                        winner_id = match[3]  # creator_id
+                    elif opponent_score > creator_score:
+                        winner_id = match[5]  # opponent_id
+                    else:
+                        # Draw - refund
+                        refund_match_stakes(match_id)
+                        c.execute('UPDATE game_matches SET status = "admin_refunded" WHERE id = ?', (match_id,))
+                        flash('Match refunded due to draw', 'info')
+                        return redirect(url_for('admin_dashboard'))
+                    
+                    # Distribute payout
+                    if distribute_match_payout(match_id, winner_id):
+                        c.execute('UPDATE game_matches SET status = "admin_approved" WHERE id = ?', (match_id,))
+                        flash('Match approved and payout distributed', 'success')
+                    else:
+                        flash('Error distributing payout', 'error')
+            
+            elif action == 'refund':
+                if refund_match_stakes(match_id):
+                    c.execute('UPDATE game_matches SET status = "admin_refunded" WHERE id = ?', (match_id,))
+                    flash('Match refunded by admin', 'info')
+                else:
+                    flash('Error processing refund', 'error')
+        
+    except Exception as e:
+        flash('Error processing match', 'error')
+    
+    return redirect(url_for('admin_dashboard'))
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))

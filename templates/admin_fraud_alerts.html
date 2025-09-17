@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fraud Alerts - SkillStake Admin</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="{{ url_for('admin_dashboard') }}">
+                <i class="fas fa-shield-alt me-2"></i>SkillStake Admin
+            </a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link" href="{{ url_for('admin_dashboard') }}">Dashboard</a>
+                <a class="nav-link" href="{{ url_for('logout') }}">Logout</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h4><i class="fas fa-exclamation-triangle text-warning me-2"></i>Fraud Alerts</h4>
+                    </div>
+                    <div class="card-body">
+                        {% if alerts %}
+                            <div class="table-responsive">
+                                <table class="table table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>ID</th>
+                                            <th>User ID</th>
+                                            <th>Alert Type</th>
+                                            <th>Description</th>
+                                            <th>Severity</th>
+                                            <th>Status</th>
+                                            <th>Created</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for alert in alerts %}
+                                        <tr>
+                                            <td>{{ alert[0] }}</td>
+                                            <td>{{ alert[1] }}</td>
+                                            <td>
+                                                <span class="badge bg-info">{{ alert[3] }}</span>
+                                            </td>
+                                            <td>{{ alert[4] }}</td>
+                                            <td>
+                                                {% if alert[5] == 'high' %}
+                                                    <span class="badge bg-danger">High</span>
+                                                {% elif alert[5] == 'medium' %}
+                                                    <span class="badge bg-warning">Medium</span>
+                                                {% else %}
+                                                    <span class="badge bg-secondary">Low</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if alert[6] == 'pending' %}
+                                                    <span class="badge bg-warning">Pending</span>
+                                                {% else %}
+                                                    <span class="badge bg-success">Resolved</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>{{ alert[7] }}</td>
+                                            <td>
+                                                {% if alert[6] == 'pending' %}
+                                                    <form method="POST" action="{{ url_for('resolve_fraud_alert', alert_id=alert[0]) }}" class="d-inline">
+                                                        <button type="submit" name="action" value="approve" class="btn btn-sm btn-success">
+                                                            <i class="fas fa-check"></i> Approve
+                                                        </button>
+                                                        <button type="submit" name="action" value="ban" class="btn btn-sm btn-danger">
+                                                            <i class="fas fa-ban"></i> Ban User
+                                                        </button>
+                                                    </form>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        {% else %}
+                            <div class="text-center py-4">
+                                <i class="fas fa-check-circle text-success fa-3x mb-3"></i>
+                                <h5>No fraud alerts</h5>
+                                <p class="text-muted">All systems are running smoothly!</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
