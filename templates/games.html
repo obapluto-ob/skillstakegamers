@@ -3,31 +3,253 @@
 {% block content %}
 <div class="card">
     <h1>🎮 Games Hub</h1>
-    <p>Select a game and create a match to compete for real money!</p>
+    <p>Choose your gaming experience and compete for real money!</p>
+    <div style="margin-top: 1rem; padding: 1rem; background: rgba(23, 162, 184, 0.1); border-radius: 8px; text-align: center;">
+        <strong>💰 Your Balance: KSh {{ "%.0f"|format(session.balance if session.balance else 0) }}</strong>
+    </div>
 </div>
 
-<div class="games-grid">
-    {% for game in games %}
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 2rem; margin-top: 2rem;">
+    
+    <!-- FIFA Mobile Card -->
     <div class="game-card">
-        <img src="{{ game.image }}" alt="{{ game.name }}" style="width: 100%; height: 120px; object-fit: cover; border-radius: 8px; margin-bottom: 1rem;">
-        <h3>{{ game.name }}</h3>
-        <p>Min: KSh {{ game.min_bet }} | Max: KSh {{ game.max_bet }}</p>
-        <p style="color: #666; font-size: 0.9rem;">Your Balance: KSh {{ "%.0f"|format(session.balance if session.balance else 0) }}</p>
+        <div class="game-header">
+            <div class="game-icon">🎮</div>
+            <h2>FIFA Mobile</h2>
+        </div>
         
-        <form method="POST" action="{{ url_for('create_match') }}" style="margin-top: 1rem;">
-            <input type="hidden" name="game" value="{{ game.id }}">
-            <input type="number" name="bet_amount" placeholder="Bet Amount" min="{{ game.min_bet }}" max="{{ game.max_bet }}" required style="width: 100%; padding: 0.5rem; margin-bottom: 0.5rem; background: #333; color: white; border: 1px solid #555; border-radius: 4px;">
-            <select name="game_mode" required style="width: 100%; padding: 0.5rem; margin-bottom: 0.5rem; background: #333; color: white; border: 1px solid #555; border-radius: 4px;">
-                <option value="">Select Mode</option>
-                {% for mode in game.modes %}
-                <option value="{{ mode }}">{{ mode }}</option>
-                {% endfor %}
+        <div class="game-image">
+            <div style="background: linear-gradient(135deg, #1e3a8a, #3b82f6); height: 120px; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: white; font-size: 2rem; font-weight: bold;">FIFA MOBILE</div>
+        </div>
+        
+        <div class="game-info">
+            <p><strong>Stake Range:</strong> KSh 50 - 1,000</p>
+            <div class="game-modes">
+                <span class="mode-tag">Head to Head</span>
+                <span class="mode-tag">VS Attack</span>
+                <span class="mode-tag">Manager Mode</span>
+            </div>
+        </div>
+        
+        <form method="POST" action="{{ url_for('create_match') }}" class="match-form">
+            <input type="hidden" name="game" value="fifa_mobile">
+            <input type="number" name="bet_amount" placeholder="Enter stake amount" min="50" max="1000" required class="stake-input">
+            <select name="game_mode" required class="mode-select">
+                <option value="">Select Game Mode</option>
+                <option value="Head to Head">Head to Head</option>
+                <option value="VS Attack">VS Attack</option>
+                <option value="Manager Mode">Manager Mode</option>
             </select>
-            <button type="submit" class="btn" style="width: 100%;">Create Match</button>
+            <button type="submit" class="create-btn">🎮 Create FIFA Match</button>
         </form>
     </div>
-    {% endfor %}
+    
+    <!-- eFootball Card -->
+    <div class="game-card">
+        <div class="game-header">
+            <div class="game-icon">⚽</div>
+            <h2>eFootball</h2>
+        </div>
+        
+        <div class="game-image">
+            <div style="background: linear-gradient(135deg, #059669, #10b981); height: 120px; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: white; font-size: 2rem; font-weight: bold;">eFOOTBALL</div>
+        </div>
+        
+        <div class="game-info">
+            <p><strong>Stake Range:</strong> KSh 50 - 1,000</p>
+            <div class="game-modes">
+                <span class="mode-tag">Online Match</span>
+                <span class="mode-tag">Quick Match</span>
+                <span class="mode-tag">Ranked</span>
+            </div>
+        </div>
+        
+        <form method="POST" action="{{ url_for('create_match') }}" class="match-form">
+            <input type="hidden" name="game" value="efootball">
+            <input type="number" name="bet_amount" placeholder="Enter stake amount" min="50" max="1000" required class="stake-input">
+            <select name="game_mode" required class="mode-select">
+                <option value="">Select Game Mode</option>
+                <option value="Online Match">Online Match</option>
+                <option value="Quick Match">Quick Match</option>
+                <option value="Ranked">Ranked Match</option>
+            </select>
+            <button type="submit" class="create-btn">⚽ Create eFootball Match</button>
+        </form>
+    </div>
+    
+    <!-- FPL Battles Card -->
+    <div class="game-card">
+        <div class="game-header">
+            <div class="game-icon">🏆</div>
+            <h2>FPL Battles</h2>
+        </div>
+        
+        <div class="game-image">
+            <div style="background: linear-gradient(135deg, #7c3aed, #a855f7); height: 120px; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: white; font-size: 1.8rem; font-weight: bold;">FPL BATTLES</div>
+        </div>
+        
+        <div class="game-info">
+            <p><strong>Stake Range:</strong> KSh 100 - 2,000</p>
+            <div class="game-modes">
+                <span class="mode-tag">Head to Head</span>
+                <span class="mode-tag">Gameweek Battle</span>
+                <span class="mode-tag">Classic League</span>
+            </div>
+        </div>
+        
+        <div style="text-align: center; margin: 1rem 0;">
+            <a href="{{ url_for('fpl_battles') }}" class="create-btn" style="text-decoration: none; display: block;">🏆 Join FPL Battles</a>
+        </div>
+    </div>
+    
 </div>
 
+<!-- How It Works Section -->
+<div class="card" style="margin-top: 2rem;">
+    <h2>🎯 How It Works</h2>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 2rem; margin-top: 1.5rem;">
+        
+        <div style="text-align: center; padding: 1rem;">
+            <div style="font-size: 3rem; margin-bottom: 1rem;">1️⃣</div>
+            <h3>Create Match</h3>
+            <p>Choose your game, set stake amount, and create a match. Your stake is held securely.</p>
+        </div>
+        
+        <div style="text-align: center; padding: 1rem;">
+            <div style="font-size: 3rem; margin-bottom: 1rem;">2️⃣</div>
+            <h3>Play Game</h3>
+            <p>Wait for opponent to join, then play your match using your game username.</p>
+        </div>
+        
+        <div style="text-align: center; padding: 1rem;">
+            <div style="font-size: 3rem; margin-bottom: 1rem;">3️⃣</div>
+            <h3>Win & Earn</h3>
+            <p>Upload result screenshot. Winner gets 92% of total pot instantly!</p>
+        </div>
+        
+    </div>
+</div>
+
+<style>
+.game-card {
+    background: #1a1a1a;
+    border: 1px solid #333;
+    border-radius: 12px;
+    padding: 1.5rem;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.game-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+    border-color: #555;
+}
+
+.game-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.game-icon {
+    font-size: 2rem;
+    margin-right: 0.5rem;
+}
+
+.game-header h2 {
+    margin: 0;
+    color: #fff;
+}
+
+.game-image {
+    margin-bottom: 1rem;
+}
+
+.game-info {
+    margin-bottom: 1.5rem;
+}
+
+.game-info p {
+    margin: 0.5rem 0;
+    color: #ccc;
+}
+
+.game-modes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+.mode-tag {
+    background: rgba(23, 162, 184, 0.2);
+    color: #17a2b8;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    border: 1px solid #17a2b8;
+}
+
+.match-form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.stake-input, .mode-select {
+    padding: 0.75rem;
+    background: #333;
+    color: white;
+    border: 1px solid #555;
+    border-radius: 6px;
+    font-size: 1rem;
+}
+
+.stake-input:focus, .mode-select:focus {
+    outline: none;
+    border-color: #17a2b8;
+    box-shadow: 0 0 0 2px rgba(23, 162, 184, 0.2);
+}
+
+.create-btn {
+    padding: 0.75rem 1rem;
+    background: linear-gradient(135deg, #17a2b8, #138496);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 1rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.create-btn:hover {
+    background: linear-gradient(135deg, #138496, #117a8b);
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(23, 162, 184, 0.3);
+}
+
+.card {
+    background: #1a1a1a;
+    border: 1px solid #333;
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+}
+
+@media (max-width: 768px) {
+    .game-card {
+        padding: 1rem;
+    }
+    
+    .game-modes {
+        justify-content: center;
+    }
+    
+    .mode-tag {
+        font-size: 0.7rem;
+    }
+}
+</style>
 
 {% endblock %}

@@ -979,33 +979,8 @@ def quick_matches():
 @app.route('/games', endpoint='games')
 @login_required
 def games_page():
-    games = [
-        {
-            'id': 'fifa_mobile',
-            'name': 'FIFA Mobile',
-            'image': 'https://via.placeholder.com/300x200/1e3a8a/ffffff?text=FIFA+Mobile',
-            'min_bet': 50,
-            'max_bet': 1000,
-            'modes': ['Head to Head', 'VS Attack', 'Manager Mode']
-        },
-        {
-            'id': 'efootball',
-            'name': 'eFootball',
-            'image': 'https://via.placeholder.com/300x200/059669/ffffff?text=eFootball',
-            'min_bet': 50,
-            'max_bet': 1000,
-            'modes': ['Online Match', 'Quick Match', 'Ranked']
-        },
-        {
-            'id': 'fpl_battles',
-            'name': 'FPL Battles',
-            'image': 'https://via.placeholder.com/300x200/7c3aed/ffffff?text=FPL+Battles',
-            'min_bet': 100,
-            'max_bet': 2000,
-            'modes': ['Head to Head', 'Classic League', 'Draft']
-        }
-    ]
-    return render_template('games.html', games=games)
+    # The new template doesn't need games data as it's built-in
+    return render_template('games.html')
 
 @app.route('/tournaments')
 @login_required
