@@ -2,10 +2,10 @@
 
 {% block content %}
 <div class="card">
-    <h1>🎮 Games Hub</h1>
-    <p>Choose your gaming experience and compete for real money!</p>
+    <h1>Games Hub</h1>
+    <p>Choose your gaming experience and compete for real money</p>
     <div style="margin-top: 1rem; padding: 1rem; background: rgba(23, 162, 184, 0.1); border-radius: 8px; text-align: center;">
-        <strong>💰 Your Balance: KSh {{ "%.0f"|format(session.balance if session.balance else 0) }}</strong>
+        <strong>Your Balance: KSh {{ "%.0f"|format(session.balance if session.balance else 0) }}</strong>
     </div>
 </div>
 
@@ -14,12 +14,12 @@
     <!-- FIFA Mobile Card -->
     <div class="game-card">
         <div class="game-header">
-            <div class="game-icon">🎮</div>
+            <div class="game-icon-pro"></div>
             <h2>FIFA Mobile</h2>
         </div>
         
         <div class="game-image">
-            <div style="background: linear-gradient(135deg, #1e3a8a, #3b82f6); height: 120px; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: white; font-size: 2rem; font-weight: bold;">FIFA MOBILE</div>
+            <img src="https://logoeps.com/wp-content/uploads/2013/03/fifa-vector-logo.png" alt="FIFA Mobile" style="width: 100%; height: 120px; object-fit: contain; border-radius: 8px; background: linear-gradient(135deg, #1e3a8a, #3b82f6); padding: 20px;">
         </div>
         
         <div class="game-info">
@@ -33,6 +33,7 @@
         
         <form method="POST" action="{{ url_for('create_match') }}" class="match-form">
             <input type="hidden" name="game" value="fifa_mobile">
+            <input type="text" name="game_username" placeholder="Your FIFA Mobile username" required class="stake-input" style="margin-bottom: 0.75rem;">
             <input type="number" name="bet_amount" placeholder="Enter stake amount" min="50" max="1000" required class="stake-input">
             <select name="game_mode" required class="mode-select">
                 <option value="">Select Game Mode</option>
@@ -40,19 +41,19 @@
                 <option value="VS Attack">VS Attack</option>
                 <option value="Manager Mode">Manager Mode</option>
             </select>
-            <button type="submit" class="create-btn">🎮 Create FIFA Match</button>
+            <button type="submit" class="create-btn">Create FIFA Match</button>
         </form>
     </div>
     
     <!-- eFootball Card -->
     <div class="game-card">
         <div class="game-header">
-            <div class="game-icon">⚽</div>
+            <div class="game-icon-pro"></div>
             <h2>eFootball</h2>
         </div>
         
         <div class="game-image">
-            <div style="background: linear-gradient(135deg, #059669, #10b981); height: 120px; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: white; font-size: 2rem; font-weight: bold;">eFOOTBALL</div>
+            <img src="https://logos-world.net/wp-content/uploads/2021/09/eFootball-Logo.png" alt="eFootball" style="width: 100%; height: 120px; object-fit: contain; border-radius: 8px; background: linear-gradient(135deg, #059669, #10b981); padding: 20px;">
         </div>
         
         <div class="game-info">
@@ -66,6 +67,7 @@
         
         <form method="POST" action="{{ url_for('create_match') }}" class="match-form">
             <input type="hidden" name="game" value="efootball">
+            <input type="text" name="game_username" placeholder="Your eFootball username" required class="stake-input" style="margin-bottom: 0.75rem;">
             <input type="number" name="bet_amount" placeholder="Enter stake amount" min="50" max="1000" required class="stake-input">
             <select name="game_mode" required class="mode-select">
                 <option value="">Select Game Mode</option>
@@ -73,19 +75,19 @@
                 <option value="Quick Match">Quick Match</option>
                 <option value="Ranked">Ranked Match</option>
             </select>
-            <button type="submit" class="create-btn">⚽ Create eFootball Match</button>
+            <button type="submit" class="create-btn">Create eFootball Match</button>
         </form>
     </div>
     
     <!-- FPL Battles Card -->
     <div class="game-card">
         <div class="game-header">
-            <div class="game-icon">🏆</div>
+            <div class="game-icon-pro"></div>
             <h2>FPL Battles</h2>
         </div>
         
         <div class="game-image">
-            <div style="background: linear-gradient(135deg, #7c3aed, #a855f7); height: 120px; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: white; font-size: 1.8rem; font-weight: bold;">FPL BATTLES</div>
+            <img src="https://fantasy.premierleague.com/static/media/pl-main-logo.313bb6e2.png" alt="Fantasy Premier League" style="width: 100%; height: 120px; object-fit: contain; border-radius: 8px; background: linear-gradient(135deg, #7c3aed, #a855f7); padding: 20px;">
         </div>
         
         <div class="game-info">
@@ -98,7 +100,7 @@
         </div>
         
         <div style="text-align: center; margin: 1rem 0;">
-            <a href="{{ url_for('fpl_battles') }}" class="create-btn" style="text-decoration: none; display: block;">🏆 Join FPL Battles</a>
+            <a href="{{ url_for('fpl_battles') }}" class="create-btn" style="text-decoration: none; display: block;">Join FPL Battles</a>
         </div>
     </div>
     
@@ -106,23 +108,23 @@
 
 <!-- How It Works Section -->
 <div class="card" style="margin-top: 2rem;">
-    <h2>🎯 How It Works</h2>
+    <h2>How It Works</h2>
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 2rem; margin-top: 1.5rem;">
         
         <div style="text-align: center; padding: 1rem;">
-            <div style="font-size: 3rem; margin-bottom: 1rem;">1️⃣</div>
+            <div class="step-number">1</div>
             <h3>Create Match</h3>
             <p>Choose your game, set stake amount, and create a match. Your stake is held securely.</p>
         </div>
         
         <div style="text-align: center; padding: 1rem;">
-            <div style="font-size: 3rem; margin-bottom: 1rem;">2️⃣</div>
+            <div class="step-number">2</div>
             <h3>Play Game</h3>
             <p>Wait for opponent to join, then play your match using your game username.</p>
         </div>
         
         <div style="text-align: center; padding: 1rem;">
-            <div style="font-size: 3rem; margin-bottom: 1rem;">3️⃣</div>
+            <div class="step-number">3</div>
             <h3>Win & Earn</h3>
             <p>Upload result screenshot. Winner gets 92% of total pot instantly!</p>
         </div>
@@ -151,9 +153,26 @@
     margin-bottom: 1rem;
 }
 
-.game-icon {
-    font-size: 2rem;
+.game-icon-pro {
+    width: 20px;
+    height: 20px;
+    background: #17a2b8;
+    border-radius: 3px;
     margin-right: 0.5rem;
+}
+
+.step-number {
+    width: 50px;
+    height: 50px;
+    background: linear-gradient(135deg, #17a2b8, #138496);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    font-weight: bold;
+    margin: 0 auto 1rem auto;
 }
 
 .game-header h2 {

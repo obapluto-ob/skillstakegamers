@@ -110,7 +110,11 @@ document.getElementById('fplRegistrationForm')?.addEventListener('submit', funct
     .then(data => {
         if (data.success) {
             alert(data.message);
-            location.reload();
+            if (data.redirect) {
+                window.location.href = '/fpl_battles';
+            } else {
+                location.reload();
+            }
         } else {
             alert(data.message);
         }

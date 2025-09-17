@@ -1479,7 +1479,8 @@ def register_fpl_team():
                 return jsonify({
                     'success': True, 
                     'message': f'FPL team registered: {team_name}',
-                    'team_name': team_name
+                    'team_name': team_name,
+                    'redirect': True
                 })
             else:
                 return jsonify({'success': False, 'message': 'Invalid FPL Team ID'})
@@ -1535,15 +1536,15 @@ def get_fpl_gameweek_score(team_id):
 @app.route('/create_match', methods=['POST'])
 @login_required
 def create_match():
-    """Create match from original games page with security validation"""
+    """Create match from games page with security validation"""
     try:
         game = request.form.get('game')
         bet_amount = float(request.form.get('bet_amount', 0))
         game_mode = request.form.get('game_mode')
-        verification_type = request.form.get('verification_type', 'ocr')
+        game_username = request.form.get('game_username', '').strip()
         
-        if not all([game, game_mode]) or bet_amount < 50:
-            flash('Invalid match data', 'error')
+        if not all([game, game_mode, game_username]) or bet_amount < 50:
+            flash('All fields are required and minimum stake is KSh 50', 'error')
             return redirect(url_for('games'))
         
         # Validate stake amount limits
@@ -1577,7 +1578,9 @@ def create_match():
             c.execute('''INSERT INTO game_matches 
                         (game_type, game_mode, creator_id, creator_game_username, stake_amount, total_pot, status)
                         VALUES (?, ?, ?, ?, ?, ?, "open")''',
-                     (game, game_mode, user_id, session['username'], bet_amount, total_pot))
+                     (game, game_mode, user_id, game_username, bet_amount, total_pot))
+            
+            match_id = c.lastrowid
             
             # Deduct stake from user balance
             c.execute('UPDATE users SET balance = balance - ? WHERE id = ?', (bet_amount, user_id))
@@ -1590,8 +1593,8 @@ def create_match():
             # Update session balance
             session['balance'] = session.get('balance', 0) - bet_amount
             
-            flash('Match created successfully!', 'success')
-            return redirect(url_for('games'))
+            flash(f'Match #{match_id} created successfully! Waiting for opponent to join.', 'success')
+            return redirect(url_for('matches'))
             
     except Exception as e:
         flash('Error creating match', 'error')
