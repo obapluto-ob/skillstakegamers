@@ -1857,6 +1857,15 @@ def get_fpl_team_data(team_id):
             if picks_response.status_code == 200:
                 picks_data = picks_response.json()
                 current_gw = prev_gw
+            else:
+                # If both fail, try to get latest available picks
+                for gw in range(current_gw - 2, 0, -1):
+                    fallback_response = session.get(f'https://fantasy.premierleague.com/api/entry/{team_id}/event/{gw}/picks/', 
+                                                   headers=headers, timeout=15)
+                    if fallback_response.status_code == 200:
+                        picks_data = fallback_response.json()
+                        current_gw = gw
+                        break
         
         # Process player data
         elements = bootstrap_data['elements']
@@ -1868,6 +1877,21 @@ def get_fpl_team_data(team_id):
             element['team_name'] = teams.get(element['team'], 'Unknown')
             element['element_type_name'] = element_types.get(element['element_type'], 'Unknown')
         
+        # Ensure we have picks data
+        if not picks_data.get('picks'):
+            return jsonify({
+                'success': False, 
+                'message': f'No squad data found for gameweek {current_gw}. Team may not have set lineup yet.'
+            })
+        
+        # Validate picks data structure
+        picks = picks_data.get('picks', [])
+        if len(picks) < 15:
+            return jsonify({
+                'success': False, 
+                'message': f'Incomplete squad data (only {len(picks)} players found). Please check your FPL team.'
+            })
+        
         return jsonify({
             'success': True,
             'team_data': {
@@ -1877,8 +1901,13 @@ def get_fpl_team_data(team_id):
                 'summary_event_points': team_data.get('summary_event_points', 0),
                 'last_deadline_total_transfers': team_data.get('last_deadline_total_transfers', 0),
                 'current_event': current_gw,
-                'picks': picks_data.get('picks', []),
-                'elements': elements
+                'picks': picks,
+                'elements': elements,
+                'debug_info': {
+                    'picks_count': len(picks),
+                    'gameweek': current_gw,
+                    'api_status': 'success'
+                }
             }
         })
         

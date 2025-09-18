@@ -166,18 +166,33 @@ document.getElementById('fplRegistrationForm')?.addEventListener('submit', funct
 // Load Team Data
 function loadTeamData() {
     const teamId = {{ fpl_team_id or 0 }};
+    const loadBtn = event.target;
+    
+    if (!teamId) {
+        alert('No FPL Team ID found. Please register your team first.');
+        return;
+    }
+    
+    loadBtn.textContent = 'Loading...';
+    loadBtn.disabled = true;
     
     fetch(`/get_fpl_team_data/${teamId}`)
     .then(response => response.json())
     .then(data => {
+        console.log('API Response:', data); // Debug log
         if (data.success) {
             displayTeamSquad(data.team_data);
         } else {
-            alert(data.message);
+            alert(data.message || 'Failed to load team data');
         }
     })
     .catch(error => {
-        alert('Error loading team data');
+        console.error('Error:', error);
+        alert('Error loading team data. Please try again.');
+    })
+    .finally(() => {
+        loadBtn.textContent = 'Load Team Squad';
+        loadBtn.disabled = false;
     });
 }
 
@@ -185,6 +200,14 @@ function loadTeamData() {
 function displayTeamSquad(teamData) {
     const squadSection = document.getElementById('teamSquadSection');
     const squadDisplay = document.getElementById('teamSquadDisplay');
+    
+    console.log('Team Data:', teamData); // Debug log
+    
+    if (!teamData.picks || teamData.picks.length === 0) {
+        squadDisplay.innerHTML = '<p style="color: #dc3545; text-align: center; padding: 2rem;">No squad data available. Please check your FPL Team ID.</p>';
+        squadSection.style.display = 'block';
+        return;
+    }
     
     // Group players by position - only starting XI (picks 1-11)
     const startingXI = teamData.picks.slice(0, 11);
@@ -201,6 +224,9 @@ function displayTeamSquad(teamData) {
             });
         }
     });
+    
+    console.log('Positions:', positions); // Debug log
+    console.log('Total players found:', Object.values(positions).reduce((sum, pos) => sum + pos.length, 0));
     
     let html = `
         <div style="background: linear-gradient(135deg, #37003c, #00ff87); padding: 1rem; border-radius: 8px; margin-bottom: 1rem; color: white;">
@@ -224,43 +250,58 @@ function displayTeamSquad(teamData) {
             <!-- Formation Display -->
     `;
     
-    // Real FPL formation positioning
-    const formationRows = [
-        { pos: 4, top: '5%' },   // Forwards at top
-        { pos: 3, top: '35%' },  // Midfielders
-        { pos: 2, top: '65%' },  // Defenders
-        { pos: 1, top: '85%' }   // Goalkeeper at bottom
-    ];
+    // Check if we have players in positions
+    const totalPlayers = Object.values(positions).reduce((sum, pos) => sum + pos.length, 0);
     
-    formationRows.forEach(row => {
-        const players = positions[row.pos] || [];
-        if (players.length > 0) {
-            html += `
-                <div style="position: absolute; top: ${row.top}; left: 0; right: 0; display: flex; justify-content: center; gap: 0.5rem;">
-            `;
-            
-            players.forEach(player => {
-                const captainBadge = player.is_captain ? '(C)' : player.is_vice_captain ? '(VC)' : '';
-                const captainColor = player.is_captain ? '#ffd700' : player.is_vice_captain ? '#c0c0c0' : '#37003c';
-                
+    if (totalPlayers === 0) {
+        html += `
+            <div style="display: flex; align-items: center; justify-content: center; height: 200px; color: white; text-align: center;">
+                <div>
+                    <div style="font-size: 3rem; margin-bottom: 1rem;">⚽</div>
+                    <div style="font-size: 1.2rem; font-weight: bold;">No Squad Data</div>
+                    <div style="font-size: 0.9rem; opacity: 0.8;">Unable to load player information</div>
+                </div>
+            </div>
+        `;
+    } else {
+        // Real FPL formation positioning
+        const formationRows = [
+            { pos: 4, top: '5%' },   // Forwards at top
+            { pos: 3, top: '35%' },  // Midfielders
+            { pos: 2, top: '65%' },  // Defenders
+            { pos: 1, top: '85%' }   // Goalkeeper at bottom
+        ];
+        
+        formationRows.forEach(row => {
+            const players = positions[row.pos] || [];
+            if (players.length > 0) {
                 html += `
-                    <div style="text-align: center; flex: 0 0 auto;">
-                        <div style="background: ${captainColor}; color: white; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 0.6rem; margin-bottom: 0.3rem; box-shadow: 0 2px 4px rgba(0,0,0,0.3); border: 2px solid white;">
-                            ${player.web_name.substring(0, 3).toUpperCase()}
-                        </div>
-                        <div style="background: rgba(255,255,255,0.95); padding: 0.2rem 0.3rem; border-radius: 10px; font-size: 0.6rem; color: #37003c; font-weight: bold; white-space: nowrap; max-width: 60px; overflow: hidden; text-overflow: ellipsis;">
-                            ${player.web_name.length > 8 ? player.web_name.substring(0, 8) + '.' : player.web_name} ${captainBadge}
-                        </div>
-                        <div style="font-size: 0.5rem; color: #37003c; margin-top: 0.1rem; font-weight: bold;">
-                            ${player.total_points}pts
-                        </div>
-                    </div>
+                    <div style="position: absolute; top: ${row.top}; left: 0; right: 0; display: flex; justify-content: center; gap: 0.5rem;">
                 `;
-            });
-            
-            html += '</div>';
-        }
-    });
+                
+                players.forEach(player => {
+                    const captainBadge = player.is_captain ? '(C)' : player.is_vice_captain ? '(VC)' : '';
+                    const captainColor = player.is_captain ? '#ffd700' : player.is_vice_captain ? '#c0c0c0' : '#37003c';
+                    
+                    html += `
+                        <div style="text-align: center; flex: 0 0 auto;">
+                            <div style="background: ${captainColor}; color: white; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 0.6rem; margin-bottom: 0.3rem; box-shadow: 0 2px 4px rgba(0,0,0,0.3); border: 2px solid white;">
+                                ${player.web_name.substring(0, 3).toUpperCase()}
+                            </div>
+                            <div style="background: rgba(255,255,255,0.95); padding: 0.2rem 0.3rem; border-radius: 10px; font-size: 0.6rem; color: #37003c; font-weight: bold; white-space: nowrap; max-width: 60px; overflow: hidden; text-overflow: ellipsis;">
+                                ${player.web_name.length > 8 ? player.web_name.substring(0, 8) + '.' : player.web_name} ${captainBadge}
+                            </div>
+                            <div style="font-size: 0.5rem; color: #37003c; margin-top: 0.1rem; font-weight: bold;">
+                                ${player.total_points}pts
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                html += '</div>';
+            }
+        });
+    }
     
     html += `
         </div>
@@ -272,20 +313,32 @@ function displayTeamSquad(teamData) {
     `;
     
     // Show bench players (picks 12-15)
-    teamData.picks.slice(11, 15).forEach(pick => {
-        const player = teamData.elements.find(p => p.id === pick.element);
-        if (player) {
-            html += `
-                <div style="background: white; padding: 0.4rem; border-radius: 4px; border: 1px solid #ddd; text-align: center; flex: 1; min-width: 60px;">
-                    <div style="font-size: 0.7rem; font-weight: bold; color: #37003c;">${player.web_name.length > 8 ? player.web_name.substring(0, 8) + '.' : player.web_name}</div>
-                    <div style="font-size: 0.6rem; color: #666;">${player.total_points}pts</div>
-                </div>
-            `;
-        }
-    });
+    const benchPicks = teamData.picks.slice(11, 15);
+    console.log('Bench picks:', benchPicks); // Debug log
+    
+    if (benchPicks.length > 0) {
+        benchPicks.forEach(pick => {
+            const player = teamData.elements.find(p => p.id === pick.element);
+            if (player) {
+                html += `
+                    <div style="background: white; padding: 0.4rem; border-radius: 4px; border: 1px solid #ddd; text-align: center; flex: 1; min-width: 60px;">
+                        <div style="font-size: 0.7rem; font-weight: bold; color: #37003c;">${player.web_name.length > 8 ? player.web_name.substring(0, 8) + '.' : player.web_name}</div>
+                        <div style="font-size: 0.6rem; color: #666;">${player.total_points}pts</div>
+                    </div>
+                `;
+            }
+        });
+    } else {
+        html += '<p style="color: #666; font-size: 0.8rem; margin: 0; text-align: center; padding: 1rem;">No bench players available</p>';
+    }
     
     html += `
             </div>
+        </div>
+        
+        <!-- Debug Info -->
+        <div style="background: #e9ecef; padding: 0.5rem; border-radius: 4px; margin-top: 0.5rem; font-size: 0.7rem; color: #666;">
+            <strong>Debug:</strong> ${teamData.debug_info ? `${teamData.debug_info.picks_count} players loaded for GW${teamData.debug_info.gameweek}` : 'No debug info'}
         </div>
         
         <style>
@@ -299,15 +352,6 @@ function displayTeamSquad(teamData) {
             #teamSquadDisplay > div:first-child p {
                 font-size: 0.7rem !important;
             }
-            #teamSquadDisplay .player-circle {
-                width: 35px !important;
-                height: 35px !important;
-                font-size: 0.5rem !important;
-            }
-            #teamSquadDisplay .player-name {
-                font-size: 0.5rem !important;
-                max-width: 50px !important;
-            }
         }
         </style>
     `;
@@ -319,18 +363,33 @@ function displayTeamSquad(teamData) {
 // Check Current Gameweek Score
 function checkCurrentScore() {
     const teamId = {{ fpl_team_id or 0 }};
+    const scoreBtn = event.target;
+    
+    if (!teamId) {
+        alert('No FPL Team ID found. Please register your team first.');
+        return;
+    }
+    
+    scoreBtn.textContent = 'Checking...';
+    scoreBtn.disabled = true;
     
     fetch(`/get_fpl_gameweek_score/${teamId}`)
     .then(response => response.json())
     .then(data => {
+        console.log('Score Response:', data); // Debug log
         if (data.success) {
             alert(`Gameweek ${data.gameweek} Score: ${data.points} points`);
         } else {
-            alert(data.message);
+            alert(data.message || 'Failed to fetch score');
         }
     })
     .catch(error => {
-        alert('Error fetching score');
+        console.error('Score Error:', error);
+        alert('Error fetching score. Please try again.');
+    })
+    .finally(() => {
+        scoreBtn.textContent = 'Check Current Score';
+        scoreBtn.disabled = false;
     });
 }
 
