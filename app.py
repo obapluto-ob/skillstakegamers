@@ -1788,12 +1788,31 @@ def register_fpl_team():
 def get_fpl_team_data(team_id):
     try:
         import requests
+        from requests.adapters import HTTPAdapter
+        from urllib3.util.retry import Retry
         
-        # Get bootstrap data for player info
-        bootstrap_response = requests.get('https://fantasy.premierleague.com/api/bootstrap-static/', timeout=10)
+        # Create session with retry strategy
+        session = requests.Session()
+        retry_strategy = Retry(
+            total=3,
+            backoff_factor=1,
+            status_forcelist=[429, 500, 502, 503, 504]
+        )
+        adapter = HTTPAdapter(max_retries=retry_strategy)
+        session.mount("http://", adapter)
+        session.mount("https://", adapter)
+        
+        # Set proper headers
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        }
+        
+        # Get bootstrap data
+        bootstrap_response = session.get('https://fantasy.premierleague.com/api/bootstrap-static/', 
+                                       headers=headers, timeout=15)
         
         if bootstrap_response.status_code != 200:
-            return jsonify({'success': False, 'message': 'Could not fetch FPL data'})
+            return jsonify({'success': False, 'message': f'FPL API error: {bootstrap_response.status_code}'})
         
         bootstrap_data = bootstrap_response.json()
         
@@ -1804,24 +1823,40 @@ def get_fpl_team_data(team_id):
                 current_gw = event['id']
                 break
         
+        # If no current gameweek, get next one
         if not current_gw:
-            return jsonify({'success': False, 'message': 'No active gameweek found'})
+            for event in bootstrap_data['events']:
+                if event['is_next']:
+                    current_gw = event['id']
+                    break
+        
+        if not current_gw:
+            current_gw = 1  # Fallback to GW1
         
         # Get team data
-        team_response = requests.get(f'https://fantasy.premierleague.com/api/entry/{team_id}/', timeout=10)
+        team_response = session.get(f'https://fantasy.premierleague.com/api/entry/{team_id}/', 
+                                  headers=headers, timeout=15)
         
         if team_response.status_code != 200:
-            return jsonify({'success': False, 'message': 'Could not fetch team data'})
+            return jsonify({'success': False, 'message': f'Invalid FPL Team ID: {team_id}'})
         
         team_data = team_response.json()
         
         # Get team picks for current gameweek
-        picks_response = requests.get(f'https://fantasy.premierleague.com/api/entry/{team_id}/event/{current_gw}/picks/', timeout=10)
+        picks_response = session.get(f'https://fantasy.premierleague.com/api/entry/{team_id}/event/{current_gw}/picks/', 
+                                   headers=headers, timeout=15)
         
-        if picks_response.status_code != 200:
-            return jsonify({'success': False, 'message': 'Could not fetch team picks'})
-        
-        picks_data = picks_response.json()
+        picks_data = {}
+        if picks_response.status_code == 200:
+            picks_data = picks_response.json()
+        else:
+            # Try previous gameweek if current fails
+            prev_gw = max(1, current_gw - 1)
+            picks_response = session.get(f'https://fantasy.premierleague.com/api/entry/{team_id}/event/{prev_gw}/picks/', 
+                                       headers=headers, timeout=15)
+            if picks_response.status_code == 200:
+                picks_data = picks_response.json()
+                current_gw = prev_gw
         
         # Process player data
         elements = bootstrap_data['elements']
@@ -1847,8 +1882,10 @@ def get_fpl_team_data(team_id):
             }
         })
         
+    except requests.exceptions.RequestException as e:
+        return jsonify({'success': False, 'message': 'FPL servers temporarily unavailable. Please try again.'})
     except Exception as e:
-        return jsonify({'success': False, 'message': 'Error fetching FPL data'})
+        return jsonify({'success': False, 'message': 'Unable to load FPL data. Please check your team ID.'})
 
 @app.route('/get_fpl_fixtures/<fixture_type>')
 @login_required
@@ -2206,12 +2243,26 @@ def api_live_fixtures(gameweek):
 def get_fpl_gameweek_score(team_id):
     try:
         import requests
+        from requests.adapters import HTTPAdapter
+        from urllib3.util.retry import Retry
+        
+        # Create session with retry strategy
+        session = requests.Session()
+        retry_strategy = Retry(total=3, backoff_factor=1, status_forcelist=[429, 500, 502, 503, 504])
+        adapter = HTTPAdapter(max_retries=retry_strategy)
+        session.mount("http://", adapter)
+        session.mount("https://", adapter)
+        
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        }
         
         # Get current gameweek
-        bootstrap_response = requests.get('https://fantasy.premierleague.com/api/bootstrap-static/', timeout=10)
+        bootstrap_response = session.get('https://fantasy.premierleague.com/api/bootstrap-static/', 
+                                       headers=headers, timeout=15)
         
         if bootstrap_response.status_code != 200:
-            return jsonify({'success': False, 'message': 'Could not fetch gameweek data'})
+            return jsonify({'success': False, 'message': 'FPL API temporarily unavailable'})
         
         bootstrap_data = bootstrap_response.json()
         current_gw = None
@@ -2222,10 +2273,17 @@ def get_fpl_gameweek_score(team_id):
                 break
         
         if not current_gw:
-            return jsonify({'success': False, 'message': 'No active gameweek found'})
+            for event in bootstrap_data['events']:
+                if event['is_next']:
+                    current_gw = event['id']
+                    break
+        
+        if not current_gw:
+            current_gw = 1
         
         # Get team's gameweek score
-        gw_response = requests.get(f'https://fantasy.premierleague.com/api/entry/{team_id}/event/{current_gw}/picks/', timeout=10)
+        gw_response = session.get(f'https://fantasy.premierleague.com/api/entry/{team_id}/event/{current_gw}/picks/', 
+                                headers=headers, timeout=15)
         
         if gw_response.status_code == 200:
             gw_data = gw_response.json()
@@ -2238,10 +2296,24 @@ def get_fpl_gameweek_score(team_id):
                 'team_id': team_id
             })
         else:
-            return jsonify({'success': False, 'message': 'Could not fetch team score'})
+            # Try getting overall team data as fallback
+            team_response = session.get(f'https://fantasy.premierleague.com/api/entry/{team_id}/', 
+                                      headers=headers, timeout=15)
+            if team_response.status_code == 200:
+                team_data = team_response.json()
+                return jsonify({
+                    'success': True,
+                    'gameweek': current_gw,
+                    'points': team_data.get('summary_event_points', 0),
+                    'team_id': team_id
+                })
+            else:
+                return jsonify({'success': False, 'message': 'Invalid FPL Team ID'})
             
+    except requests.exceptions.RequestException:
+        return jsonify({'success': False, 'message': 'FPL servers busy. Please try again in a moment.'})
     except Exception as e:
-        return jsonify({'success': False, 'message': 'Error fetching FPL data'})
+        return jsonify({'success': False, 'message': 'Unable to fetch team score. Please verify your FPL Team ID.'})
 
 @app.route('/create_match', methods=['POST'])
 @login_required
