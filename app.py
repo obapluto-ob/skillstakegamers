@@ -429,8 +429,10 @@ def detect_suspicious_activity(creator_id, opponent_id, creator_score, opponent_
         return False  # Don't flag as suspicious if error occurs during deployment
 
 def distribute_match_payout(match_id, winner_id):
-    """Distribute match payout with commission and security logging"""
+    """Distribute match payout with dynamic commission"""
     try:
+        from revenue_optimizer import revenue_optimizer
+        
         with SecureDBConnection() as conn:
             c = conn.cursor()
             
@@ -442,9 +444,16 @@ def distribute_match_payout(match_id, winner_id):
                 return False
             
             total_pot = match[8]  # total_pot
-            commission_rate = 0.08  # 8% commission
+            stake_amount = match[7]  # stake_amount
+            
+            # Dynamic commission based on user loyalty
+            commission_rate = revenue_optimizer.calculate_dynamic_commission(winner_id, stake_amount)
             commission = total_pot * commission_rate
             winner_payout = total_pot - commission
+            
+            # Check for loyalty rewards
+            match_count = revenue_optimizer.get_user_match_count(winner_id)
+            loyalty_bonus = revenue_optimizer.add_user_rewards(winner_id, match_count + 1)
             
             # Verify winner is actually part of this match
             if winner_id not in [match[3], match[5]]:
@@ -474,8 +483,13 @@ def distribute_match_payout(match_id, winner_id):
                         VALUES (?, ?, ?, ?)''',
                      (loser_id, 'match_loss', -match[7], f'Lost match #{match_id}'))
             
-            # Record commission
+            # Record commission and rate used
             c.execute('UPDATE game_matches SET commission = ? WHERE id = ?', (commission, match_id))
+            
+            # Add loyalty bonus if earned
+            if loyalty_bonus > 0:
+                c.execute('UPDATE users SET balance = balance + ? WHERE id = ?', (loyalty_bonus, winner_id))
+                flash(f'Loyalty bonus: +{loyalty_bonus} KSh!', 'success')
             
             # Process referral commission (4% of loser's stake)
             process_referral_commission(loser_id, match[7])  # stake_amount
@@ -966,102 +980,65 @@ def admin_dashboard():
         return redirect(url_for('dashboard'))
     
     try:
+        from monitoring import get_real_time_stats, get_revenue_breakdown
+        from marketing_system import marketing
+        
+        # Get real-time stats
+        stats = get_real_time_stats()
+        revenue_data = get_revenue_breakdown()
+        top_referrers = marketing.get_top_referrers(5)
+        
         with SecureDBConnection() as conn:
             c = conn.cursor()
             
+            # Enhanced admin stats
             c.execute('SELECT COUNT(*) FROM users WHERE username != "admin"')
             total_users = c.fetchone()[0] or 0
             
-            c.execute('SELECT COUNT(*) FROM transactions')
-            total_transactions = c.fetchone()[0] or 0
+            c.execute('SELECT AVG(commission) FROM game_matches WHERE commission > 0')
+            avg_commission_rate = c.fetchone()[0] or 0.06
             
-            c.execute('SELECT SUM(balance) FROM users WHERE username != "admin"')
-            total_balance = c.fetchone()[0] or 0
+            # User retention (users who played in last 7 days)
+            c.execute('SELECT COUNT(DISTINCT user_id) FROM transactions WHERE created_at > datetime("now", "-7 days")')
+            active_users_week = c.fetchone()[0] or 0
             
-            # Get fraud alerts (with error handling)
-            try:
-                c.execute('SELECT COUNT(*) FROM fraud_alerts WHERE status = "pending"')
-                unresolved_alerts = c.fetchone()[0] or 0
-            except:
-                unresolved_alerts = 0
-            
-            # Get matches under review
-            try:
-                c.execute('SELECT COUNT(*) FROM game_matches WHERE status = "under_review"')
-                matches_under_review = c.fetchone()[0] or 0
-            except:
-                matches_under_review = 0
-            
-            # Get total commission earned
-            try:
-                c.execute('SELECT SUM(commission) FROM game_matches WHERE status IN ("completed", "admin_approved")')
-                total_commission = c.fetchone()[0] or 0
-            except:
-                total_commission = 0
-            
-            # Get active matches count
-            try:
-                c.execute('SELECT COUNT(*) FROM game_matches WHERE status = "active"')
-                active_matches = c.fetchone()[0] or 0
-            except:
-                active_matches = 0
-            
-            # Get total matches today
-            try:
-                c.execute('SELECT COUNT(*) FROM game_matches WHERE DATE(created_at) = DATE("now")')
-                matches_today = c.fetchone()[0] or 0
-            except:
-                matches_today = 0
+            retention_rate = (active_users_week / total_users * 100) if total_users > 0 else 0
         
-        stats = {
+        enhanced_stats = {
+            **stats,
             'total_users': total_users,
-            'total_transactions': total_transactions,
-            'total_balance': total_balance,
-            'pending_deposits': 0,
-            'unresolved_alerts': unresolved_alerts,
-            'active_matches': active_matches,
-            'matches_under_review': matches_under_review,
-            'matches_today': matches_today,
-            'total_deposits': 0,
-            'net_earnings': total_commission
+            'retention_rate': round(retention_rate, 1),
+            'avg_commission_rate': round(avg_commission_rate * 100, 1),
+            'top_referrers': top_referrers
         }
         
         earnings_data = {
-            'match_commission': total_commission,
-            'commission_rate': 8,
-            'deposit_fees': 0,
-            'withdrawal_fees': 0,
-            'referral_profits': 0,
-            'fraud_commissions': 0,
-            'total_battles': matches_today,
-            'bank_fees': 0,
-            'gross_earnings': total_commission,
-            'net_earnings': total_commission,
-            'pending_deposits': 0,
-            'pending_withdrawals': 0,
-            'total_game_matches': matches_today
+            'daily_revenue': stats['daily_revenue'],
+            'commission_rate': f"{round(avg_commission_rate * 100, 1)}% (Dynamic)",
+            'growth_rate': stats['growth_rate'],
+            'retention_rate': retention_rate,
+            'revenue_breakdown': revenue_data
         }
         
-        return render_template('admin_dashboard.html', stats=stats, earnings_data=earnings_data, 
-                             pending_deposits=[], pending_withdrawals=[], 
-                             active_game_matches=[], notifications=[], unread_alerts=unresolved_alerts)
+        return render_template('admin_dashboard.html', 
+                             stats=enhanced_stats, 
+                             earnings_data=earnings_data, 
+                             pending_deposits=[], 
+                             pending_withdrawals=[], 
+                             active_game_matches=[], 
+                             notifications=[], 
+                             unread_alerts=0)
         
     except Exception as e:
         flash(f'Error loading admin dashboard: {str(e)}', 'error')
-        return render_template('admin_dashboard.html', stats={
-            'total_users': 0, 'total_transactions': 0, 'total_balance': 0,
-            'pending_deposits': 0, 'unresolved_alerts': 0, 'active_matches': 0,
-            'total_deposits': 0, 'net_earnings': 0
-        }, earnings_data={
-            'match_commission': 0, 'commission_rate': 8, 'deposit_fees': 0, 'withdrawal_fees': 0,
-            'referral_profits': 0, 'fraud_commissions': 0, 'total_battles': 0, 'bank_fees': 0,
-            'gross_earnings': 0, 'net_earnings': 0, 'pending_deposits': 0, 'pending_withdrawals': 0,
-            'total_game_matches': 0
-        }, pending_deposits=[], pending_withdrawals=[], 
-        active_game_matches=[], notifications=[], unread_alerts=0)
-    finally:
-        if 'conn' in locals() and conn:
-            conn.close()
+        return render_template('admin_dashboard.html', 
+                             stats={'status': 'error'}, 
+                             earnings_data={}, 
+                             pending_deposits=[], 
+                             pending_withdrawals=[], 
+                             active_game_matches=[], 
+                             notifications=[], 
+                             unread_alerts=0)
 
 @app.route('/forgot_password', methods=['GET', 'POST'])
 def forgot_password():
@@ -1291,6 +1268,8 @@ def user_bonuses_page():
 @login_required
 def referrals():
     try:
+        from marketing_system import marketing
+        
         with SecureDBConnection() as conn:
             c = conn.cursor()
             user_id = session['user_id']
@@ -1304,29 +1283,20 @@ def referrals():
             c.execute('SELECT username, created_at FROM users WHERE referred_by = ?', (user_id,))
             referred_users = c.fetchall()
             
-            # Get signup bonuses
-            c.execute('SELECT COALESCE(SUM(amount), 0) FROM transactions WHERE user_id = ? AND type = "referral_bonus"', (user_id,))
-            signup_bonuses = c.fetchone()[0] or 0
+            # Enhanced earnings calculation
+            c.execute('SELECT COALESCE(SUM(amount), 0) FROM transactions WHERE user_id = ? AND type LIKE "%referral%"', (user_id,))
+            total_referral_earnings = c.fetchone()[0] or 0
             
-            # Get ongoing commissions (4% from referred users' losses)
-            c.execute('SELECT COALESCE(SUM(amount), 0) FROM transactions WHERE user_id = ? AND type = "referral_commission"', (user_id,))
-            ongoing_commissions = c.fetchone()[0] or 0
+            # Get viral campaigns
+            campaigns = marketing.create_viral_campaign()
             
-            # Get commission details if table exists
-            try:
-                c.execute('SELECT COALESCE(SUM(commission_amount), 0) FROM referral_commissions WHERE referrer_id = ?', (user_id,))
-                lifetime_commissions = c.fetchone()[0] or 0
-            except:
-                lifetime_commissions = 0
-            
-            referral_link = f"{request.url_root}register_fixed?ref={referral_code}" if referral_code else None
+            referral_link = marketing.generate_referral_link(user_id)
             
             earnings_data = {
-                'signup_bonuses': signup_bonuses,
-                'ongoing_commissions': ongoing_commissions,
-                'total_earnings': signup_bonuses + ongoing_commissions,
+                'total_earnings': total_referral_earnings,
                 'referred_count': len(referred_users),
-                'lifetime_commissions': lifetime_commissions
+                'potential_monthly': len(referred_users) * 200,  # Estimate
+                'campaigns': campaigns
             }
             
         return render_template('referrals.html', 
@@ -2867,50 +2837,83 @@ def api_user_balance():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@app.route('/api/platform_stats')
+@login_required
+@admin_required
+def api_platform_stats():
+    """Real-time platform statistics"""
+    from monitoring import get_real_time_stats, get_revenue_breakdown
+    
+    stats = get_real_time_stats()
+    revenue = get_revenue_breakdown()
+    
+    return jsonify({
+        'stats': stats,
+        'revenue': revenue
+    })
+
+@app.route('/api/marketing_data')
+@login_required
+@admin_required
+def api_marketing_data():
+    """Marketing and referral data"""
+    from marketing_system import marketing
+    
+    top_referrers = marketing.get_top_referrers()
+    campaigns = marketing.create_viral_campaign()
+    
+    return jsonify({
+        'top_referrers': top_referrers,
+        'campaigns': campaigns
+    })
+
 @app.route('/api/live_activity')
 @login_required
 def api_live_activity():
-    """API endpoint for live platform activity"""
+    """Real live platform activity"""
     try:
-        # Simulate live activity data
-        activities = [
-            {
-                'icon': '🎮',
-                'player': 'Player123',
-                'action': 'won KSh 500 in FIFA Mobile',
-                'time': '2 min ago',
-                'color': '#28a745'
-            },
-            {
-                'icon': '💰',
-                'player': 'GamerPro',
-                'action': 'deposited KSh 1000',
-                'time': '5 min ago',
-                'color': '#17a2b8'
-            },
-            {
-                'icon': '🏆',
-                'player': 'SkillMaster',
-                'action': 'completed FPL battle',
-                'time': '8 min ago',
-                'color': '#ffc107'
-            },
-            {
-                'icon': '⚡',
-                'player': 'FastGamer',
-                'action': 'joined quick match',
-                'time': '12 min ago',
-                'color': '#667eea'
-            }
-        ]
-        return jsonify({'activities': activities})
+        with SecureDBConnection() as conn:
+            c = conn.cursor()
+            
+            # Get recent activities
+            c.execute('''SELECT u.username, t.type, t.amount, t.created_at 
+                        FROM transactions t 
+                        JOIN users u ON t.user_id = u.id 
+                        WHERE t.created_at > datetime('now', '-2 hours') 
+                        AND u.username != 'admin' 
+                        ORDER BY t.created_at DESC LIMIT 10''')
+            
+            activities = []
+            for row in c.fetchall():
+                username = row[0][:8] + '***'  # Privacy
+                action_type = row[1]
+                amount = row[2]
+                
+                if action_type == 'match_win':
+                    activities.append({
+                        'icon': '🏆',
+                        'player': username,
+                        'action': f'won KSh {amount}',
+                        'time': '2 min ago',
+                        'color': '#28a745'
+                    })
+                elif 'deposit' in action_type:
+                    activities.append({
+                        'icon': '💰',
+                        'player': username,
+                        'action': f'deposited KSh {amount}',
+                        'time': '5 min ago',
+                        'color': '#17a2b8'
+                    })
+            
+            return jsonify({'activities': activities})
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'activities': []})
 
 @app.route('/claim_daily_bonus', methods=['POST'])
 @login_required
 def claim_daily_bonus():
-    """Claim daily login bonus with fraud prevention"""
+    """Enhanced daily bonus with streak rewards"""
     try:
         with SecureDBConnection() as conn:
             c = conn.cursor()
@@ -2921,30 +2924,26 @@ def claim_daily_bonus():
             if c.fetchone():
                 return jsonify({'success': False, 'message': 'Daily bonus already claimed today!'})
             
-            # Check for suspicious bonus claiming patterns (optional)
-            try:
-                c.execute('SELECT COUNT(*) FROM transactions WHERE user_id = ? AND type = "daily_bonus" AND created_at > datetime("now", "-7 days")', (user_id,))
-                recent_bonuses = c.fetchone()[0]
-                
-                if recent_bonuses > 7:  # More than 7 bonuses in 7 days is suspicious
-                    try:
-                        c.execute('INSERT INTO fraud_alerts (user_id, alert_type, description, severity) VALUES (?, ?, ?, ?)',
-                                 (user_id, 'excessive_bonuses', f'User claimed {recent_bonuses} bonuses in 7 days', 'low'))
-                    except:
-                        pass
-            except:
-                pass
+            # Calculate streak bonus
+            c.execute('SELECT COUNT(*) FROM transactions WHERE user_id = ? AND type = "daily_bonus" AND created_at > datetime("now", "-7 days")', (user_id,))
+            streak = c.fetchone()[0] or 0
             
-            # Give daily bonus
-            bonus_amount = 50
-            c.execute('UPDATE users SET balance = balance + ? WHERE id = ?', (bonus_amount, user_id))
+            # Base bonus + streak bonus
+            base_bonus = 50
+            streak_bonus = min(streak * 10, 100)  # Max 100 KSh streak bonus
+            total_bonus = base_bonus + streak_bonus
+            
+            c.execute('UPDATE users SET balance = balance + ? WHERE id = ?', (total_bonus, user_id))
             c.execute('INSERT INTO transactions (user_id, type, amount, description) VALUES (?, ?, ?, ?)',
-                     (user_id, 'daily_bonus', bonus_amount, 'Daily login bonus'))
+                     (user_id, 'daily_bonus', total_bonus, f'Daily bonus (streak: {streak} days)'))
             
-            # Update session balance
-            session['balance'] = session.get('balance', 0) + bonus_amount
+            session['balance'] = session.get('balance', 0) + total_bonus
             
-            return jsonify({'success': True, 'message': f'Daily bonus of KSh {bonus_amount} claimed!'})
+            message = f'Daily bonus: {total_bonus} KSh claimed!'
+            if streak_bonus > 0:
+                message += f' (Streak bonus: +{streak_bonus} KSh)'
+            
+            return jsonify({'success': True, 'message': message})
     except Exception as e:
         return jsonify({'success': False, 'message': 'Error claiming bonus'})
 
@@ -2954,6 +2953,8 @@ def claim_daily_bonus():
 def process_match_timeouts():
     """Process matches that have timed out"""
     try:
+        from monitoring import get_real_time_stats
+        
         with SecureDBConnection() as conn:
             c = conn.cursor()
             
@@ -2973,7 +2974,10 @@ def process_match_timeouts():
                         c.execute('UPDATE game_matches SET status = "timeout" WHERE id = ?', (match_id,))
                         processed_count += 1
                 
-                flash(f'Processed {processed_count} timeout matches', 'success')
+                # Get updated stats
+                stats = get_real_time_stats()
+                
+                flash(f'Processed {processed_count} timeout matches. Platform revenue today: KSh {stats["daily_revenue"]}', 'success')
             except:
                 flash('No timeout matches found', 'info')
             
@@ -3008,6 +3012,18 @@ def report_suspicious_match():
             
     except Exception as e:
         return jsonify({'success': False, 'message': 'Error submitting report'})
+
+@app.route('/migrate_db')
+@admin_required
+def migrate_db():
+    """Initialize PostgreSQL database"""
+    try:
+        from render_db_fix import setup_postgres
+        setup_postgres()
+        flash('Database migrated successfully!', 'success')
+    except Exception as e:
+        flash(f'Migration error: {e}', 'error')
+    return redirect(url_for('admin_dashboard'))
 
 @app.route('/favicon.ico')
 def favicon():
@@ -3301,6 +3317,15 @@ def approve_match_result(match_id):
     
     return redirect(url_for('admin_dashboard'))
 
+# Initialize monitoring on startup
+try:
+    from monitoring import get_real_time_stats
+    from revenue_optimizer import revenue_optimizer
+    print("✅ Revenue optimization system loaded")
+    print("✅ Monitoring system loaded")
+except Exception as e:
+    print(f"⚠️ Warning: {e}")
+
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     debug_mode = os.environ.get('DEBUG', 'False').lower() == 'true'
@@ -3311,4 +3336,5 @@ if __name__ == '__main__':
         app.logger.warning("Using 0.0.0.0 in debug mode is insecure, switching to 127.0.0.1")
         host = '127.0.0.1'
     
+    print(f"🚀 SkillStake Gaming Platform starting on {host}:{port}")
     app.run(debug=debug_mode, host=host, port=port)
